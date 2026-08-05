@@ -7,3 +7,9 @@ dist
 
 # Vite writes transient transpiled-config files next to vite.config.ts on each run.
 vite.config.ts.timestamp-*.mjs
+
+# Local deployment / status / audit working notes (kept on disk, not in the repo).
+PREDEPLOY-READINESS.md
+DEPLOY-INSTRUCTIONS.md
+DEPLOY-STATUS.md
+SECURITY-AUDIT.md
