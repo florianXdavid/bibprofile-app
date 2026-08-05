@@ -40,7 +40,8 @@ export default function About({ onClose }: { onClose: () => void }) {
 
       <h3>Privacy</h3>
       <p>
-        Everything runs in your browser. The only network calls are to OpenAlex. Nothing is stored,
+        Everything runs in your browser. To match your references, their titles and DOIs are sent to
+        OpenAlex, a third-party service — the only place any of your data goes. Nothing is stored,
         there's no account, and there's no tracking.
       </p>
 
