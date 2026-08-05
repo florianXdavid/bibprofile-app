@@ -1,0 +1,9 @@
+node_modules
+dist
+# Never commit your local OpenAlex key.
+.env
+.env.local
+*.local
+
+# Vite writes transient transpiled-config files next to vite.config.ts on each run.
+vite.config.ts.timestamp-*.mjs

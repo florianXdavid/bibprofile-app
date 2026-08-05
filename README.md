@@ -1,0 +1,272 @@
+# BibProfile
+
+Browser-only tool that profiles a BibTeX reference list against
+[OpenAlex](https://openalex.org): **upload your `.bib`, see the shape of your
+bibliography, and get a cleaned copy back.** Handy as a final sanity-check right
+before you submit a paper to a journal or conference.
+
+Everything runs in your browser. The only network calls are to OpenAlex. No
+account, no tracking, nothing stored.
+
+> Building this project was a **week-by-week** effort. The full history — every
+> feature, fix and scope decision in order — lives in **[DEVLOG.md](./DEVLOG.md)**.
+> This README describes the tool **as it is now**.
+
+## What it does
+
+- **Match & inspect** — parses your `.bib`, matches each reference against
+  OpenAlex, and shows an honest match rate with a sortable, filterable table.
+- **Report** — analysis cards: recency profile, journal concentration,
+  self-citation (for you or any author), open access, reference-list shape,
+  retractions, and duplicates. Every card is descriptive — never a score or a
+  judgement — and each reports its own honest denominator.
+- **Missing citations** — *co-citation* (works your references collectively point
+  to but you haven't cited — missing foundations) and *forward-citation* (recent
+  work that cites your set — adjacent work). Off until you press a button.
+- **Preprint → published** — detects preprints (arXiv, bioRxiv, medRxiv, SSRN, …)
+  and looks up their published versions (shown as suggestions).
+- **Cleaned `.bib`** — suggested fixes (missing DOIs, venues, volume/pages from
+  OpenAlex) as a reviewable diff and a downloadable file. It never changes cite
+  keys, drops entries, or edits text you already wrote.
+
+## Architectural constraints
+
+These are load-bearing — the whole design depends on them.
+
+- **No backend, no database, no auth, no persistence** — no `localStorage`,
+  `sessionStorage`, IndexedDB, or cookies. Nothing is stored or sent anywhere
+  except OpenAlex. (A static test, `test/noPersistence.test.ts`, fails if any
+  source file references a storage API.)
+- **One network host** (`api.openalex.org`) and **one fetch layer**
+  (`src/lib/openalex.ts`). No component calls `fetch` directly — that would
+  bypass the pacing, retry, credential and cost logic.
+- **No chart library.** The two charts (year histogram, venue bars) are
+  hand-rolled inline SVG.
+- Deploys as a **static site**: `npm run build` emits `/dist`.
+
+## Stack
+
+Vite + React + TypeScript · [`@retorquere/bibtex-parser`](https://www.npmjs.com/package/@retorquere/bibtex-parser)
+for parsing · [Vitest](https://vitest.dev) for unit tests · plain CSS. No UI,
+state, or chart library.
+
+## Running it
+
+Requires Node 18+.
+
+```bash
+npm install
+cp .env.example .env      # optional — see "Credentials" below
+npm run dev               # http://localhost:5173
+npm run build             # tsc --noEmit + vite build -> /dist  (deploy this)
+npm run typecheck         # types only
+npm test                  # vitest unit tests
+```
+
+Drag a `.bib` onto the drop zone or click **Choose .bib file**.
+
+## Credentials — shared pool, your own key, and the Worker swap
+
+Matching and lookups use OpenAlex, which meters usage by cost. There are two
+network paths, chosen at runtime by `src/lib/credential.ts` (the one place that
+decides the active credential; the fetch layer consumes it):
+
+| Path | Base URL | Key | Where the key lives |
+|---|---|---|---|
+| **Shared** (default) | `OPENALEX_BASE_URL` — today `api.openalex.org`, **later** a Worker proxy | a shared key | today inlined at build; later in the Worker |
+| **User key** (opt-in) | **always** `OPENALEX_DIRECT_URL` = `api.openalex.org`, browser-direct | the user's own free key | **in memory, this session only** |
+
+The **shared, no-account pool is the default** so anyone can just upload a `.bib`.
+If it runs dry, a user can paste their **own free OpenAlex key**
+(`openalex.org/settings/api`) to run on their own budget. That key is held in
+memory only and is never persisted or sent anywhere but OpenAlex.
+
+The user-key path deliberately uses a **separate** constant (`OPENALEX_DIRECT_URL`)
+from the shared `OPENALEX_BASE_URL`: when the shared path later flips to the
+Worker (a one-line `.env` change), the user-key path stays pointed straight at
+OpenAlex — a user's secret is never routed through our server.
+
+Config lives in `.env` (all `VITE_*` vars are inlined at build time, so a
+deployed build's shared key is visible in devtools — that is what the pending
+Worker fixes):
+
+```
+VITE_OPENALEX_BASE_URL=https://api.openalex.org   # -> the Worker later
+VITE_OPENALEX_API_KEY=your_key_here               # local/dev only; blank once the Worker holds it
+VITE_OPENALEX_MAILTO=you@example.com              # optional polite-pool contact
+```
+
+## Matching
+
+Per entry, after DOI normalisation (`src/lib/doi.ts`):
+
+1. **De-duplicate** — entries sharing a normalised DOI (or, lacking one, a
+   normalised title) are queried once; duplicates are kept in the table, tagged,
+   and reported as a finding.
+2. **Has a DOI → free singleton lookup** (`/works/doi:…`, free and unlimited).
+   The returned title is scored against the `.bib` title; a low score downgrades
+   the match to `suspicious` (shown, never auto-rejected).
+3. **No usable DOI → billable title search** (`?search=` on a cleaned title,
+   fuzzy-matched with Sørensen–Dice against the original). Below threshold is
+   `not-found`; an accepted-but-weak match is `suspicious`.
+4. Genuine misses that aren't scholarly records are reclassified `not-indexable`.
+
+Requests are sequential (~4.5/sec), retried once on a transient failure. Statuses:
+`matched-by-doi`, `matched-by-title`, `suspicious`, `not-found`, `not-indexable`,
+`error`, `unparseable`. Thresholds (title 0.7 / 0.85, DOI 0.65/0.75) are advisory
+defaults in `src/config.ts`. The summary is deliberately blunt about misses.
+
+## OpenAlex fields captured
+
+Requested via a narrow `select=` (`src/config.ts` → `OPENALEX_SELECT_FIELDS`) and
+mapped in `src/lib/openalex.ts` → `toOpenAlexWork` (see `OpenAlexWork` in
+`src/types.ts`): `id`, `doi`, `display_name`, `publication_year`,
+`primary_location` (venue name / `source.id` / `source.type`), `cited_by_count`,
+`open_access` (`is_oa` / `oa_status`), `type`, `primary_topic`, `authorships`
+(names + ORCIDs), `is_retracted`, and `biblio` (volume/issue/pages).
+`referenced_works` is **not** in the default select — it's a large array added
+only for the citation-gap path (`GAPS_SELECT_FIELDS`), so a normal run never pays
+for it.
+
+## The report
+
+Rendered below a **Report / Cleaned .bib / Table** toggle; the raw table stays as
+the "show me the data" affordance.
+
+**Denominator rules** (enforced once in `src/lib/stats/denominator.ts`, never
+re-derived per card): duplicates count once; `suspicious` is included but flagged;
+`not-indexable` is excluded and reported separately; and **every card reports its
+own `n`** (different fields are missing on different works). Baselines
+(`src/lib/baselines.ts`) are stubbed — cards render a field comparison only
+`if (baseline)`.
+
+Cards: **recency** (median year + IQR, last-5/10-year share, oldest/newest,
+histogram), **shape** (neutral patterns: stale tail, narrow window, gap,
+concentration — gated behind a minimum n), **journal concentration** (top
+venues, preprint servers separated), **self-citation** (name or ORCID, matched
+references shown for review), **open access** (share + status breakdown, unknown
+counted separately), **retractions** (OpenAlex's `is_retracted` flag only —
+verify, never "remove"), **missing citations** (below), and **duplicates**
+(surfaces the de-duplication, flags mixed cite-key styles).
+
+**Copy summary** produces a one-paragraph plain-text description for a methods
+section; **Export matched data (JSON)** dumps the full matched set.
+
+## Missing citations
+
+Off until pressed (it's the only path that enlarges responses / makes extra
+billable calls — and BibProfile runs on a **shared** budget by default):
+
+- **Co-citation** (safe, ~1 billable call) — re-fetches matched works as free
+  singletons to pool `referenced_works`, ranks works cited by ≥ 4 of your
+  references but absent from your list, and hydrates the top ~30 titles in one
+  batched call. Finds missing **foundations**, never recent work.
+- **Forward-citation** (gated, N billable calls) — scans works that cite your set
+  (`cites:…`) and ranks those citing ≥ 2 of your references. Catches **recent
+  adjacent work**.
+
+Floors/cap are single constants in `src/config.ts` (`GAPS_COCITATION_FLOOR` = 4,
+`GAPS_FORWARD_FLOOR` = 2, `GAPS_TOP_CANDIDATES` = 30) — post-fetch quality filters,
+not cost reducers. Results are owned by `App.tsx` so they survive tab switches.
+
+## Cleaned `.bib` export
+
+`src/lib/stats/cleanBib.ts` (pure) computes corrections; `src/lib/bibWriter.ts`
+serialises. Labelled **"suggested fixes — review before use"**. It is
+**additive-only** and edits the **verbatim source text** (never regenerates from
+the parser's AST — which would turn `\"{o}` into `ö` and drop brace-caps / custom
+fields), so LaTeX escapes, Zotero fields, `@string` macros and comments survive
+byte-identical, and **cite keys and entry count are invariant** (asserted by
+test). Action is tiered by match status: `matched-by-doi` filled confidently,
+`matched-by-title` filled but flagged, `suspicious` and resolved preprints shown
+as suggestions (never written), everything else passed through. A colour legend
+maps green = applied, yellow = suggested-not-applied.
+
+**Preprint → published** (`src/lib/stats/preprints.ts`) detects preprints for free
+and resolves them via the existing title-search path plus a `type:!preprint`
+filter. Matches are **suggestions only** — a preprint is often cited on purpose,
+so applying the swap is left to the user.
+
+## Usage readout & graceful exhaustion
+
+When a **user key** is active, a compact bar shows live budget usage read from
+OpenAlex's `/rate-limit` (`src/lib/rateLimit.ts` parses it defensively — reads
+the `_usd` figures and reset from the payload, never a hard-coded price). The
+figure refreshes after each run, never on a timer. **Safety invariant:** the
+fetcher **refuses to read the shared key's usage** (that's the Worker's job) — if
+the active credential isn't the user's own, it makes no call. On the shared pool
+the bar is replaced by an honest "arrives with the hosted version" line.
+
+If the **shared pool** is exhausted mid-run, a distinct `OpenAlexBudgetError`
+halts cleanly — matched entries are kept, the rest left **pending** — and an
+inline banner offers the user-key path plus **Resume**, which re-queries only the
+pending entries on the new credential. (Auth failure on a *user* key is a
+separate signal: no fallback to the shared pool.)
+
+## Input guards
+
+Two coarse gates (`src/lib/validateBib.ts`) reject a pathological upload before
+any lookup: **file size** ≤ `MAX_BIB_BYTES` (1 MB, pre-parse) and **entry count**
+≤ `MAX_BIB_ENTRIES` (300 parsed entries, pre-matching). Framed as scope ("a
+per-paper tool"), not scarcity.
+
+## Project layout
+
+```
+src/
+  config.ts              # base URL, key, pacing, thresholds, cost, select fields, gap floors/cap, input guards
+  types.ts               # shared pipeline types
+  App.tsx                # orchestration, view toggle, exports, active credential, usage + exhaustion
+  components/
+    FileDrop.tsx  Progress.tsx  Summary.tsx  ResultsTable.tsx
+    KeyControl.tsx        # "use your own OpenAlex key"
+    UsageIndicator.tsx    # usage bar / shared-pool deferral / unavailable
+    About.tsx             # the About panel
+    report/              # the analysis report + cleaned export tab
+      ReportView.tsx  CardShell.tsx  Histogram.tsx  BarChart.tsx  format.ts
+      RecencyCard.tsx  ShapeCard.tsx  VenuesCard.tsx  SelfCitationCard.tsx
+      OpenAccessCard.tsx  RetractionsCard.tsx  GapsCard.tsx  DuplicatesCard.tsx
+      CleanedExport.tsx
+  lib/
+    doi.ts  similarity.ts  titleClean.ts  parseBib.ts  validateBib.ts
+    credential.ts        # pure: shared vs. user-key resolution (the one active-credential decision)
+    rateLimit.ts         # pure: defensive /rate-limit parse + formatting
+    openalex.ts          # the ONLY fetch layer (URLs, credential, retry, mapping, auth/budget errors, /rate-limit)
+    match.ts             # orchestration: dedup, DOI-first (free), then title; halt/Resume on exhaustion
+    gaps.ts              # citation-gap orchestration (co-citation + forward)
+    preprintResolve.ts   # preprint -> published resolution orchestration
+    bibWriter.ts         # additive, round-trip-safe BibTeX serialisation
+    baselines.ts         # field-baseline stub (returns null)
+    stats/               # PURE statistics, no React, no fetch, unit-tested
+      denominator.ts  recency.ts  venues.ts  openaccess.ts  selfCitation.ts
+      duplicates.ts  summaryText.ts  shape.ts  retractions.ts  coCitation.ts
+      preprints.ts  cleanBib.ts
+test/                    # vitest unit tests (pure functions; no network except mocked)
+```
+
+## Testing
+
+`npm test` runs **146 tests**. Highlights: parsing/DOI/title-clean/similarity
+regressions; every report statistic on fixtures (median/IQR year, top-venue
+share, OA %, self-citation matching, shape patterns + min-n floor, retraction
+filter, co-citation counting, preprint detection); the cleaned-export cite-key /
+entry-count and LaTeX round-trip guards; the credential resolution + shared/user
+decoupling; a static no-persistence guard over all of `src/`; rate-limit parsing;
+the "never read the shared key's usage" safety invariant; and budget-exhaustion
+halt + Resume. UI/DOM behaviour is covered by documented manual checks (see
+DEVLOG.md).
+
+## Out of scope
+
+Field baselines (stubbed) · topic/field-spread and impact-spread cards ·
+similarity clustering · PNG export · accounts, storage, analytics · Crossref or
+any second network host · the Retraction Watch CSV · paginated forward-citation ·
+the **shared-pool** usage display (needs the Worker; the *user-key* readout ships
+today) · full reference *validation* (we check retraction and suggest fixes; we
+don't claim to verify references are real).
+
+## Credits
+
+Bibliographic data from [OpenAlex](https://openalex.org). Built with React, Vite,
+and `@retorquere/bibtex-parser`, with the assistance of Claude (Anthropic's AI).
+Built by Florian David (ORCID: [0009-0001-7990-3186](https://orcid.org/0009-0001-7990-3186)).

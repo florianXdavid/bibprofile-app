@@ -1,0 +1,232 @@
+import { useMemo, useState } from 'react'
+import type { MatchStatus, ResultRow } from '../types'
+
+type SortDir = 'asc' | 'desc'
+type Primitive = string | number | null
+type Filter = 'all' | 'duplicates' | MatchStatus
+
+interface Column {
+  key: string
+  label: string
+  numeric?: boolean
+  get: (r: ResultRow) => Primitive
+  cell: (r: ResultRow) => React.ReactNode
+}
+
+function shortId(id: string | null): string {
+  if (!id) return ''
+  return id.replace(/^https?:\/\/openalex\.org\//, '')
+}
+
+function yesNo(v: boolean | null): string {
+  if (v === null) return ''
+  return v ? 'Yes' : 'No'
+}
+
+const STATUS_ORDER: MatchStatus[] = [
+  'matched-by-doi', 'matched-by-title', 'suspicious',
+  'not-found', 'not-indexable', 'error', 'unparseable',
+]
+
+const columns: Column[] = [
+  {
+    key: 'citeKey', label: 'Cite key',
+    get: r => r.citeKey,
+    cell: r => (
+      <span title={r.citeKey}>
+        {r.citeKey}
+        {r.duplicateOf && (
+          <span className="dup" title={`duplicate of ${r.duplicateOf}`}> ↳ dup of {r.duplicateOf}</span>
+        )}
+      </span>
+    ),
+  },
+  {
+    key: 'title', label: 'Title (.bib)',
+    get: r => r.title,
+    cell: r => <span className="title-cell" title={r.title}>{r.title}</span>,
+  },
+  {
+    key: 'bibYear', label: 'Yr (.bib)', numeric: true,
+    get: r => r.bibYear,
+    cell: r => r.bibYear ?? <span className="muted">—</span>,
+  },
+  {
+    key: 'status', label: 'Status',
+    get: r => r.status,
+    cell: r => (
+      <>
+        <span className={`badge ${r.status}`}>{r.status}</span>
+        {r.matchScore != null && (
+          <span
+            className={r.status === 'suspicious' ? 'flag' : 'muted'}
+            title="title-match similarity (bib vs OpenAlex)"
+          > {r.matchScore.toFixed(2)}</span>
+        )}
+      </>
+    ),
+  },
+  {
+    key: 'openalexId', label: 'OpenAlex ID',
+    get: r => shortId(r.openalex?.id ?? null),
+    cell: r => r.openalex?.id
+      ? <a href={r.openalex.id} target="_blank" rel="noreferrer">{shortId(r.openalex.id)}</a>
+      : <span className="muted">—</span>,
+  },
+  {
+    key: 'oaYear', label: 'Yr (OA)', numeric: true,
+    get: r => r.openalex?.publicationYear ?? null,
+    cell: r => {
+      if (!r.openalex) return <span className="muted">—</span>
+      return (
+        <>
+          {r.openalex.publicationYear ?? <span className="muted">—</span>}
+          {r.yearState === 'disagree' && (
+            <span
+              className="flag"
+              title={`.bib year ${r.bibYear} ≠ OpenAlex year ${r.openalex.publicationYear}`}
+            > &#9888;</span>
+          )}
+          {r.yearState === 'unverified' && (
+            <span
+              className="year-unverified"
+              title="year unverified — missing on the .bib or OpenAlex side; not treated as agreement"
+            > ?</span>
+          )}
+        </>
+      )
+    },
+  },
+  {
+    key: 'hostVenue', label: 'Host venue (OA)',
+    get: r => r.openalex?.hostVenue ?? null,
+    cell: r => r.openalex?.hostVenue
+      ? <span className="title-cell" title={r.openalex.hostVenue}>{r.openalex.hostVenue}</span>
+      : <span className="muted">—</span>,
+  },
+  {
+    key: 'citedBy', label: 'Cited by', numeric: true,
+    get: r => r.openalex?.citedByCount ?? null,
+    cell: r => r.openalex?.citedByCount ?? <span className="muted">—</span>,
+  },
+  {
+    key: 'isOa', label: 'OA',
+    get: r => (r.openalex?.isOa == null ? null : (r.openalex.isOa ? 1 : 0)),
+    cell: r => r.openalex ? yesNo(r.openalex.isOa) : <span className="muted">—</span>,
+  },
+  {
+    key: 'type', label: 'Type (OA)',
+    get: r => r.openalex?.type ?? null,
+    cell: r => r.openalex?.type ?? <span className="muted">—</span>,
+  },
+  {
+    key: 'topic', label: 'Primary topic (OA)',
+    get: r => r.openalex?.primaryTopic ?? null,
+    cell: r => r.openalex?.primaryTopic
+      ? <span className="title-cell" title={r.openalex.primaryTopic}>{r.openalex.primaryTopic}</span>
+      : ((r.status === 'unparseable' || r.status === 'error') && r.error
+          ? <span className="err-text" title={r.error}>{r.error}</span>
+          : <span className="muted">—</span>),
+  },
+]
+
+function compare(a: Primitive, b: Primitive, numeric: boolean): number {
+  if (a == null && b == null) return 0
+  if (a == null) return 1
+  if (b == null) return -1
+  if (numeric) return Number(a) - Number(b)
+  return String(a).localeCompare(String(b))
+}
+
+export default function ResultsTable({ rows }: { rows: ResultRow[] }) {
+  const [sortKey, setSortKey] = useState<string>('') // '' = original .bib file order (Fix A5)
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+  const [filter, setFilter] = useState<Filter>('all')
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = {}
+    for (const r of rows) c[r.status] = (c[r.status] ?? 0) + 1
+    return c
+  }, [rows])
+  const dupCount = useMemo(() => rows.filter(r => r.duplicateOf).length, [rows])
+
+  const visible = useMemo(() => {
+    let filtered = rows
+    if (filter === 'duplicates') filtered = rows.filter(r => r.duplicateOf)
+    else if (filter !== 'all') filtered = rows.filter(r => r.status === filter)
+    const col = columns.find(c => c.key === sortKey)
+    if (!col) return filtered
+    const sorted = [...filtered].sort((ra, rb) => compare(col.get(ra), col.get(rb), !!col.numeric))
+    return sortDir === 'asc' ? sorted : sorted.reverse()
+  }, [rows, filter, sortKey, sortDir])
+
+  function onHeader(key: string) {
+    if (key === sortKey) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortKey(key); setSortDir('asc') }
+  }
+
+  return (
+    <div>
+      <div className="filters" style={{ margin: '10px 0 12px' }}>
+        <button className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')}>
+          All ({rows.length})
+        </button>
+        {STATUS_ORDER.filter(s => counts[s]).map(s => (
+          <button key={s} className={filter === s ? 'active' : ''} onClick={() => setFilter(s)}>
+            {s} ({counts[s]})
+          </button>
+        ))}
+        {dupCount > 0 && (
+          <button className={filter === 'duplicates' ? 'active' : ''} onClick={() => setFilter('duplicates')}>
+            duplicates ({dupCount})
+          </button>
+        )}
+      </div>
+
+      {/* Hidden-by-default explainer for the match statuses (W4.2). */}
+      <details className="oa-help" style={{ margin: '0 0 12px' }}>
+        <summary>What do the statuses mean?</summary>
+        <ul>
+          <li><strong>matched-by-doi</strong> — matched via its DOI (authoritative).</li>
+          <li><strong>matched-by-title</strong> — no usable DOI; matched by a title search that cleared the similarity bar.</li>
+          <li><strong>suspicious</strong> — matched, but the title similarity is low — shown for you to judge (often a wrong <code>.bib</code> DOI, sometimes a real work with truncated metadata).</li>
+          <li><strong>not-found</strong> — looked up, but nothing acceptable came back.</li>
+          <li><strong>not-indexable</strong> — not the kind of record OpenAlex indexes (a dataset, a software library, a URL used as a title).</li>
+          <li><strong>error</strong> — a network or server failure after one retry.</li>
+          <li><strong>unparseable</strong> — the <code>.bib</code> block couldn't be turned into a usable record.</li>
+          <li><strong>duplicates</strong> — the same work cited more than once; collapsed to one before analysis (tagged “dup of …”).</li>
+        </ul>
+        <p className="muted">The “Yr (OA)” column also shows ⚠ when the <code>.bib</code> year and the OpenAlex year disagree, and ? when a year is missing on either side.</p>
+      </details>
+
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              {columns.map(col => (
+                <th key={col.key} onClick={() => onHeader(col.key)}>
+                  {col.label}
+                  {sortKey === col.key && <span className="arrow">{sortDir === 'asc' ? '▲' : '▼'}</span>}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map(r => (
+              <tr key={r.rowId}>
+                {columns.map(col => (
+                  <td key={col.key} className={col.numeric ? 'num' : (col.key === 'title' ? 'title' : '')}>
+                    {col.cell(r)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {visible.length === 0 && (
+              <tr><td colSpan={columns.length} className="muted" style={{ textAlign: 'center', padding: 20 }}>No rows for this filter.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
