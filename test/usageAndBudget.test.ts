@@ -5,7 +5,7 @@ import {
   OpenAlexAuthError,
 } from '../src/lib/openalex'
 import { mergeRows, runMatching } from '../src/lib/match'
-import { sharedCredential, userCredential } from '../src/lib/credential'
+import { sharedCredential, userCredential, type Credential } from '../src/lib/credential'
 import type { BibEntry, ParseResult } from '../src/types'
 
 afterEach(() => vi.unstubAllGlobals())
@@ -39,6 +39,21 @@ describe('W4.1 SAFETY — never read the shared key usage from the browser', () 
     const res = await fetchRateLimit(sharedCredential())
     expect(spy).not.toHaveBeenCalled()
     expect(res).toEqual({ kind: 'unavailable' })
+  })
+
+  it('shared credential routed through the WORKER → reads the Worker /rate-limit (no key sent) and maps it', async () => {
+    const spy = mockFetch([() => jsonRes({ daily_budget_usd: 1, daily_used_usd: 0.3, resets_at: '2026-01-01T18:00:00Z' })])
+    // Post-cutover: the shared base URL is the Worker and the shared credential
+    // carries NO key (the Worker injects it). The browser reads the Worker, never
+    // OpenAlex-with-the-shared-key — preserving the safety invariant's intent.
+    const sharedViaWorker: Credential = { kind: 'shared', baseUrl: 'https://bibprofile-worker.example.workers.dev', apiKey: '', mailto: '' }
+    const res = await fetchRateLimit(sharedViaWorker)
+    expect(spy).toHaveBeenCalledTimes(1)
+    const url = String(spy.mock.calls[0][0])
+    expect(url).toContain('https://bibprofile-worker.example.workers.dev/rate-limit')
+    expect(url).not.toContain('api_key=') // shared path sends NO key — the Worker injects it
+    expect(res.kind).toBe('ok')
+    if (res.kind === 'ok') expect(res.usage.usedUsd).toBe(0.3)
   })
 
   it('user credential → calls /rate-limit with the user key, maps the payload', async () => {

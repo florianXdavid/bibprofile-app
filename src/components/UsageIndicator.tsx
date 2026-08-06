@@ -9,20 +9,21 @@ import type { RateLimitUsage } from '../lib/rateLimit'
 import { formatResetIn, usagePercent, usd } from '../lib/rateLimit'
 
 export type UsageState =
-  | { status: 'shared' } // shared pool active — no bar, honest deferral line
+  | { status: 'shared' } // shared pool active but usage not (yet) available — deferral line
   | { status: 'loading' }
-  | { status: 'ok'; usage: RateLimitUsage }
+  | { status: 'ok'; usage: RateLimitUsage; scope: 'shared' | 'user' }
   | { status: 'unavailable' } // read failed / unexpected shape — never a guessed bar
 
 export default function UsageIndicator({ state, onRetry }: { state: UsageState; onRetry: () => void }) {
   if (state.status === 'shared') {
-    // NOTE for the Worker patch: when the shared figure eventually lands it will
-    // be a POOLED number across everyone using the site that day — word it as
-    // "the shared pool is 60% used today", never as "your" usage.
+    // Deferral line — shown before the first lookup, or when the shared path is
+    // running direct-to-OpenAlex (local/rollback) where we can't read pooled usage.
+    // The live shared bar (below) is a POOLED number across everyone, so it's worded
+    // "the shared pool has used …", never "your" usage.
     return (
       <p className="usage shared muted">
-        Shared-pool usage isn’t shown yet — it arrives when BibProfile moves to its hosted version.
-        Use your own key (above) to see a live budget.
+        Using the shared pool — its usage appears here after your first lookup.
+        Or use your own key (above) for your own budget.
       </p>
     )
   }
@@ -43,13 +44,21 @@ export default function UsageIndicator({ state, onRetry }: { state: UsageState; 
   const u = state.usage
   const pct = usagePercent(u)
   const reset = formatResetIn(u.resetsAt)
+  const shared = state.scope === 'shared'
+  const label = shared
+    ? `${pct}% of the shared daily OpenAlex budget used`
+    : `${pct}% of your daily OpenAlex budget used`
   return (
     <div className="usage ok">
-      <div className="usage-bar" role="img" aria-label={`${pct}% of your daily OpenAlex budget used`}>
+      <div className="usage-bar" role="img" aria-label={label}>
         <span className={pct >= 90 ? 'over' : ''} style={{ width: `${pct}%` }} />
       </div>
       <p className="usage-text">
-        You’ve used {usd(u.usedUsd)} of your {usd(u.budgetUsd)} daily budget ({pct}%).
+        {shared ? (
+          <>The shared pool has used {usd(u.usedUsd)} of today’s {usd(u.budgetUsd)} budget ({pct}%).</>
+        ) : (
+          <>You’ve used {usd(u.usedUsd)} of your {usd(u.budgetUsd)} daily budget ({pct}%).</>
+        )}
         {reset && <> Resets {reset}.</>}{' '}
         <button type="button" className="key-link" onClick={onRetry}>Refresh</button>
       </p>

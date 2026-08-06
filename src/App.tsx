@@ -22,7 +22,7 @@ import {
 } from './lib/gaps'
 import { runPreprintResolution, type PreprintRunState } from './lib/preprintResolve'
 import { fetchRateLimit, OpenAlexAuthError, OpenAlexBudgetError } from './lib/openalex'
-import { resolveCredential, type UserCredential } from './lib/credential'
+import { OPENALEX_DIRECT_URL, resolveCredential, type UserCredential } from './lib/credential'
 import { formatResetClockUtc } from './lib/rateLimit'
 import { OPENALEX_API_KEY, OPENALEX_BASE_URL } from './config'
 import type { MatchSummary, Progress as ProgressState, ResultRow } from './types'
@@ -64,14 +64,19 @@ export default function App() {
   const [usage, setUsage] = useState<UsageState>({ status: 'shared' })
   const [exhausted, setExhausted] = useState<{ resetsAt: string | null; kind: 'shared' | 'user' } | null>(null)
 
-  // Read a credential's usage — USER KEY ONLY (the fetcher refuses to read the
-  // shared key). Never blocks; any failure degrades to 'unavailable'.
+  // Read a credential's usage. USER KEY → OpenAlex directly (its own budget).
+  // SHARED → only when it's routed through the Worker (which serves key-stripped
+  // /rate-limit); if the shared path is still direct-to-OpenAlex (local dev or a
+  // rollback) we keep the honest deferral line and make NO call — the browser never
+  // reads the shared key's usage from OpenAlex. Never blocks; failure → 'unavailable'.
   async function refreshUsageFor(uc: UserCredential | null) {
     const cred = resolveCredential(uc)
-    if (cred.kind !== 'user') { setUsage({ status: 'shared' }); return }
+    const canRead = cred.kind === 'user' || cred.baseUrl !== OPENALEX_DIRECT_URL
+    if (!canRead) { setUsage({ status: 'shared' }); return }
     setUsage({ status: 'loading' })
     const res = await fetchRateLimit(cred)
-    setUsage(res.kind === 'ok' ? { status: 'ok', usage: res.usage } : { status: 'unavailable' })
+    const scope = cred.kind === 'user' ? 'user' : 'shared'
+    setUsage(res.kind === 'ok' ? { status: 'ok', usage: res.usage, scope } : { status: 'unavailable' })
   }
 
   // Surface an OpenAlex auth rejection. With a user key we say so and offer Clear
@@ -303,11 +308,11 @@ export default function App() {
         Parse a BibTeX file and match it against OpenAlex.
       </p>
 
-      {!OPENALEX_API_KEY && !userKey && (
+      {!OPENALEX_API_KEY && !userKey && OPENALEX_BASE_URL === OPENALEX_DIRECT_URL && (
         <p className="hint">
-          No OpenAlex API key detected. Requests may be heavily rate-limited.
-          Add <code>VITE_OPENALEX_API_KEY</code> to a local <code>.env</code> (see README),
-          or use your own key below.
+          No OpenAlex API key detected, and the app is calling OpenAlex directly.
+          Requests may be heavily rate-limited. Add <code>VITE_OPENALEX_API_KEY</code> to a
+          local <code>.env</code> (see README), or use your own key below.
         </p>
       )}
 

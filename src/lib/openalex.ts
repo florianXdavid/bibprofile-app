@@ -12,7 +12,7 @@ import {
   RETRY_BACKOFF_MS,
   SEARCH_PER_PAGE,
 } from '../config'
-import { sharedCredential, type Credential } from './credential'
+import { OPENALEX_DIRECT_URL, sharedCredential, type Credential } from './credential'
 import { parseRateLimit, type RateLimitUsage } from './rateLimit'
 import type { OpenAlexWork } from '../types'
 
@@ -324,7 +324,16 @@ export type UsageResult = { kind: 'ok'; usage: RateLimitUsage } | { kind: 'unava
 // throws or blocks: any failure (network, bad shape, rejection) degrades to
 // `unavailable`.
 export async function fetchRateLimit(cred: Credential): Promise<UsageResult> {
-  if (cred.kind !== 'user') return { kind: 'unavailable' } // shared: DO NOT CALL
+  // SAFETY INVARIANT (W4.1, updated at the Worker cutover): the browser must never
+  // read the SHARED key's usage by calling OpenAlex DIRECTLY. Post-cutover the
+  // shared path goes through the Worker, which serves KEY-STRIPPED /rate-limit, so a
+  // shared read is only safe — and only meaningful — when the shared base URL is the
+  // Worker (not api.openalex.org). A user key always reads OpenAlex directly on its
+  // own budget. If the shared path is still pointed straight at OpenAlex (pre-cutover
+  // or rolled back), make NO call and report unavailable — exactly as before.
+  if (cred.kind === 'shared' && cred.baseUrl === OPENALEX_DIRECT_URL) {
+    return { kind: 'unavailable' } // shared, direct-to-OpenAlex: DO NOT CALL
+  }
   try {
     const res = await request(buildRateLimitUrl(cred))
     if (!res.ok) return { kind: 'unavailable' }
