@@ -73,7 +73,7 @@ decides the active credential; the fetch layer consumes it):
 
 | Path | Base URL | Key | Where the key lives |
 |---|---|---|---|
-| **Shared** (default) | `OPENALEX_BASE_URL` — today `api.openalex.org`, **later** a Worker proxy | a shared key | today inlined at build; later in the Worker |
+| **Shared** (default) | `OPENALEX_BASE_URL` — the Worker proxy at `https://api.bibprofile.com` | a shared key | held server-side in the Worker |
 | **User key** (opt-in) | **always** `OPENALEX_DIRECT_URL` = `api.openalex.org`, browser-direct | the user's own free key | **in memory, this session only** |
 
 The **shared, no-account pool is the default** so anyone can just upload a `.bib`.
@@ -82,18 +82,18 @@ If it runs dry, a user can paste their **own free OpenAlex key**
 memory only and is never persisted or sent anywhere but OpenAlex.
 
 The user-key path deliberately uses a **separate** constant (`OPENALEX_DIRECT_URL`)
-from the shared `OPENALEX_BASE_URL`: when the shared path later flips to the
-Worker (a one-line `.env` change), the user-key path stays pointed straight at
+from the shared `OPENALEX_BASE_URL`: now that the shared path routes through the
+Worker (`https://api.bibprofile.com`), the user-key path stays pointed straight at
 OpenAlex — a user's secret is never routed through our server.
 
-Config lives in `.env` (all `VITE_*` vars are inlined at build time, so a
-deployed build's shared key is visible in devtools — that is what the pending
-Worker fixes):
+Config lives in `.env` / the Cloudflare Pages dashboard. The shared path's base URL
+points at the Worker (`https://api.bibprofile.com`), which holds the key server-side,
+so the deployed bundle no longer contains the shared key:
 
 ```
-VITE_OPENALEX_BASE_URL=https://api.openalex.org   # -> the Worker later
-VITE_OPENALEX_API_KEY=your_key_here               # local/dev only; blank once the Worker holds it
-VITE_OPENALEX_MAILTO=you@example.com              # optional polite-pool contact
+VITE_OPENALEX_BASE_URL=https://api.bibprofile.com  # the Worker proxy (set in the Pages dashboard)
+VITE_OPENALEX_API_KEY=                             # blank on the deployed shared build — the Worker holds the key
+VITE_OPENALEX_MAILTO=you@example.com               # optional polite-pool contact
 ```
 
 ## Matching
