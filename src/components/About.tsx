@@ -41,8 +41,10 @@ export default function About({ onClose }: { onClose: () => void }) {
       <h3>Privacy</h3>
       <p>
         Everything runs in your browser. To match your references, their titles and DOIs are sent to
-        OpenAlex, a third-party service — the only place any of your data goes. Nothing is stored,
-        there's no account, and there's no tracking.
+        OpenAlex. On the shared pool (the default), they pass through BibProfile's own proxy at{' '}
+        <code>api.bibprofile.com</code>, which forwards them to OpenAlex and stores nothing; if you use
+        your own key, queries go straight to OpenAlex and your key never touches our proxy. Nothing is
+        stored, there's no account, and there's no tracking.
       </p>
 
       <h3>The shared pool &amp; your own key</h3>

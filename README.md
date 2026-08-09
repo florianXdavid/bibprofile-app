@@ -5,8 +5,10 @@ Browser-only tool that profiles a BibTeX reference list against
 bibliography, and get a cleaned copy back.** Handy as a final sanity-check right
 before you submit a paper to a journal or conference.
 
-Everything runs in your browser. The only network calls are to OpenAlex. No
-account, no tracking, nothing stored.
+Everything runs in your browser. On the shared pool, queries pass through
+BibProfile's own proxy (`api.bibprofile.com`), which forwards them to OpenAlex and
+stores nothing; with your own key they go straight to OpenAlex. Nothing is stored,
+no account, no tracking.
 
 > Building this project was a **week-by-week** effort. The full history — every
 > feature, fix and scope decision in order — lives in **[DEVLOG.md](./DEVLOG.md)**.
@@ -37,9 +39,11 @@ These are load-bearing — the whole design depends on them.
   `sessionStorage`, IndexedDB, or cookies. Nothing is stored or sent anywhere
   except OpenAlex. (A static test, `test/noPersistence.test.ts`, fails if any
   source file references a storage API.)
-- **One network host** (`api.openalex.org`) and **one fetch layer**
-  (`src/lib/openalex.ts`). No component calls `fetch` directly — that would
-  bypass the pacing, retry, credential and cost logic.
+- **One fetch layer** (`src/lib/openalex.ts`) reaching a small, fixed set of hosts:
+  the shared proxy (`api.bibprofile.com`, which just forwards to OpenAlex) or, for a
+  user key, OpenAlex directly (`api.openalex.org`). OpenAlex is the only data host;
+  the proxy stores nothing. No component calls `fetch` directly — that would bypass
+  the pacing, retry, credential and cost logic.
 - **No chart library.** The two charts (year histogram, venue bars) are
   hand-rolled inline SVG.
 - Deploys as a **static site**: `npm run build` emits `/dist`.
