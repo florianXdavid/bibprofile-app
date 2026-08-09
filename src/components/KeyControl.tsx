@@ -53,7 +53,7 @@ export default function KeyControl({ active, error, onSet, onClear }: Props) {
     <div className="keyctl">
       {!open ? (
         <button type="button" className="primary" onClick={() => setOpen(true)}>
-          Use your own OpenAlex key
+          Use your own free OpenAlex key
         </button>
       ) : (
         <form className="key-form" onSubmit={submit}>

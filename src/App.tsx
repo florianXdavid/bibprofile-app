@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import FileDrop from './components/FileDrop'
 import Progress from './components/Progress'
 import Summary from './components/Summary'
@@ -24,7 +24,7 @@ import { runPreprintResolution, type PreprintRunState } from './lib/preprintReso
 import { fetchRateLimit, OpenAlexAuthError, OpenAlexBudgetError } from './lib/openalex'
 import { OPENALEX_DIRECT_URL, resolveCredential, type UserCredential } from './lib/credential'
 import { formatResetClockUtc } from './lib/rateLimit'
-import { OPENALEX_API_KEY, OPENALEX_BASE_URL } from './config'
+import { OPENALEX_BASE_URL } from './config'
 import type { MatchSummary, Progress as ProgressState, ResultRow } from './types'
 
 type Phase = 'idle' | 'working' | 'done'
@@ -79,6 +79,10 @@ export default function App() {
     setUsage(res.kind === 'ok' ? { status: 'ok', usage: res.usage, scope } : { status: 'unavailable' })
   }
 
+  // Issue 1 (05c) — show the shared-pool bar on first load (before any upload),
+  // whenever the shared-via-Worker path is active. One-shot on mount; never a timer.
+  useEffect(() => { void refreshUsageFor(null) }, [])
+
   // Surface an OpenAlex auth rejection. With a user key we say so and offer Clear
   // (never silently fall back to the shared key); on the shared path it's ours.
   function reportAuthError() {
@@ -95,7 +99,7 @@ export default function App() {
   function clearUserKey() {
     setUserKey(null) // actually drops the in-memory secret
     setKeyError('')
-    setUsage({ status: 'shared' })
+    void refreshUsageFor(null) // back to the shared pool → refetch and show the pooled bar now
   }
 
   async function run(text: string, name: string) {
@@ -307,14 +311,6 @@ export default function App() {
       <p className="subtitle">
         Parse a BibTeX file and match it against OpenAlex.
       </p>
-
-      {!OPENALEX_API_KEY && !userKey && OPENALEX_BASE_URL === OPENALEX_DIRECT_URL && (
-        <p className="hint">
-          No OpenAlex API key detected, and the app is calling OpenAlex directly.
-          Requests may be heavily rate-limited. Add <code>VITE_OPENALEX_API_KEY</code> to a
-          local <code>.env</code> (see README), or use your own key below.
-        </p>
-      )}
 
       <FileDrop onText={run} disabled={busy} />
 
