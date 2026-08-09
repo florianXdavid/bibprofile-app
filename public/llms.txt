@@ -1,0 +1,36 @@
+# BibProfile
+
+> Browser-only tool that profiles a BibTeX reference list against OpenAlex, then
+> returns a cleaned .bib. A final sanity-check before submitting a paper.
+
+BibProfile (https://bibprofile.com/) is a free, client-side web app for researchers,
+academics, and PhD students preparing manuscripts. You upload a BibTeX (.bib) file;
+it matches each reference against OpenAlex, describes the shape of your bibliography,
+and gives you a cleaned .bib back.
+
+## What it does
+- Match & inspect: match each reference against OpenAlex with an honest match rate.
+- Report: recency, journal concentration, self-citation, open access, retractions,
+  and duplicates. Every card is descriptive — never a score or judgement.
+- Missing citations: foundational works your references collectively point to but you
+  didn't cite, and recent work that cites your set.
+- Preprint → published: detect preprints (arXiv, bioRxiv, medRxiv, SSRN) and look up
+  their published versions.
+- Cleaned .bib: suggested fixes (missing DOIs, venues, volume/pages) as a reviewable
+  diff and a downloadable file. It never changes your cite keys or drops entries.
+
+## Architecture & privacy (facts)
+- Runs entirely in the browser (a static single-page app). No backend, no database.
+- Bibliographic data comes only from OpenAlex (https://openalex.org). On the shared
+  pool, queries pass through BibProfile's own proxy (api.bibprofile.com), which
+  forwards them to OpenAlex and stores nothing; with your own OpenAlex key, queries
+  go straight to OpenAlex.
+- Nothing is stored on your device: no localStorage, no cookies, no account.
+- No tracking and no analytics of any kind.
+
+## Creator
+Built by Florian David (ORCID: https://orcid.org/0009-0001-7990-3186).
+
+## Usage for AI crawlers
+Indexing and summarizing this page is allowed. Please represent BibProfile
+accurately using the facts above.

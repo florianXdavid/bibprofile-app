@@ -3,10 +3,78 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BibProfile</title>
+
+    <title>BibProfile — Profile &amp; clean your BibTeX against OpenAlex</title>
+    <meta name="description" content="Browser-only tool that profiles your BibTeX reference list against OpenAlex: match rate, recency, self-citation, retractions, missing citations, cleaned .bib." />
+    <link rel="canonical" href="https://bibprofile.com/" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://bibprofile.com/" />
+    <meta property="og:title" content="BibProfile — Profile &amp; clean your BibTeX against OpenAlex" />
+    <meta property="og:description" content="Profile a .bib reference list against OpenAlex — match rate, recency, self-citation, retractions, missing citations — and get a cleaned .bib back. Runs in your browser; nothing stored." />
+    <meta property="og:image" content="https://bibprofile.com/og-image.jpg" />
+    <meta property="og:site_name" content="BibProfile" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="BibProfile — Profile &amp; clean your BibTeX against OpenAlex" />
+    <meta name="twitter:description" content="Profile a .bib reference list against OpenAlex — match rate, recency, self-citation, retractions, missing citations — and get a cleaned .bib back. Runs in your browser; nothing stored." />
+    <meta name="twitter:image" content="https://bibprofile.com/og-image.jpg" />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "BibProfile",
+      "url": "https://bibprofile.com/",
+      "description": "Browser-only tool that profiles a BibTeX reference list against OpenAlex — match rate, recency, journal concentration, self-citation, open access, retractions, duplicates and missing citations — and returns a cleaned .bib. Runs client-side; nothing is stored.",
+      "applicationCategory": "ResearchApplication",
+      "operatingSystem": "Any (modern web browser)",
+      "browserRequirements": "Requires JavaScript",
+      "isAccessibleForFree": true,
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "creator": {
+        "@type": "Person",
+        "name": "Florian David",
+        "url": "https://orcid.org/0009-0001-7990-3186",
+        "identifier": "https://orcid.org/0009-0001-7990-3186"
+      }
+    }
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Static fallback for crawlers / no-JS clients. React (createRoot) replaces
+           this on mount. Keep it accurate; it is what Google indexes and LLMs read. -->
+      <main>
+        <h1>BibProfile — profile and clean your BibTeX bibliography</h1>
+        <p>
+          BibProfile is a free, browser-only tool that profiles a BibTeX (<code>.bib</code>)
+          reference list against <a href="https://openalex.org">OpenAlex</a>. You upload your
+          <code>.bib</code>, it matches each reference against OpenAlex, shows the shape of your
+          bibliography, and gives you back a cleaned copy — a final sanity-check before you submit a
+          paper to a journal or conference. It's built for researchers, academics, and PhD students
+          preparing manuscripts.
+        </p>
+        <ul>
+          <li><strong>Match &amp; inspect</strong> — match each reference against OpenAlex, with an honest match rate and a sortable, filterable table.</li>
+          <li><strong>Report</strong> — recency, journal concentration, self-citation, open access, retractions, and duplicates — descriptive, never a score.</li>
+          <li><strong>Missing citations</strong> — foundational works your references point to but you didn't cite, and recent work that cites your set.</li>
+          <li><strong>Preprint → published</strong> — detect preprints (arXiv, bioRxiv, medRxiv, SSRN) and look up their published versions.</li>
+          <li><strong>Cleaned <code>.bib</code></strong> — suggested fixes (missing DOIs, venues, volume/pages) as a reviewable diff and a downloadable file.</li>
+        </ul>
+        <p>
+          Everything runs in your browser. Nothing is stored, there's no account, and there's no
+          tracking. Bibliographic data comes from OpenAlex. Built by Florian David.
+        </p>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
