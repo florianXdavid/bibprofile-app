@@ -68,3 +68,58 @@ export function spliceCleaned(originalText: string, entries: SpliceEntry[]): str
   }
   return out
 }
+
+// --- v1.1: per-field CORRECTION support (mismatch accept) --------------------
+// Unlike insertFields (additive), these locate an EXISTING field's value in the
+// verbatim source so a user-accepted correction can replace just that value,
+// leaving the field name, delimiters, and all other bytes intact. Balanced-brace
+// aware and backslash-escape aware, so nested `{…}` and `\{`/`\}` don't confuse it.
+
+interface FieldSpan { valueStart: number; valueEnd: number; inner: string }
+
+// Locate `field = <value>` in an entry's verbatim raw. Word-anchored via the
+// required `=` (so `journal` won't match `journaltitle`). Returns the value span
+// (delimiters included) and its inner text, or null if not found / unbalanced.
+function locateField(raw: string, field: string): FieldSpan | null {
+  const m = new RegExp(`[,{]\\s*${field}\\s*=\\s*`, 'i').exec(raw)
+  if (!m) return null
+  const s = m.index + m[0].length
+  const ch = raw[s]
+  if (ch === '{') {
+    let depth = 0, i = s
+    for (; i < raw.length; i++) {
+      const c = raw[i]
+      if (c === '\\') { i++; continue } // skip an escaped char (\{ \})
+      if (c === '{') depth++
+      else if (c === '}') { depth--; if (depth === 0) break }
+    }
+    if (depth !== 0) return null // unbalanced — refuse to touch it
+    return { valueStart: s, valueEnd: i + 1, inner: raw.slice(s + 1, i) }
+  }
+  if (ch === '"') {
+    let i = s + 1
+    for (; i < raw.length; i++) { if (raw[i] === '\\') { i++; continue } if (raw[i] === '"') break }
+    if (i >= raw.length) return null
+    return { valueStart: s, valueEnd: i + 1, inner: raw.slice(s + 1, i) }
+  }
+  // bare value (e.g. `year = 2020,` or an @string macro name): up to , newline or }
+  let i = s
+  for (; i < raw.length; i++) { const c = raw[i]; if (c === ',' || c === '\n' || c === '}') break }
+  return { valueStart: s, valueEnd: i, inner: raw.slice(s, i).trim() }
+}
+
+// The verbatim inner value of an existing field, or null if the field is absent.
+export function readField(raw: string, field: string): string | null {
+  const f = locateField(raw, field)
+  return f ? f.inner : null
+}
+
+// Replace ONLY the value of an existing field; everything else stays byte-identical.
+// Preserves `"…"` quoting when the original used it, otherwise writes `{…}` (always
+// valid). Returns raw unchanged if the field can't be safely located.
+export function replaceFieldValue(raw: string, field: string, newValue: string): string {
+  const f = locateField(raw, field)
+  if (!f) return raw
+  const wrapped = raw[f.valueStart] === '"' ? `"${newValue}"` : `{${newValue}}`
+  return raw.slice(0, f.valueStart) + wrapped + raw.slice(f.valueEnd)
+}

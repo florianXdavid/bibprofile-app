@@ -7,7 +7,7 @@ import {
   serializeCleanedBib,
   type ResolvedPreprint,
 } from '../../src/lib/stats/cleanBib'
-import { insertFields } from '../../src/lib/bibWriter'
+import { insertFields, replaceFieldValue } from '../../src/lib/bibWriter'
 import { mkWork } from './fixtures'
 import type { ResultRow } from '../../src/types'
 
@@ -153,5 +153,87 @@ describe('preprint resolutions are suggested, never written', () => {
     expect(entry.action).toBe('suggested')
     expect(entry.newRaw).toBe(entry.originalRaw) // but nothing written to the file
     expect(serializeCleanedBib(AWKWARD, cleaned)).not.toContain('10.1234/pub')
+  })
+})
+
+// v1.1 — field MISMATCHES (user has a value that differs from OpenAlex). These are
+// REVIEW-ONLY suggestions: never auto-applied, accepted one field at a time, and the
+// cite-key/entry-count/verbatim invariants must hold before and after accepting.
+describe('field mismatches — review-only, per-field accept', () => {
+  const SRC = `@article{jones2020,
+  title = {Deep learning for cats},
+  author = {Jones, Amy},
+  journal = {Journal of Cats},
+  year = {2019},
+  volume = {5},
+  doi = {10.1234/wrong},
+}
+`
+  function jonesRows(): ResultRow[] {
+    const rs = buildRows(parseBib(SRC))
+    const t = rs.find(r => r.citeKey === 'jones2020')!
+    t.status = 'matched-by-doi'
+    t.openalex = mkWork({
+      displayName: 'Deep learning for cats', // same title -> NOT a mismatch
+      publicationYear: 2021, // differs from 2019
+      hostVenue: 'Journal of Felines', // differs from Journal of Cats
+      doi: 'https://doi.org/10.5555/right', // differs from 10.1234/wrong
+      biblio: { volume: '6', issue: null, firstPage: null, lastPage: null }, // differs from 5
+    })
+    return rs
+  }
+
+  it('detects differing fields as suggestions and does NOT auto-apply them', () => {
+    const e = computeCleanedBib(jonesRows()).entries.find(x => x.citeKey === 'jones2020')!
+    expect(e.mismatches.map(m => m.field).sort()).toEqual(['doi', 'journal', 'volume', 'year'])
+    expect(e.applied).toEqual([]) // those fields already exist -> no additive fill
+    expect(e.newRaw).toBe(e.originalRaw) // nothing written until accepted
+  })
+
+  it('accepting ONE field changes only that field; the rest stay byte-identical', () => {
+    const rs = jonesRows()
+    const e0 = computeCleanedBib(rs).entries.find(x => x.citeKey === 'jones2020')!
+    const accepted = new Set([`${e0.sourceOffset}::year`])
+    const e = computeCleanedBib(rs, undefined, accepted).entries.find(x => x.citeKey === 'jones2020')!
+    // exactly the original with year swapped — every other byte identical
+    expect(e.newRaw).toBe(e0.originalRaw.replace('year = {2019}', 'year = {2021}'))
+    expect(e.newRaw).toContain('journal = {Journal of Cats}') // declined -> untouched
+    expect(e.newRaw).toContain('doi = {10.1234/wrong}')
+    expect(e.newRaw).toContain('volume = {5}')
+  })
+
+  it('cite keys + entry count stay invariant after accepting every correction', () => {
+    const rs = jonesRows()
+    const off = computeCleanedBib(rs).entries.find(x => x.citeKey === 'jones2020')!.sourceOffset
+    const accepted = new Set([`${off}::year`, `${off}::journal`, `${off}::doi`, `${off}::volume`])
+    const cleaned = computeCleanedBib(rs, undefined, accepted)
+    const out = serializeCleanedBib(SRC, cleaned)
+    expect(keysAndCount(out)).toEqual(keysAndCount(SRC))
+    expect(out).toContain('year = {2021}')
+    expect(out).toContain('journal = {Journal of Felines}')
+    expect(out).toContain('doi = {10.5555/right}')
+    expect(out).toContain('volume = {6}')
+  })
+
+  it('declining (accept nothing) leaves the source byte-identical', () => {
+    const cleaned = computeCleanedBib(jonesRows())
+    expect(serializeCleanedBib(SRC, cleaned)).toBe(SRC)
+  })
+})
+
+describe('replaceFieldValue', () => {
+  it('replaces a braced value, leaving nested braces elsewhere intact', () => {
+    const raw = '@article{k,\n  title = {A {DNA} study},\n  year = {2019},\n}'
+    const out = replaceFieldValue(raw, 'year', '2020')
+    expect(out).toContain('year = {2020}')
+    expect(out).toContain('title = {A {DNA} study}')
+  })
+  it('preserves quote delimiters when the original used them', () => {
+    const raw = '@article{k,\n  year = "2019",\n}'
+    expect(replaceFieldValue(raw, 'year', '2020')).toContain('year = "2020"')
+  })
+  it('returns the source unchanged when the field is absent', () => {
+    const raw = '@article{k,\n  title = {T},\n}'
+    expect(replaceFieldValue(raw, 'year', '2020')).toBe(raw)
   })
 })

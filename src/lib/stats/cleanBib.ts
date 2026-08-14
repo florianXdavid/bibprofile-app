@@ -12,7 +12,7 @@
 
 import type { MatchStatus, OpenAlexBiblio, ResultRow } from '../../types'
 import { normalizeDoi } from '../doi'
-import { insertFields, spliceCleaned, type FieldInsert } from '../bibWriter'
+import { insertFields, readField, replaceFieldValue, spliceCleaned, type FieldInsert } from '../bibWriter'
 
 export type CleanAction = 'applied' | 'suggested' | 'passed' | 'unchanged'
 export type Confidence = 'confident' | 'tentative' | 'none'
@@ -20,6 +20,14 @@ export type Confidence = 'confident' | 'tentative' | 'none'
 export interface FieldChange {
   field: string
   value: string
+}
+
+// A field the user HAS but whose value disagrees with the matched OpenAlex work.
+// Review-only SUGGESTION — never auto-applied; the user accepts it per-field.
+export interface FieldMismatch {
+  field: string    // the field name as the user wrote it (replacement target)
+  yours: string    // the user's current verbatim value
+  openalex: string // OpenAlex's value — written only if the user accepts it
 }
 
 // A resolved preprint→published match, shown in the diff as a SUGGESTION only.
@@ -41,6 +49,7 @@ export interface CleanedEntry {
   confidence: Confidence
   applied: FieldChange[] // written into newRaw
   suggested: FieldChange[] // shown, NOT written (suspicious matches)
+  mismatches: FieldMismatch[] // user has a value that differs from OpenAlex — review-only
   preprint: ResolvedPreprint | null // suggested replacement, never written
   note: string | null
   sourceOffset: number
@@ -56,6 +65,7 @@ export interface CleanedBib {
     passed: number
     unchanged: number
     fieldsAdded: number
+    mismatches: number
   }
 }
 
@@ -120,6 +130,7 @@ function passthrough(row: ResultRow, action: CleanAction, note: string | null): 
     confidence: 'none',
     applied: [],
     suggested: [],
+    mismatches: [],
     preprint: null,
     note,
     sourceOffset: row.sourceOffset,
@@ -128,9 +139,48 @@ function passthrough(row: ResultRow, action: CleanAction, note: string | null): 
   }
 }
 
+// --- mismatch normalisers: loose enough that formatting / venue-normalisation /
+// LaTeX / dash-style differences don't flag; only substantive disagreements do. ---
+const textNorm = (s: string) => s.replace(/\\[a-zA-Z]+\s*/g, '').replace(/[{}"]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+const yearNorm = (s: string) => (s.match(/\d{4}/) || [''])[0]
+const idNorm = (s: string) => s.replace(/[{}"]/g, '').trim().toLowerCase()
+const pagesNorm = (s: string) => s.replace(/[{}"\s]/g, '').replace(/[–—-]+/g, '-').toLowerCase()
+
+// Detect fields the user HAS but whose value disagrees with the matched OpenAlex
+// work. Review-only suggestions (never auto-applied). Only the FIRST alias the user
+// actually wrote is considered, so a later accept targets the right field name.
+function computeMismatches(row: ResultRow): FieldMismatch[] {
+  const w = row.openalex
+  if (!w) return []
+  const raw = row.raw
+  const out: FieldMismatch[] = []
+  const push = (aliases: string[], oa: string | null, norm: (s: string) => string) => {
+    if (!oa) return
+    for (const a of aliases) {
+      const mine = readField(raw, a)
+      if (mine == null || mine.trim() === '') continue
+      const nm = norm(mine), no = norm(oa)
+      if (nm && no && nm !== no) out.push({ field: a, yours: mine.trim(), openalex: oa })
+      return // only the first alias the user actually has
+    }
+  }
+  const pagesOf = (b: OpenAlexBiblio | null) =>
+    b?.firstPage ? (b.lastPage ? `${b.firstPage}--${b.lastPage}` : b.firstPage) : null
+
+  push(['year'], w.publicationYear != null ? String(w.publicationYear) : null, yearNorm)
+  push(['doi'], w.doi ? normalizeDoi(w.doi) : null, s => normalizeDoi(s) ?? idNorm(s))
+  push(['journal', 'journaltitle'], w.hostVenue, textNorm)
+  push(['title'], w.displayName, textNorm)
+  push(['volume'], w.biblio?.volume ?? null, idNorm)
+  push(['number', 'issue'], w.biblio?.issue ?? null, idNorm)
+  push(['pages'], pagesOf(w.biblio), pagesNorm)
+  return out
+}
+
 export function computeCleanedBib(
   rows: ResultRow[],
   resolved?: Map<string, ResolvedPreprint>,
+  accepted: Set<string> = new Set(), // keys "sourceOffset::field" the user accepted
 ): CleanedBib {
   const entries: CleanedEntry[] = rows.map(row => {
     // Duplicates and non-scholarly / unmatched rows pass through verbatim.
@@ -151,15 +201,26 @@ export function computeCleanedBib(
         : row.status === 'matched-by-title' ? 'tentative'
           : 'none' // suspicious
 
-    // matched-by-doi / matched-by-title WRITE fills; suspicious only suggests.
+    // matched-by-doi / matched-by-title WRITE additive fills; suspicious only suggests.
     const writes = confidence !== 'none'
     const applied = writes ? fills : []
     const suggested = writes ? [] : fills
-    const newRaw = applied.length > 0 ? insertFields(row.raw, applied as FieldInsert[]) : row.raw
+    // Mismatches (user has a differing value) are review-only for the same
+    // confident/tentative matches, and are written ONLY where the user has accepted
+    // that specific field (accepted set keyed "sourceOffset::field").
+    const mismatches = writes ? computeMismatches(row) : []
+    const acceptedFields = mismatches
+      .map(m => m.field)
+      .filter(f => accepted.has(`${row.sourceOffset}::${f}`))
+
+    let newRaw = applied.length > 0 ? insertFields(row.raw, applied as FieldInsert[]) : row.raw
+    for (const m of mismatches) {
+      if (acceptedFields.includes(m.field)) newRaw = replaceFieldValue(newRaw, m.field, m.openalex)
+    }
 
     const action: CleanAction =
-      applied.length > 0 ? 'applied'
-        : (suggested.length > 0 || preprint) ? 'suggested'
+      (applied.length > 0 || acceptedFields.length > 0) ? 'applied'
+        : (suggested.length > 0 || mismatches.length > 0 || preprint) ? 'suggested'
           : 'passed'
 
     return {
@@ -169,6 +230,7 @@ export function computeCleanedBib(
       confidence,
       applied,
       suggested,
+      mismatches,
       preprint,
       note: preprint ? `${preprint.server} preprint — a published version was found` : null,
       sourceOffset: row.sourceOffset,
@@ -183,6 +245,7 @@ export function computeCleanedBib(
     passed: entries.filter(e => e.action === 'passed').length,
     unchanged: entries.filter(e => e.action === 'unchanged').length,
     fieldsAdded: entries.reduce((s, e) => s + e.applied.length, 0),
+    mismatches: entries.reduce((s, e) => s + e.mismatches.length, 0),
   }
   return { entries, counts }
 }

@@ -9,7 +9,7 @@
 //      preprint→published fields written in (via the same additive writer). Shown
 //      only when >=1 preprint was confidently resolved; carries a verify header.
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { ResultRow } from '../../types'
 import { computeCleanedBib, serializeCleanedBib } from '../../lib/stats/cleanBib'
 import { preprintCostEstimate, type PreprintRunState } from '../../lib/preprintResolve'
@@ -42,7 +42,17 @@ function saveBib(text: string, name: string) {
 export default function CleanedExport({ rows, sourceText, fileName, preprints, onResolvePreprints }: Props) {
   const resolved = preprints.status === 'done' ? preprints.result.resolved : undefined
 
-  const cleaned = useMemo(() => computeCleanedBib(rows, resolved), [rows, resolved])
+  // Per-field accepted corrections — keys "sourceOffset::field". In-memory only
+  // (component state); no persistence. Accepting recomputes that entry's newRaw.
+  const [accepted, setAccepted] = useState<Set<string>>(new Set())
+  const toggleAccept = (key: string) =>
+    setAccepted(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key); else next.add(key)
+      return next
+    })
+
+  const cleaned = useMemo(() => computeCleanedBib(rows, resolved, accepted), [rows, resolved, accepted])
   const estimate = useMemo(() => preprintCostEstimate(rows), [rows])
 
   const changed = cleaned.entries.filter(e => e.action === 'applied' || e.action === 'suggested')
@@ -59,12 +69,15 @@ export default function CleanedExport({ rows, sourceText, fileName, preprints, o
         it never changes cite keys, drops entries, or edits text you already wrote. DOI matches are
         applied confidently; title matches are applied but flagged; suspicious matches and preprint
         replacements are shown as suggestions only and are <em>not</em> written to the file — apply
-        those yourself if you want them.
+        those yourself if you want them. Where a field you wrote <em>differs</em> from OpenAlex, it's
+        shown as a review-only suggestion you can accept per field — OpenAlex may differ for legitimate
+        reasons (online-first vs print year, venue normalisation, LaTeX in titles), so accept only real fixes.
       </div>
 
       <div className="cleaned-counts">
         <span><strong>{cleaned.counts.applied}</strong> {plural(cleaned.counts.applied, 'entry', 'entries')} filled</span>
         <span><strong>{cleaned.counts.fieldsAdded}</strong> {plural(cleaned.counts.fieldsAdded, 'field')} added</span>
+        <span><strong>{cleaned.counts.mismatches}</strong> {plural(cleaned.counts.mismatches, 'field')} differ (review)</span>
         <span><strong>{cleaned.counts.suggested}</strong> with suggestions</span>
         <span><strong>{cleaned.counts.passed}</strong> passed through</span>
         <span><strong>{cleaned.counts.unchanged}</strong> left unchanged</span>
@@ -108,6 +121,7 @@ export default function CleanedExport({ rows, sourceText, fileName, preprints, o
       {changed.length > 0 && (
         <div className="diff-legend">
           <span><span className="diff-tag ok">applied</span> written into the downloaded file</span>
+          <span><span className="diff-tag review">review</span> your value differs from OpenAlex — accept per field to write it</span>
           <span><span className="diff-tag warn">suggested</span> shown to review — not written (suspicious matches &amp; resolved preprints)</span>
         </div>
       )}
@@ -124,9 +138,31 @@ export default function CleanedExport({ rows, sourceText, fileName, preprints, o
                   ? <span className="diff-tag ok">applied · {CONF_LABEL[e.confidence]}</span>
                   : <span className="diff-tag warn">suggested only</span>}
               </div>
-              {(e.applied.length > 0 || e.suggested.length > 0) && (
+              {(e.applied.length > 0 || e.suggested.length > 0 || e.mismatches.length > 0) && (
                 <ul className="diff-fields">
                   {e.applied.map(f => <li key={'a' + f.field}><span className="add">+ {f.field}</span> = {'{'}{f.value}{'}'}</li>)}
+                  {e.mismatches.map(m => {
+                    const key = `${e.sourceOffset}::${m.field}`
+                    const isAccepted = accepted.has(key)
+                    return (
+                      <li key={'m' + m.field} className={isAccepted ? 'diff-accepted' : 'diff-review'}>
+                        <span className="field">{m.field}</span>:{' '}
+                        <span className="yours">{'{'}{m.yours}{'}'}</span>{' → '}
+                        <span className="oa">{'{'}{m.openalex}{'}'}</span>{' '}
+                        {isAccepted ? (
+                          <>
+                            <span className="diff-tag ok">accepted — will be written</span>{' '}
+                            <button type="button" className="key-link" onClick={() => toggleAccept(key)}>Undo</button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="diff-tag review">review</span>{' '}
+                            <button type="button" className="key-link" onClick={() => toggleAccept(key)}>Accept</button>
+                          </>
+                        )}
+                      </li>
+                    )
+                  })}
                   {e.suggested.map(f => <li key={'s' + f.field} className="muted">? {f.field} = {'{'}{f.value}{'}'} <span className="diff-tag warn">not written</span></li>)}
                 </ul>
               )}

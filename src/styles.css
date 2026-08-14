@@ -213,6 +213,11 @@ details.card[open] > summary.card-title { margin-bottom: 8px; }
 .diff-tag { font-size: 0.72rem; padding: 1px 7px; border-radius: 999px; }
 .diff-tag.ok { background: #e7f6ec; color: var(--ok); }
 .diff-tag.warn { background: var(--warn-bg); color: #8a5a00; }
+.diff-tag.review { background: #e8f0fb; color: var(--accent); }
+.diff-fields .diff-accepted { color: var(--ok); }
+.diff-fields .field { font-weight: 600; }
+.diff-fields .yours { color: var(--muted); text-decoration: line-through; }
+.diff-fields .oa { color: var(--accent); font-weight: 600; }
 .diff-fields { margin: 6px 0 0; padding-left: 18px; font-size: 0.85rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .diff-fields .add { color: var(--ok); font-weight: 600; }
 .diff-preprint { font-size: 0.85rem; margin: 6px 0 0; color: var(--fg); }
