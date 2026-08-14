@@ -15,11 +15,14 @@ export default function Progress({ progress }: { progress: ProgressState }) {
       <div className="meta">
         <div>
           <span className="stage-tag">{STAGE_LABEL[progress.stage] ?? progress.stage}</span>
-          {progress.label}
+          {/* wrap dynamic label in a stable element: it updates on every tick and sits
+              beside the stage-tag <span>; a bare text node here is what Google Translate
+              wraps and React later fails to removeChild (white-screen). */}
+          <span>{progress.label}</span>
         </div>
         <div>
-          {progress.total > 0 && <>Matching {progress.done}/{progress.total} · </>}
-          {progress.searchCalls} search call{progress.searchCalls === 1 ? '' : 's'}
+          {progress.total > 0 && <span>Matching {progress.done}/{progress.total} · </span>}
+          <span>{progress.searchCalls} search call{progress.searchCalls === 1 ? '' : 's'}</span>
         </div>
       </div>
     </div>

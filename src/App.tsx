@@ -298,7 +298,7 @@ export default function App() {
   // Neutral placeholder shown in a result tab before a .bib has been analysed.
   const tabPlaceholder = (what: string) => (
     <p className="tab-placeholder muted">
-      {what} will appear here after you upload a <code>.bib</code> file above.
+      <span>{what}</span> will appear here after you upload a <code>.bib</code> file above.
     </p>
   )
 

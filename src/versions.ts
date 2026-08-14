@@ -11,7 +11,7 @@ export const VERSIONS: VersionEntry[] = [
   {
     version: 'v1.1',
     date: '2026-08-14',
-    note: 'iOS .bib upload fix, always-visible tabs, per-field .bib diff review, and a contact address.',
+    note: 'iOS .bib upload fix, Google Translate crash fix, always-visible tabs, per-field .bib diff review, and a contact address.',
   },
   {
     version: 'v1.0',

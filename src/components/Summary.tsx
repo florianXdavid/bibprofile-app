@@ -17,8 +17,8 @@ export default function Summary({ summary, fileName }: { summary: MatchSummary; 
       {fileName && <p className="cost" style={{ marginTop: 0 }}>File: <strong>{fileName}</strong></p>}
       <p className="headline">
         Matched <strong>{matched}</strong> of <strong>{parseable}</strong> parseable entries
-        {' '}({summary.matchedByDoi} by DOI, {summary.matchedByTitle} by title).
-        {notes.length > 0 && <> {notes.join(', ')}.</>}
+        {' '}<span>({summary.matchedByDoi} by DOI, {summary.matchedByTitle} by title).</span>
+        {notes.length > 0 && <span> {notes.join(', ')}.</span>}
       </p>
       {summary.duplicates > 0 && (
         <p className="cost">

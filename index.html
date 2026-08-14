@@ -1,8 +1,12 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" translate="no">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Ask browsers (esp. Chrome/Google Translate) NOT to translate the app. The
+         React + Translate DOM conflict white-screens the page on re-render; the UI is
+         short and technical, so opting out is an acceptable trade-off. -->
+    <meta name="google" content="notranslate" />
 
     <title>BibProfile — Profile &amp; clean your BibTeX against OpenAlex</title>
     <meta name="description" content="Browser-only tool that profiles your BibTeX reference list against OpenAlex: match rate, recency, self-citation, retractions, missing citations, cleaned .bib." />
@@ -49,7 +53,7 @@
     </script>
   </head>
   <body>
-    <div id="root">
+    <div id="root" class="notranslate" translate="no">
       <!-- Static fallback for crawlers / no-JS clients. React (createRoot) replaces
            this on mount. Keep it accurate; it is what Google indexes and LLMs read. -->
       <main>
