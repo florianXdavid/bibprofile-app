@@ -48,7 +48,7 @@ export default function FileDrop({ onText, disabled }: Props) {
         <input
           ref={inputRef}
           type="file"
-          accept=".bib,text/plain"
+          accept=".bib,text/plain,text/x-bibtex,application/x-bibtex,application/octet-stream"
           style={{ display: 'none' }}
           onChange={e => {
             const file = e.target.files?.[0]
