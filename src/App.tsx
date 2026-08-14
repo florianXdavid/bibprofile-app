@@ -28,7 +28,7 @@ import { OPENALEX_BASE_URL } from './config'
 import type { MatchSummary, Progress as ProgressState, ResultRow } from './types'
 
 type Phase = 'idle' | 'working' | 'done'
-type View = 'report' | 'cleaned' | 'table'
+type View = 'about' | 'report' | 'cleaned' | 'table'
 
 const INITIAL_PROGRESS: ProgressState = {
   stage: 'idle', label: '', done: 0, total: 0, searchCalls: 0,
@@ -42,9 +42,8 @@ export default function App() {
   const [warnings, setWarnings] = useState<string[]>([])
   const [fileName, setFileName] = useState<string>('')
   const [notice, setNotice] = useState<string>('')
-  const [view, setView] = useState<View>('report')
+  const [view, setView] = useState<View>('about') // v1.1 — four tabs; About is the default landing tab
   const [copied, setCopied] = useState(false)
-  const [aboutOpen, setAboutOpen] = useState(false) // W4.2 — About panel toggle
   const [sourceText, setSourceText] = useState<string>('') // original .bib text (cleaned export)
 
   // W3.1 — billable results live HERE, above the Report/Cleaned/Table toggle, so
@@ -294,22 +293,22 @@ export default function App() {
   }
 
   const busy = phase === 'working'
+  const hasResults = phase === 'done' && !!summary
+
+  // Neutral placeholder shown in a result tab before a .bib has been analysed.
+  const tabPlaceholder = (what: string) => (
+    <p className="tab-placeholder muted">
+      {what} will appear here after you upload a <code>.bib</code> file above.
+    </p>
+  )
 
   return (
     <div className="app">
       <div className="app-header">
         <h1>BibProfile</h1>
-        <button type="button" className="about-btn" onClick={() => setAboutOpen(o => !o)}>
-          {aboutOpen ? 'Close' : 'About'}
-        </button>
       </div>
-
-      {aboutOpen ? (
-        <About onClose={() => setAboutOpen(false)} />
-      ) : (
-        <>
-      <p className="subtitle">
-        Parse a BibTeX file and match it against OpenAlex.
+      <p className="tagline">
+        Profile a BibTeX reference list against OpenAlex — check matches, spot issues, get a cleaned copy.
       </p>
 
       <FileDrop onText={run} disabled={busy} />
@@ -362,37 +361,45 @@ export default function App() {
               </details>
             )}
           </div>
-
-          <div className="viewtoggle" role="tablist" aria-label="Report, cleaned .bib, or table view">
-            <button role="tab" aria-selected={view === 'report'} className={view === 'report' ? 'active' : ''}
-              onClick={() => setView('report')}>Report</button>
-            <button role="tab" aria-selected={view === 'cleaned'} className={view === 'cleaned' ? 'active' : ''}
-              onClick={() => setView('cleaned')}>Cleaned .bib</button>
-            <button role="tab" aria-selected={view === 'table'} className={view === 'table' ? 'active' : ''}
-              onClick={() => setView('table')}>Table</button>
-          </div>
-
-          {view === 'report' && (
-            <ReportView
-              rows={rows}
-              referenceYear={referenceYear}
-              gaps={{ co: gapsCo, fw: gapsFw, onRunCoCitation: handleCoCitation, onRunForward: handleForward }}
-            />
-          )}
-          {view === 'cleaned' && (
-            <CleanedExport
-              rows={rows}
-              sourceText={sourceText}
-              fileName={fileName}
-              preprints={preprints}
-              onResolvePreprints={handleResolvePreprints}
-            />
-          )}
-          {view === 'table' && <ResultsTable rows={rows} />}
         </>
       )}
-        </>
-      )}
+
+      {/* Four always-visible tabs (About is the default so first-time visitors see
+          what the tool is). The drop zone above stays accessible from every tab; the
+          result tabs show a neutral placeholder until a .bib is analysed. */}
+      <div className="viewtoggle" role="tablist" aria-label="About, report, cleaned .bib, or table view">
+        <button role="tab" aria-selected={view === 'about'} className={view === 'about' ? 'active' : ''}
+          onClick={() => setView('about')}>About</button>
+        <button role="tab" aria-selected={view === 'report'} className={view === 'report' ? 'active' : ''}
+          onClick={() => setView('report')}>Report</button>
+        <button role="tab" aria-selected={view === 'cleaned'} className={view === 'cleaned' ? 'active' : ''}
+          onClick={() => setView('cleaned')}>Cleaned .bib</button>
+        <button role="tab" aria-selected={view === 'table'} className={view === 'table' ? 'active' : ''}
+          onClick={() => setView('table')}>Table</button>
+      </div>
+
+      {view === 'about' && <About />}
+      {view === 'report' && (hasResults
+        ? (
+          <ReportView
+            rows={rows}
+            referenceYear={referenceYear}
+            gaps={{ co: gapsCo, fw: gapsFw, onRunCoCitation: handleCoCitation, onRunForward: handleForward }}
+          />
+        )
+        : tabPlaceholder('Your report'))}
+      {view === 'cleaned' && (hasResults
+        ? (
+          <CleanedExport
+            rows={rows}
+            sourceText={sourceText}
+            fileName={fileName}
+            preprints={preprints}
+            onResolvePreprints={handleResolvePreprints}
+          />
+        )
+        : tabPlaceholder('Your cleaned .bib'))}
+      {view === 'table' && (hasResults ? <ResultsTable rows={rows} /> : tabPlaceholder('The match table'))}
     </div>
   )
 }

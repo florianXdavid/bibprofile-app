@@ -1,6 +1,9 @@
-// W4.2 — the About panel. Presentational; App toggles it from a top-right button.
+// W4.2 / v1.1 — the About tab. Presentational; rendered as one of the four tabs
+// (About · Report · Cleaned .bib · Table), so it no longer needs a close button.
 
-export default function About({ onClose }: { onClose: () => void }) {
+import { VERSIONS } from '../versions'
+
+export default function About() {
   return (
     <div className="about">
       <h2>BibProfile</h2>
@@ -68,7 +71,20 @@ export default function About({ onClose }: { onClose: () => void }) {
         </li>
       </ul>
 
-      <button type="button" className="primary" onClick={onClose}>Back to the tool</button>
+      <details className="version-history">
+        <summary>Version history</summary>
+        <ul className="about-list">
+          {VERSIONS.map(v => (
+            <li key={v.version}>
+              <strong>{v.version}</strong> — {v.date} — {v.note}
+            </li>
+          ))}
+        </ul>
+      </details>
+
+      <p className="about-contact muted">
+        Questions or feedback? <a href="mailto:contact@bibprofile.com">contact@bibprofile.com</a>
+      </p>
     </div>
   )
 }
