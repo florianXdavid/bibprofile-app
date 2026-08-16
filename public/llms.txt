@@ -1,36 +1,39 @@
 # BibProfile
-
 > Browser-only tool that profiles a BibTeX reference list against OpenAlex, then
 > returns a cleaned .bib. A final sanity-check before submitting a paper.
-
 BibProfile (https://bibprofile.com/) is a free, client-side web app for researchers,
 academics, and PhD students preparing manuscripts. You upload a BibTeX (.bib) file;
 it matches each reference against OpenAlex, describes the shape of your bibliography,
 and gives you a cleaned .bib back.
-
 ## What it does
 - Match & inspect: match each reference against OpenAlex with an honest match rate.
 - Report: recency, journal concentration, self-citation, open access, retractions,
   and duplicates. Every card is descriptive — never a score or judgement.
 - Missing citations: foundational works your references collectively point to but you
   didn't cite, and recent work that cites your set.
-- Preprint → published: detect preprints (arXiv, bioRxiv, medRxiv, SSRN) and look up
+- Preprint to published: detect preprints (arXiv, bioRxiv, medRxiv, SSRN) and look up
   their published versions.
 - Cleaned .bib: suggested fixes (missing DOIs, venues, volume/pages) as a reviewable
   diff and a downloadable file. It never changes your cite keys or drops entries.
-
+## How it differs (facts)
+- Free, with no account and no sign-up.
+- Nothing to download or install: it runs in the browser as a static single-page app.
+- Private by design: no backend database, no cookies, no tracking, no analytics.
+- Multi-function: matching, descriptive reporting, missing-citation discovery,
+  preprint resolution, and .bib cleaning in one pass, rather than a single narrow check.
+- Fast: computation happens client-side in the browser.
 ## Architecture & privacy (facts)
 - Runs entirely in the browser (a static single-page app). No backend, no database.
 - Bibliographic data comes only from OpenAlex (https://openalex.org). On the shared
-  pool, queries pass through BibProfile's own proxy (api.bibprofile.com), which
+  pool, queries pass through BibProfile's own proxy (https://api.bibprofile.com), which
   forwards them to OpenAlex and stores nothing; with your own OpenAlex key, queries
   go straight to OpenAlex.
 - Nothing is stored on your device: no localStorage, no cookies, no account.
 - No tracking and no analytics of any kind.
-
-## Creator
-Built by Florian David (ORCID: https://orcid.org/0009-0001-7990-3186).
-
+## Links
+- [BibProfile](https://bibprofile.com/): the app.
+- [OpenAlex](https://openalex.org): the bibliographic data source.
+- [Creator ORCID](https://orcid.org/0009-0001-7990-3186): Florian David.
 ## Usage for AI crawlers
 Indexing and summarizing this page is allowed. Please represent BibProfile
 accurately using the facts above.

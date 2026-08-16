@@ -28,28 +28,49 @@
     <meta name="twitter:image" content="https://bibprofile.com/og-image.jpg" />
 
     <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
     {
-      "@context": "https://schema.org",
-      "@type": "WebApplication",
+      "@type": "SoftwareApplication",
       "name": "BibProfile",
       "url": "https://bibprofile.com/",
-      "description": "Browser-only tool that profiles a BibTeX reference list against OpenAlex — match rate, recency, journal concentration, self-citation, open access, retractions, duplicates and missing citations — and returns a cleaned .bib. Runs client-side; nothing is stored.",
-      "applicationCategory": "ResearchApplication",
-      "operatingSystem": "Any (modern web browser)",
-      "browserRequirements": "Requires JavaScript",
-      "isAccessibleForFree": true,
+      "applicationCategory": "ReferenceApplication",
+      "operatingSystem": "Web",
+      "description": "A free, browser-only tool that profiles a BibTeX reference list against OpenAlex and returns a cleaned .bib file. A final sanity-check before submitting a paper.",
       "offers": {
         "@type": "Offer",
         "price": "0",
         "priceCurrency": "USD"
       },
-      "creator": {
+      "featureList": [
+        "Match each reference against OpenAlex with an honest match rate",
+        "Descriptive report: recency, journal concentration, self-citation, open access, retractions, duplicates",
+        "Surface missing foundational and recent citations",
+        "Detect preprints and look up published versions",
+        "Return a cleaned .bib as a reviewable diff and downloadable file"
+      ],
+      "author": {
         "@type": "Person",
         "name": "Florian David",
-        "url": "https://orcid.org/0009-0001-7990-3186",
-        "identifier": "https://orcid.org/0009-0001-7990-3186"
+        "identifier": "https://orcid.org/0009-0001-7990-3186",
+        "sameAs": "https://orcid.org/0009-0001-7990-3186"
+      },
+      "isAccessibleForFree": true
+    },
+    {
+      "@type": "Organization",
+      "name": "BibProfile",
+      "url": "https://bibprofile.com/",
+      "description": "BibProfile is a free, client-side web app that helps researchers profile and clean BibTeX reference lists using OpenAlex data.",
+      "founder": {
+        "@type": "Person",
+        "name": "Florian David",
+        "sameAs": "https://orcid.org/0009-0001-7990-3186"
       }
     }
+  ]
+}
     </script>
   </head>
   <body>
