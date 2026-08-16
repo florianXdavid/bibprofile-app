@@ -182,14 +182,19 @@ the parser's AST — which would turn `\"{o}` into `ö` and drop brace-caps / cu
 fields), so LaTeX escapes, Zotero fields, `@string` macros and comments survive
 byte-identical, and **cite keys and entry count are invariant** (asserted by
 test). Action is tiered by match status: `matched-by-doi` filled confidently,
-`matched-by-title` filled but flagged, `suspicious` and resolved preprints shown
-as suggestions (never written), everything else passed through. A colour legend
-maps green = applied, yellow = suggested-not-applied.
+`matched-by-title` filled but flagged, `suspicious` shown as a suggestion (never
+written), everything else passed through. Fields you wrote that **differ** from
+OpenAlex are surfaced as review-only suggestions you accept per field. A colour
+legend maps green = applied, yellow = suggested-not-applied, blue = review.
 
-**Preprint → published** (`src/lib/stats/preprints.ts`) detects preprints for free
-and resolves them via the existing title-search path plus a `type:!preprint`
-filter. Matches are **suggestions only** — a preprint is often cited on purpose,
-so applying the swap is left to the user.
+**Preprint → published** (`src/lib/stats/preprints.ts`) — lives in the **Report**
+tab (it's analysis, never written to the cleaned file). Detecting preprints is
+**free**; resolving each one to its published version reuses the title-search path
+plus a `type:!preprint` filter, which is a **billable** search (one per detected
+preprint). It therefore runs only when the user presses the button — never
+automatically, so it can't quietly spend the shared budget. Matches are
+**suggestions only** — a preprint is often cited on purpose, so applying the swap is
+left to the user.
 
 ## Usage readout & graceful exhaustion
 

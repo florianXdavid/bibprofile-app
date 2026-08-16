@@ -12,7 +12,6 @@
 import { useMemo, useState } from 'react'
 import type { ResultRow } from '../../types'
 import { computeCleanedBib, serializeCleanedBib } from '../../lib/stats/cleanBib'
-import { preprintCostEstimate, type PreprintRunState } from '../../lib/preprintResolve'
 import { plural } from './format'
 
 const CONF_LABEL: Record<string, string> = {
@@ -25,8 +24,6 @@ interface Props {
   rows: ResultRow[]
   sourceText: string
   fileName: string
-  preprints: PreprintRunState
-  onResolvePreprints: () => void
 }
 
 function saveBib(text: string, name: string) {
@@ -39,9 +36,7 @@ function saveBib(text: string, name: string) {
   URL.revokeObjectURL(url)
 }
 
-export default function CleanedExport({ rows, sourceText, fileName, preprints, onResolvePreprints }: Props) {
-  const resolved = preprints.status === 'done' ? preprints.result.resolved : undefined
-
+export default function CleanedExport({ rows, sourceText, fileName }: Props) {
   // Per-field accepted corrections — keys "sourceOffset::field". In-memory only
   // (component state); no persistence. Accepting recomputes that entry's newRaw.
   const [accepted, setAccepted] = useState<Set<string>>(new Set())
@@ -53,8 +48,7 @@ export default function CleanedExport({ rows, sourceText, fileName, preprints, o
       return next
     })
 
-  const cleaned = useMemo(() => computeCleanedBib(rows, resolved, accepted), [rows, resolved, accepted])
-  const estimate = useMemo(() => preprintCostEstimate(rows), [rows])
+  const cleaned = useMemo(() => computeCleanedBib(rows, undefined, accepted), [rows, accepted])
 
   const changed = cleaned.entries.filter(e => e.action === 'applied' || e.action === 'suggested')
   const base = fileName.replace(/\.[^.]+$/, '') || 'references'
@@ -68,9 +62,8 @@ export default function CleanedExport({ rows, sourceText, fileName, preprints, o
       <div className="card-note warn" style={{ marginTop: 4 }}>
         <strong>Suggested fixes — review before use.</strong> This adds missing fields from OpenAlex;
         it never changes cite keys, drops entries, or edits text you already wrote. DOI matches are
-        applied confidently; title matches are applied but flagged; suspicious matches and preprint
-        replacements are shown as suggestions only and are <em>not</em> written to the file — apply
-        those yourself if you want them. Where a field you wrote <em>differs</em> from OpenAlex, it's
+        applied confidently; title matches are applied but flagged; suspicious matches are shown as
+        suggestions only and are <em>not</em> written to the file. Where a field you wrote <em>differs</em> from OpenAlex, it's
         shown as a review-only suggestion you can accept per field — OpenAlex may differ for legitimate
         reasons (online-first vs print year, venue normalisation, LaTeX in titles), so accept only real fixes.
       </div>
@@ -94,42 +87,13 @@ export default function CleanedExport({ rows, sourceText, fileName, preprints, o
         <pre className="cleaned-raw" aria-label="Raw cleaned .bib text">{serializeCleanedBib(sourceText, cleaned)}</pre>
       )}
 
-      {/* Gated preprint resolution (result owned by App) */}
-      <div className="gap-section">
-        <p className="gap-section-title">
-          Preprint → published <span className="muted">— {estimate.calls} billable {plural(estimate.calls, 'search', 'searches')}</span>
-        </p>
-        {estimate.calls === 0 ? (
-          <p className="muted">No preprints detected in this list.</p>
-        ) : (
-          <p className="card-note">
-            {estimate.calls} {plural(estimate.calls, 'entry', 'entries')} look like preprints. Checking for a
-            published version makes <strong>{estimate.calls}</strong> billable {plural(estimate.calls, 'search', 'searches')}
-            {' '}(~${estimate.usd.toFixed(3)}). Matches are shown as suggestions in the diff below — a preprint is
-            often cited on purpose, so apply any swap yourself.
-          </p>
-        )}
-        {estimate.calls > 0 && preprints.status === 'idle' && (
-          <button onClick={onResolvePreprints}>Check preprints (~${estimate.usd.toFixed(3)})</button>
-        )}
-        {preprints.status === 'running' && <p className="muted">{preprints.progress.label} ({preprints.progress.done}/{preprints.progress.total})…</p>}
-        {preprints.status === 'error' && <p className="err-text">Couldn’t complete: {preprints.error}</p>}
-        {preprints.status === 'done' && (
-          <p className="cost">
-            Found published versions for <strong>{preprints.result.resolvedCount}</strong> of {estimate.calls}
-            {' '}· {preprints.result.billableCalls} billable
-            {' '}{plural(preprints.result.billableCalls, 'search', 'searches')} (~${preprints.result.costUsd.toFixed(3)}).
-          </p>
-        )}
-      </div>
-
       {/* The diff */}
       <h3 className="cleaned-diff-title">Changes ({changed.length})</h3>
       {changed.length > 0 && (
         <div className="diff-legend">
           <span><span className="diff-tag ok">applied</span> written into the downloaded file</span>
           <span><span className="diff-tag review">review</span> your value differs from OpenAlex — accept per field to write it</span>
-          <span><span className="diff-tag warn">suggested</span> shown to review — not written (suspicious matches &amp; resolved preprints)</span>
+          <span><span className="diff-tag warn">suggested</span> shown to review — not written (suspicious matches)</span>
         </div>
       )}
       {changed.length === 0 ? (
@@ -172,15 +136,6 @@ export default function CleanedExport({ rows, sourceText, fileName, preprints, o
                   })}
                   {e.suggested.map(f => <li key={'s' + f.field} className="muted">? {f.field} = {'{'}{f.value}{'}'} <span className="diff-tag warn">not written</span></li>)}
                 </ul>
-              )}
-              {e.preprint && (
-                <p className="diff-preprint">
-                  {e.preprint.server} preprint — published version:{' '}
-                  <strong>{e.preprint.publishedTitle}</strong>
-                  {e.preprint.publishedYear ? ` (${e.preprint.publishedYear})` : ''}
-                  {e.preprint.publishedDoi ? `, doi ${e.preprint.publishedDoi}` : ''}
-                  {' '}<span className="diff-tag warn">suggestion — not written</span>
-                </p>
               )}
             </li>
           ))}

@@ -13,7 +13,9 @@ import SelfCitationCard from './SelfCitationCard'
 import OpenAccessCard from './OpenAccessCard'
 import RetractionsCard from './RetractionsCard'
 import GapsCard from './GapsCard'
+import PreprintsCard from './PreprintsCard'
 import DuplicatesCard from './DuplicatesCard'
+import type { PreprintRunState } from '../../lib/preprintResolve'
 
 // The gaps card's billable results are owned by App (W3.1) and passed straight
 // through — ReportView holds none of that state itself.
@@ -28,9 +30,11 @@ interface Props {
   rows: ResultRow[]
   referenceYear: number
   gaps: GapsProps
+  preprints: PreprintRunState
+  onResolvePreprints: () => void
 }
 
-export default function ReportView({ rows, referenceYear, gaps }: Props) {
+export default function ReportView({ rows, referenceYear, gaps, preprints, onResolvePreprints }: Props) {
   const cohort = useMemo(() => buildCohort(rows), [rows])
 
   if (cohort.works.length === 0) {
@@ -54,6 +58,7 @@ export default function ReportView({ rows, referenceYear, gaps }: Props) {
       <OpenAccessCard cohort={cohort} />
       <RetractionsCard cohort={cohort} />
       <GapsCard rows={rows} {...gaps} />
+      <PreprintsCard rows={rows} preprints={preprints} onResolve={onResolvePreprints} />
       <DuplicatesCard rows={rows} />
     </div>
   )

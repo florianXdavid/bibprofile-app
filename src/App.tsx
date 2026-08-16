@@ -355,6 +355,8 @@ export default function App() {
             rows={rows}
             referenceYear={referenceYear}
             gaps={{ co: gapsCo, fw: gapsFw, onRunCoCitation: handleCoCitation, onRunForward: handleForward }}
+            preprints={preprints}
+            onResolvePreprints={handleResolvePreprints}
           />
         )
         : tabPlaceholder('Your report'))}
@@ -364,8 +366,6 @@ export default function App() {
             rows={rows}
             sourceText={sourceText}
             fileName={fileName}
-            preprints={preprints}
-            onResolvePreprints={handleResolvePreprints}
           />
         )
         : tabPlaceholder('Your cleaned .bib'))}
