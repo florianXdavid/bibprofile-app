@@ -45,6 +45,7 @@ export default function CleanedExport({ rows, sourceText, fileName, preprints, o
   // Per-field accepted corrections — keys "sourceOffset::field". In-memory only
   // (component state); no persistence. Accepting recomputes that entry's newRaw.
   const [accepted, setAccepted] = useState<Set<string>>(new Set())
+  const [showRaw, setShowRaw] = useState(false) // 1e (v1.3) — in-page raw view of the cleaned .bib
   const toggleAccept = (key: string) =>
     setAccepted(prev => {
       const next = new Set(prev)
@@ -83,9 +84,15 @@ export default function CleanedExport({ rows, sourceText, fileName, preprints, o
         <span><strong>{cleaned.counts.unchanged}</strong> left unchanged</span>
       </div>
 
+      <p className="cleaned-hint muted">Accepting a change updates the cleaned .bib — download it when you're done reviewing.</p>
+
       <div className="cleaned-toolbar">
         <button className="primary" onClick={downloadSuggestions}>Download cleaned .bib</button>
+        <button type="button" onClick={() => setShowRaw(s => !s)}>{showRaw ? 'Hide raw' : 'View raw'}</button>
       </div>
+      {showRaw && (
+        <pre className="cleaned-raw" aria-label="Raw cleaned .bib text">{serializeCleanedBib(sourceText, cleaned)}</pre>
+      )}
 
       {/* Gated preprint resolution (result owned by App) */}
       <div className="gap-section">

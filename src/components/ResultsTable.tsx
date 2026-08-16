@@ -165,6 +165,24 @@ export default function ResultsTable({ rows }: { rows: ResultRow[] }) {
     else { setSortKey(key); setSortDir('asc') }
   }
 
+  // 1f (v1.3) — export the CURRENT (filtered + sorted) view as CSV. No dependency:
+  // a quoted/escaped Blob download with a UTF-8 BOM so Excel opens it correctly.
+  function exportCsv() {
+    const esc = (v: Primitive) => {
+      const s = v == null ? '' : String(v)
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+    }
+    const header = columns.map(c => esc(c.label)).join(',')
+    const body = visible.map(r => columns.map(c => esc(c.get(r))).join(',')).join('\n')
+    const blob = new Blob(['﻿' + header + '\n' + body], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'bibprofile-table.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div>
       <div className="filters" style={{ margin: '10px 0 12px' }}>
@@ -181,6 +199,11 @@ export default function ResultsTable({ rows }: { rows: ResultRow[] }) {
             duplicates ({dupCount})
           </button>
         )}
+      </div>
+
+      <div className="table-toolbar" style={{ margin: '0 0 12px' }}>
+        <button type="button" onClick={exportCsv}>Export CSV</button>
+        <span className="muted" style={{ fontSize: '0.8rem', marginLeft: 8 }}>{visible.length} row{visible.length === 1 ? '' : 's'} (current view)</span>
       </div>
 
       {/* Hidden-by-default explainer for the match statuses (W4.2). */}

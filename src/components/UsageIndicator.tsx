@@ -8,6 +8,20 @@
 import type { RateLimitUsage } from '../lib/rateLimit'
 import { formatResetIn, usagePercent, usd } from '../lib/rateLimit'
 
+// 1b (v1.3) — collapsed "?" explainer for the shared pool. Native <details>, no
+// state and no dependency; expands one sentence inline.
+function PoolHelp() {
+  return (
+    <details className="pool-help">
+      <summary title="What is the shared pool?">?</summary>
+      <span className="pool-help-text">
+        This is a free daily budget shared by everyone using BibProfile. If it runs low, add your own
+        free OpenAlex key to use your own budget.
+      </span>
+    </details>
+  )
+}
+
 export type UsageState =
   | { status: 'shared' } // shared pool active but usage not (yet) available — deferral line
   | { status: 'loading' }
@@ -23,7 +37,7 @@ export default function UsageIndicator({ state, onRetry }: { state: UsageState; 
     return (
       <p className="usage shared muted">
         Using the shared pool — its usage appears here after your first lookup.
-        Or use your own key (above) for your own budget.
+        Or use your own key (above) for your own budget. <PoolHelp />
       </p>
     )
   }
@@ -61,6 +75,7 @@ export default function UsageIndicator({ state, onRetry }: { state: UsageState; 
         )}
         {reset && <> Resets {reset}.</>}{' '}
         <button type="button" className="key-link" onClick={onRetry}>Refresh</button>
+        {shared && <> <PoolHelp /></>}
       </p>
       {u.prepaidUsd != null && u.prepaidUsd > 0 && (
         <p className="usage-prepaid muted">Plus a prepaid balance of {usd(u.prepaidUsd)}.</p>

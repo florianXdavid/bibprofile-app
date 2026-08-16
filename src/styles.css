@@ -218,6 +218,16 @@ details.card[open] > summary.card-title { margin-bottom: 8px; }
 .diff-fields .field { font-weight: 600; }
 .diff-fields .yours { color: var(--muted); text-decoration: line-through; }
 .diff-fields .oa { color: var(--accent); font-weight: 600; }
+/* v1.3 — UX quick wins */
+.pool-help { display: inline-block; }
+.pool-help > summary { cursor: pointer; color: var(--accent); font-weight: 600; list-style: none; }
+.pool-help > summary::-webkit-details-marker { display: none; }
+.pool-help-text { display: block; margin-top: 4px; color: var(--muted); font-size: 0.82rem; max-width: 520px; }
+.upload-collapsed { margin: 6px 0 4px; font-size: 0.9rem; }
+.cleaned-hint { margin: 8px 0 6px; font-size: 0.85rem; }
+.cleaned-toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.cleaned-raw { max-height: 340px; overflow: auto; background: var(--bg-alt); border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; margin: 8px 0; }
+
 .crash-fallback { text-align: center; padding: 32px 16px; }
 .crash-fallback p { color: var(--muted); }
 .crash-fallback button.primary { margin-top: 10px; }

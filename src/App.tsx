@@ -24,7 +24,6 @@ import { runPreprintResolution, type PreprintRunState } from './lib/preprintReso
 import { fetchRateLimit, OpenAlexAuthError, OpenAlexBudgetError } from './lib/openalex'
 import { OPENALEX_DIRECT_URL, resolveCredential, type UserCredential } from './lib/credential'
 import { formatResetClockUtc } from './lib/rateLimit'
-import { OPENALEX_BASE_URL } from './config'
 import type { MatchSummary, Progress as ProgressState, ResultRow } from './types'
 
 type Phase = 'idle' | 'working' | 'done'
@@ -45,6 +44,7 @@ export default function App() {
   const [view, setView] = useState<View>('about') // v1.1 — four tabs; About is the default landing tab
   const [copied, setCopied] = useState(false)
   const [sourceText, setSourceText] = useState<string>('') // original .bib text (cleaned export)
+  const [uploadOpen, setUploadOpen] = useState(true) // v1.3 — collapse the drop zone once results are in
 
   // W3.1 — billable results live HERE, above the Report/Cleaned/Table toggle, so
   // switching tabs (which unmounts the inactive view) never discards them and
@@ -153,6 +153,8 @@ export default function App() {
       setRows(resultRows)
       setSummary(resultSummary)
       setPhase('done')
+      setView('report')     // v1.3 — jump to the report when analysis finishes
+      setUploadOpen(false)  // v1.3 — collapse the drop zone to give results room
       // W4.1 — a budget halt keeps partial results; the rest stay pending.
       setExhausted(ex ? { resetsAt: ex.resetsAt, kind: cred.kind } : null)
       void refreshUsageFor(userKey)
@@ -188,44 +190,6 @@ export default function App() {
       else setNotice('Something went wrong reaching OpenAlex. Please try again.')
       setPhase('done') // keep the partial results visible
     }
-  }
-
-  function exportJson() {
-    const payload = {
-      source: fileName || 'bibtex',
-      generatedAt: new Date().toISOString(),
-      openalexBaseUrl: OPENALEX_BASE_URL,
-      summary,
-      rows: rows.map(r => ({
-        citeKey: r.citeKey,
-        status: r.status,
-        duplicateOf: r.duplicateOf,
-        entryType: r.entry?.entryType ?? null,
-        bib: r.entry ? {
-          title: r.entry.title,
-          titleForSearch: r.entry.titleForSearch,
-          year: r.entry.year,
-          authors: r.entry.authors,
-          venue: r.entry.venue,
-          doi: r.entry.doi,
-          doiRaw: r.entry.doiRaw,
-          likelyNotIndexable: r.entry.likelyNotIndexable,
-        } : null,
-        matchScore: r.matchScore,
-        yearState: r.yearState,
-        openalex: r.openalex,
-        error: r.error,
-        raw: r.status === 'unparseable' ? r.raw : undefined,
-      })),
-    }
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    const base = fileName.replace(/\.[^.]+$/, '') || 'bibprofile'
-    a.href = url
-    a.download = `${base}-bibprofile.json`
-    a.click()
-    URL.revokeObjectURL(url)
   }
 
   // Plain-text one-paragraph summary for pasting into a methods section / email.
@@ -311,7 +275,14 @@ export default function App() {
         Profile a BibTeX reference list against OpenAlex — check matches, spot issues, get a cleaned copy.
       </p>
 
-      <FileDrop onText={run} disabled={busy} />
+      {uploadOpen ? (
+        <FileDrop onText={run} disabled={busy} />
+      ) : (
+        <p className="upload-collapsed muted">
+          <button type="button" className="key-link" onClick={() => setUploadOpen(true)}>↑ Upload a different .bib file</button>
+          {fileName && <> · current file: <strong>{fileName}</strong></>}
+        </p>
+      )}
 
       <KeyControl active={!!userKey} error={keyError} onSet={applyUserKey} onClear={clearUserKey} />
       <UsageIndicator state={usage} onRetry={() => void refreshUsageFor(userKey)} />
@@ -349,7 +320,6 @@ export default function App() {
           <Summary summary={summary} fileName={fileName} />
           <div className="summary toolbar" style={{ display: 'flex', gap: 12, alignItems: 'center', background: 'none', border: 'none', padding: 0, margin: '-8px 0 4px' }}>
             <button className="primary" onClick={copySummary}>{copied ? 'Copied ✓' : 'Copy summary'}</button>
-            <button onClick={exportJson}>Export matched data (JSON)</button>
             {warnings.length > 0 && (
               <details>
                 <summary style={{ cursor: 'pointer', color: 'var(--muted)' }}>
