@@ -2,28 +2,32 @@
 // billable preprint-resolution result is owned by App and passed in, so it
 // survives tab switches and never re-runs the paid searches.
 //
-// Two downloads (W3.1):
-//   1. "suggestions" — today's default: confident fills applied, suspicious /
-//      preprint matches shown but NOT written.
-//   2. "preprint updates applied" — the whole file, plus the CONFIDENTLY-resolved
-//      preprint→published fields written in (via the same additive writer). Shown
-//      only when >=1 preprint was confidently resolved; carries a verify header.
+// One download. v1.4.3: only verified fills are written automatically; every other
+// fill and every differing value is a per-field REVIEW item (Accept / Undo), with
+// DOIs shown as links to check. Accept state is in-memory component state.
 
 import { useMemo, useState } from 'react'
 import type { ResultRow } from '../../types'
-import { computeCleanedBib, serializeCleanedBib } from '../../lib/stats/cleanBib'
+import { addKey, computeCleanedBib, serializeCleanedBib, type FieldChange } from '../../lib/stats/cleanBib'
 import { plural } from './format'
 
 const CONF_LABEL: Record<string, string> = {
-  confident: 'high confidence · DOI match',
-  tentative: 'suggested · title match',
-  none: 'suggestion',
+  confident: 'matched by your DOI',
+  tentative: 'title match',
+  none: 'low-confidence match',
 }
 
 interface Props {
   rows: ResultRow[]
   sourceText: string
   fileName: string
+}
+
+// v1.4.3 — a DOI value rendered as a one-click link to check it.
+function FieldValue({ f }: { f: FieldChange }) {
+  return f.field === 'doi'
+    ? <a href={`https://doi.org/${f.value}`} target="_blank" rel="noreferrer" title="Open this DOI to check it">{f.value} ↗</a>
+    : <span>{f.value}</span>
 }
 
 function saveBib(text: string, name: string) {
@@ -61,18 +65,24 @@ export default function CleanedExport({ rows, sourceText, fileName }: Props) {
     <div className="cleaned">
       <div className="card-note warn" style={{ marginTop: 4 }}>
         <strong>Suggested fixes — review before use.</strong> This adds missing fields from OpenAlex;
-        it never changes cite keys, drops entries, or edits text you already wrote. DOI matches are
-        applied confidently; title matches are applied but flagged; suspicious and uncertain matches are shown as
-        suggestions only and are <em>not</em> written to the file. Where a field you wrote <em>differs</em> from OpenAlex, it's
-        shown as a review-only suggestion you can accept per field — OpenAlex may differ for legitimate
-        reasons (online-first vs print year, venue normalisation, LaTeX in titles), so accept only real fixes.
+        it never changes cite keys, drops entries, or edits text you already wrote. Only verified fills
+        are written automatically (below); everything else is listed for <em>review</em> and written only
+        if you accept it. Where a field you wrote <em>differs</em> from OpenAlex, it's also a review item —
+        OpenAlex may differ for legitimate reasons (online-first vs print year, venue normalisation, LaTeX
+        in titles), so accept only real fixes.
       </div>
 
+      <p className="cleaned-basis">
+        <span><strong>{cleaned.counts.fieldsAdded}</strong> {plural(cleaned.counts.fieldsAdded, 'field')} written automatically:</span>{' '}
+        <span>{cleaned.counts.autoFromDoiMatch} on references identified by their own DOI, and {cleaned.counts.autoTitleDois} {plural(cleaned.counts.autoTitleDois, 'DOI')} from high-confidence title matches (title ≥ 0.95, first author and year confirmed, same version).</span>{' '}
+        <span><strong>{cleaned.counts.reviewFills + cleaned.counts.mismatches}</strong> {plural(cleaned.counts.reviewFills + cleaned.counts.mismatches, 'field')} await your review — written only if you accept them{cleaned.counts.acceptedFills > 0 ? ` (${cleaned.counts.acceptedFills} accepted so far)` : ''}.</span>
+      </p>
+
       <div className="cleaned-counts">
-        <span><strong>{cleaned.counts.applied}</strong> {plural(cleaned.counts.applied, 'entry', 'entries')} filled</span>
-        <span><strong>{cleaned.counts.fieldsAdded}</strong> {plural(cleaned.counts.fieldsAdded, 'field')} added</span>
+        <span><strong>{cleaned.counts.applied}</strong> {plural(cleaned.counts.applied, 'entry', 'entries')} changed</span>
+        <span><strong>{cleaned.counts.reviewFills}</strong> {plural(cleaned.counts.reviewFills, 'fill')} to review</span>
         <span><strong>{cleaned.counts.mismatches}</strong> {plural(cleaned.counts.mismatches, 'field')} differ (review)</span>
-        <span><strong>{cleaned.counts.suggested}</strong> with suggestions</span>
+        <span><strong>{cleaned.counts.suggested}</strong> with review items</span>
         <span><strong>{cleaned.counts.passed}</strong> passed through</span>
         <span><strong>{cleaned.counts.unchanged}</strong> left unchanged</span>
       </div>
@@ -91,9 +101,8 @@ export default function CleanedExport({ rows, sourceText, fileName }: Props) {
       <h3 className="cleaned-diff-title">Changes ({changed.length})</h3>
       {changed.length > 0 && (
         <div className="diff-legend">
-          <span><span className="diff-tag ok">applied</span> written into the downloaded file</span>
-          <span><span className="diff-tag review">review</span> your value differs from OpenAlex — accept per field to write it</span>
-          <span><span className="diff-tag warn">suggested</span> shown to review — not written (suspicious or uncertain matches)</span>
+          <span><span className="diff-tag ok">applied</span> written automatically (verified: see above)</span>
+          <span><span className="diff-tag review">review</span> a missing field or a differing value — accept per field to write it; DOIs link out so you can check them</span>
         </div>
       )}
       {changed.length === 0 ? (
@@ -105,13 +114,38 @@ export default function CleanedExport({ rows, sourceText, fileName }: Props) {
               <div className="diff-head">
                 <span className="mono chip">{e.citeKey}</span>
                 <span className={`badge ${e.status}`}>{e.status}</span>
-                {e.action === 'applied'
+                {e.applied.length > 0
                   ? <span className="diff-tag ok">applied · {CONF_LABEL[e.confidence]}</span>
-                  : <span className="diff-tag warn">suggested only</span>}
+                  : <span className="diff-tag review">review · {CONF_LABEL[e.confidence]}</span>}
               </div>
               {(e.applied.length > 0 || e.suggested.length > 0 || e.mismatches.length > 0) && (
                 <ul className="diff-fields">
-                  {e.applied.map(f => <li key={'a' + f.field}><span className="add">+ {f.field}</span> = {'{'}{f.value}{'}'}</li>)}
+                  {e.applied.map(f => (
+                    <li key={'a' + f.field}>
+                      <span className="add">+ {f.field}</span> = {'{'}<FieldValue f={f} />{'}'}{' '}
+                      <span className="diff-tag ok">{f.basis === 'title-high-confidence' ? 'auto · high-confidence title match' : 'auto · your DOI'}</span>
+                    </li>
+                  ))}
+                  {e.suggested.map(f => {
+                    const key = addKey(e.sourceOffset, f.field)
+                    const isAccepted = accepted.has(key)
+                    return (
+                      <li key={'s' + f.field} className={isAccepted ? 'diff-accepted' : 'diff-review'}>
+                        <span className="add">+ {f.field}</span> = {'{'}<FieldValue f={f} />{'}'}{' '}
+                        {isAccepted ? (
+                          <>
+                            <span className="diff-tag ok">accepted — will be written</span>{' '}
+                            <button type="button" className="key-link" onClick={() => toggleAccept(key)}>Undo</button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="diff-tag review">review</span>{' '}
+                            <button type="button" className="key-link" onClick={() => toggleAccept(key)}>Accept</button>
+                          </>
+                        )}
+                      </li>
+                    )
+                  })}
                   {e.mismatches.map(m => {
                     const key = `${e.sourceOffset}::${m.field}`
                     const isAccepted = accepted.has(key)
@@ -134,7 +168,6 @@ export default function CleanedExport({ rows, sourceText, fileName }: Props) {
                       </li>
                     )
                   })}
-                  {e.suggested.map(f => <li key={'s' + f.field} className="muted">? {f.field} = {'{'}{f.value}{'}'} <span className="diff-tag warn">not written</span></li>)}
                 </ul>
               )}
             </li>

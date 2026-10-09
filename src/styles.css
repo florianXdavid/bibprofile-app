@@ -225,6 +225,7 @@ details.card[open] > summary.card-title { margin-bottom: 8px; }
 .pool-help-text { display: block; margin-top: 4px; color: var(--muted); font-size: 0.82rem; max-width: 520px; }
 .upload-collapsed { margin: 6px 0 4px; font-size: 0.9rem; }
 .cleaned-hint { margin: 8px 0 6px; font-size: 0.85rem; }
+.cleaned-basis { margin: 12px 0 4px; font-size: 0.9rem; }
 .cleaned-toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .cleaned-raw { max-height: 340px; overflow: auto; background: var(--bg-alt); border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-size: 0.8rem; white-space: pre-wrap; word-break: break-word; margin: 8px 0; }
 

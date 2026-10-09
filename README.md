@@ -237,11 +237,25 @@ serialises. Labelled **"suggested fixes — review before use"**. It is
 the parser's AST — which would turn `\"{o}` into `ö` and drop brace-caps / custom
 fields), so LaTeX escapes, Zotero fields, `@string` macros and comments survive
 byte-identical, and **cite keys and entry count are invariant** (asserted by
-test). Action is tiered by match status: `matched-by-doi` filled confidently,
-`matched-by-title` filled but flagged, `suspicious` / `uncertain` shown as a suggestion (never
-written), everything else passed through. Fields you wrote that **differ** from
-OpenAlex are surfaced as review-only suggestions you accept per field. A colour
-legend maps green = applied, yellow = suggested-not-applied, blue = review.
+test).
+
+**Never write an unverified field (v1.4.3).** Only two kinds of fill are written
+automatically:
+- every fill on a `matched-by-doi` entry (your own DOI identified the record);
+- the **DOI** of a high-confidence title match: `matched-by-title`, title ≥ 0.95,
+  first author and year (±1) confirmed, and not a different version (preprint vs
+  published) (`isHighConfidenceTitleMatch`; `AUTO_DOI_TITLE_THRESHOLD`).
+
+Everything else is a per-field **review** item, written only if you click Accept:
+- the other fills of a title match;
+- every fill of a lower-confidence, `uncertain` or `suspicious` match;
+- every value that **differs** from OpenAlex.
+
+DOIs are shown as `doi.org` links so they can be checked in one click. The diff
+header states how many fields were written automatically and on what basis.
+On the hard-titles regression set, all 92 automatic DOIs are the correct record
+(asserted). Everything else is passed through untouched. Legend: green = applied,
+blue = review.
 
 **Preprint → published** (`src/lib/stats/preprints.ts`) — lives in the **Report**
 tab (it's analysis, never written to the cleaned file). Detecting preprints is
@@ -373,7 +387,7 @@ test/                    # vitest unit tests (pure functions; no network except 
 
 ## Testing
 
-`npm test` runs **200 tests** (plus 1 skipped: the opt-in regression recorder). Highlights: the v1.4.1
+`npm test` runs **206 tests** (plus 1 skipped: the opt-in regression recorder). Highlights: the v1.4.1
 match-score signals and the hard-titles regression (offline); parsing/DOI/title-clean/similarity
 regressions; every report statistic on fixtures (median/IQR year, top-venue
 share, OA %, self-citation matching, shape patterns + min-n floor, retraction

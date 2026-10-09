@@ -237,3 +237,55 @@ describe('replaceFieldValue', () => {
     expect(replaceFieldValue(raw, 'year', '2020')).toBe(raw)
   })
 })
+
+// v1.4.3 — never write an unverified DOI: automatic vs review fills.
+describe('automatic vs review fills (v1.4.3)', () => {
+  const work = () => mkWork({
+    doi: 'https://doi.org/10.1234/abc', publicationYear: 2019, hostVenue: 'Journal of Testing',
+    biblio: { volume: '7', issue: null, firstPage: '10', lastPage: '20' },
+  })
+  const titleRow = (signals: Partial<NonNullable<ResultRow['matchSignals']>>, status: ResultRow['status'] = 'matched-by-title') => {
+    const rs = rows()
+    const t = rs.find(r => r.citeKey === 'smith2019')!
+    t.status = status
+    t.openalex = work()
+    t.matchSignals = { title: 1, author: 1, year: 1, venue: null, type: null, biblio: null, score: 1, ...signals }
+    return rs
+  }
+  const smith = (rs: ResultRow[], accepted?: Set<string>) => computeCleanedBib(rs, undefined, accepted).entries.find(e => e.citeKey === 'smith2019')!
+
+  it('high-confidence title match: ONLY the DOI is written automatically; the rest is review', () => {
+    const e = smith(titleRow({}))
+    expect(e.applied.map(f => [f.field, f.basis])).toEqual([['doi', 'title-high-confidence']])
+    expect(e.suggested.map(f => f.field).sort()).toEqual(['journal', 'pages', 'volume', 'year'])
+    expect(e.newRaw).toContain('doi = {10.1234/abc}')
+    expect(e.newRaw).not.toContain('Journal of Testing')
+  })
+  it('a title match without a CONFIRMED first author or year writes nothing', () => {
+    for (const s of [{ author: null }, { year: null }, { author: 0.7 }, { title: 0.94 }, { type: 0.5 } /* arXiv entry vs proceedings record */]) {
+      const e = smith(titleRow(s))
+      expect(e.applied).toEqual([])
+      expect(e.newRaw).toBe(e.originalRaw)
+    }
+  })
+  it('uncertain matches write nothing; all fills are review', () => {
+    const e = smith(titleRow({}, 'uncertain'))
+    expect(e.applied).toEqual([])
+    expect(e.suggested.map(f => f.field)).toContain('doi')
+    expect(e.newRaw).toBe(e.originalRaw)
+  })
+  it('accepting one review fill writes exactly that field; keys and count stay invariant', () => {
+    const rs = titleRow({}, 'uncertain')
+    const off = smith(rs).sourceOffset
+    const e = smith(rs, new Set([`${off}::add:doi`]))
+    expect(e.acceptedFills).toEqual(['doi'])
+    expect(e.newRaw).toContain('doi = {10.1234/abc}')
+    expect(e.newRaw).not.toContain('volume')
+    const out = serializeCleanedBib(AWKWARD, computeCleanedBib(rs, undefined, new Set([`${off}::add:doi`])))
+    expect(keysAndCount(out)).toEqual(keysAndCount(AWKWARD))
+  })
+  it('counts state how many fields were written automatically, and on what basis', () => {
+    const c = computeCleanedBib(titleRow({})).counts
+    expect(c).toMatchObject({ fieldsAdded: 1, autoTitleDois: 1, autoFromDoiMatch: 0, reviewFills: 4, acceptedFills: 0 })
+  })
+})

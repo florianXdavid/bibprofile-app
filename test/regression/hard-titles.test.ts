@@ -17,6 +17,7 @@ import { toOpenAlexWork } from '../../src/lib/openalex'
 import { chooseTitleMatch, findTwins, titleSimilarity } from '../../src/lib/matchScore'
 import { parseCrossrefItems, type CrossrefResult, type CrossrefUpdate } from '../../src/lib/crossref'
 import { computeRetractions } from '../../src/lib/stats/retractions'
+import { computeCleanedBib } from '../../src/lib/stats/cleanBib'
 import type { ResultRow } from '../../src/types'
 import { computeDuplicates } from '../../src/lib/match'
 
@@ -91,7 +92,7 @@ describe.skipIf(!fixture)('title-matching regression (hard-titles.bib, offline)'
   })()
   const asRow = (r: (typeof results)[number]): ResultRow => ({
     rowId: r.e.rowId, sourceOffset: r.e.sourceOffset, citeKey: r.e.citeKey, title: r.e.title, bibYear: r.e.year,
-    status: r.d.status, openalex: r.d.work, matchScore: r.d.signals?.score ?? null, yearState: 'unverified',
+    status: r.d.status, openalex: r.d.work, matchScore: r.d.signals?.score ?? null, matchSignals: r.d.signals, yearState: 'unverified',
     duplicateOf: dupOf.get(r.e.rowId) ?? null, error: null, raw: r.e.raw, entry: r.e,
     twins: r.d.twins.map(t => ({ id: t.id, doi: t.doi, isRetracted: t.isRetracted })),
   })
@@ -103,6 +104,15 @@ describe.skipIf(!fixture)('title-matching regression (hard-titles.bib, offline)'
     for (const f of report.concerns) console.log('CONCERN   ', f.citeKey.padEnd(20), f.updates.map(u => `${u.kind}/${u.source}`).join(' '))
     for (const f of report.corrections) console.log('CORRECTION', f.citeKey.padEnd(20), f.updates.map(u => `${u.kind}/${u.source}`).join(' '))
   }
+
+  // ---- v1.4.3: no unverified DOI is written into the cleaned .bib ----
+  it('every DOI written automatically into the cleaned .bib is the known-correct record', () => {
+    const cleaned = computeCleanedBib(results.map(asRow))
+    const auto = cleaned.entries.filter(e => e.applied.some(f => f.field === 'doi'))
+    const bad = auto.filter(e => results.find(r => r.e.citeKey === e.citeKey)?.outcome !== 'correct').map(e => e.citeKey)
+    expect(bad).toEqual([])
+    if (process.env.BIBPROFILE_REGRESSION_REPORT) console.log(`auto-written DOIs: ${auto.length}; review fills: ${cleaned.counts.reviewFills}`)
+  })
 
   it('Crossref notices were recorded for the candidate DOIs', () => {
     expect(crossref.checked).toBeGreaterThan(0)

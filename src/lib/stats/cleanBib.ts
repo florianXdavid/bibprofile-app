@@ -8,9 +8,18 @@
 //     an entry's verbatim source; cite keys and entry count are untouched.
 //   • `not-found` / `error` / `unparseable` pass through byte-identical.
 //   • `not-indexable` passes through unchanged, labelled "left unchanged".
-//   • `suspicious` / `uncertain` fills are shown as SUGGESTIONS only — never written.
+//   • v1.4.3 — nothing unverified is written. AUTOMATIC fills only:
+//       - every fill on a `matched-by-doi` entry (the user's own DOI identified
+//         the record), and
+//       - the DOI of a HIGH-CONFIDENCE `matched-by-title` (title >= 0.95, first
+//         author and year confirmed, entry type not a different version —
+//         isHighConfidenceTitleMatch).
+//     Every other fill (the rest of a title match, any lower-confidence title
+//     match, `uncertain`, `suspicious`) is REVIEW: written only if the user
+//     accepts that field (accepted key "sourceOffset::add:field").
 
 import type { MatchStatus, OpenAlexBiblio, ResultRow } from '../../types'
+import { AUTO_DOI_TITLE_THRESHOLD } from '../../config'
 import { normalizeDoi } from '../doi'
 import { insertFields, readField, replaceFieldValue, spliceCleaned, type FieldInsert } from '../bibWriter'
 
@@ -20,7 +29,24 @@ export type Confidence = 'confident' | 'tentative' | 'none'
 export interface FieldChange {
   field: string
   value: string
+  basis?: FillBasis // set on automatic fills: why it was written without review
 }
+
+// Why an automatic fill was trusted (shown in the diff header).
+export type FillBasis = 'doi-match' | 'title-high-confidence'
+
+// v1.4.3 — strict bar for writing a title-found DOI without review.
+export function isHighConfidenceTitleMatch(row: ResultRow): boolean {
+  const s = row.matchSignals
+  return row.status === 'matched-by-title' && !!s
+    && s.title >= AUTO_DOI_TITLE_THRESHOLD && s.author === 1 && s.year === 1
+    // and not a different VERSION (e.g. an arXiv entry vs the proceedings record):
+    // a partial type match means the DOI would switch which version is cited.
+    && (s.type == null || s.type === 1)
+}
+
+// Accept-key for a review fill (distinct from mismatch keys "offset::field").
+export const addKey = (sourceOffset: number, field: string) => `${sourceOffset}::add:${field}`
 
 // A field the user HAS but whose value disagrees with the matched OpenAlex work.
 // Review-only SUGGESTION — never auto-applied; the user accepts it per-field.
@@ -47,8 +73,9 @@ export interface CleanedEntry {
   status: MatchStatus
   action: CleanAction
   confidence: Confidence
-  applied: FieldChange[] // written into newRaw
-  suggested: FieldChange[] // shown, NOT written (suspicious matches)
+  applied: FieldChange[] // AUTOMATIC fills, written into newRaw (with their basis)
+  suggested: FieldChange[] // REVIEW fills: written only once accepted (see `accepted`)
+  acceptedFills: string[] // fields of `suggested` the user accepted (written)
   mismatches: FieldMismatch[] // user has a value that differs from OpenAlex — review-only
   preprint: ResolvedPreprint | null // suggested replacement, never written
   note: string | null
@@ -64,7 +91,11 @@ export interface CleanedBib {
     suggested: number
     passed: number
     unchanged: number
-    fieldsAdded: number
+    fieldsAdded: number // automatic fills written
+    autoFromDoiMatch: number // … of which on entries matched by the user's own DOI
+    autoTitleDois: number // … of which DOIs from high-confidence title matches
+    reviewFills: number // fills awaiting review
+    acceptedFills: number // review fills the user accepted (written)
     mismatches: number
   }
 }
@@ -130,6 +161,7 @@ function passthrough(row: ResultRow, action: CleanAction, note: string | null): 
     confidence: 'none',
     applied: [],
     suggested: [],
+    acceptedFills: [],
     mismatches: [],
     preprint: null,
     note,
@@ -180,7 +212,7 @@ function computeMismatches(row: ResultRow): FieldMismatch[] {
 export function computeCleanedBib(
   rows: ResultRow[],
   resolved?: Map<string, ResolvedPreprint>,
-  accepted: Set<string> = new Set(), // keys "sourceOffset::field" the user accepted
+  accepted: Set<string> = new Set(), // "sourceOffset::field" (mismatch) / "sourceOffset::add:field" (review fill)
 ): CleanedBib {
   const entries: CleanedEntry[] = rows.map(row => {
     // Duplicates and non-scholarly / unmatched rows pass through verbatim.
@@ -201,10 +233,19 @@ export function computeCleanedBib(
         : row.status === 'matched-by-title' ? 'tentative'
           : 'none' // suspicious / uncertain
 
-    // matched-by-doi / matched-by-title WRITE additive fills; suspicious / uncertain only suggest.
-    const writes = confidence !== 'none'
-    const applied = writes ? fills : []
-    const suggested = writes ? [] : fills
+    // v1.4.3 policy (see header): automatic vs review.
+    const writes = confidence !== 'none' // mismatches are still offered for doi/title matches
+    let applied: FieldChange[] = []
+    let suggested: FieldChange[] = fills
+    if (row.status === 'matched-by-doi') {
+      applied = fills.map(f => ({ ...f, basis: 'doi-match' as const }))
+      suggested = []
+    } else if (isHighConfidenceTitleMatch(row)) {
+      applied = fills.filter(f => f.field === 'doi').map(f => ({ ...f, basis: 'title-high-confidence' as const }))
+      suggested = fills.filter(f => f.field !== 'doi')
+    }
+    const acceptedFills = suggested.filter(f => accepted.has(addKey(row.sourceOffset, f.field))).map(f => f.field)
+    const written = [...applied, ...suggested.filter(f => acceptedFills.includes(f.field))]
     // Mismatches (user has a differing value) are review-only for the same
     // confident/tentative matches, and are written ONLY where the user has accepted
     // that specific field (accepted set keyed "sourceOffset::field").
@@ -213,13 +254,13 @@ export function computeCleanedBib(
       .map(m => m.field)
       .filter(f => accepted.has(`${row.sourceOffset}::${f}`))
 
-    let newRaw = applied.length > 0 ? insertFields(row.raw, applied as FieldInsert[]) : row.raw
+    let newRaw = written.length > 0 ? insertFields(row.raw, written as FieldInsert[]) : row.raw
     for (const m of mismatches) {
       if (acceptedFields.includes(m.field)) newRaw = replaceFieldValue(newRaw, m.field, m.openalex)
     }
 
     const action: CleanAction =
-      (applied.length > 0 || acceptedFields.length > 0) ? 'applied'
+      (written.length > 0 || acceptedFields.length > 0) ? 'applied'
         : (suggested.length > 0 || mismatches.length > 0 || preprint) ? 'suggested'
           : 'passed'
 
@@ -230,6 +271,7 @@ export function computeCleanedBib(
       confidence,
       applied,
       suggested,
+      acceptedFills,
       mismatches,
       preprint,
       note: preprint ? `${preprint.server} preprint — a published version was found` : null,
@@ -245,6 +287,10 @@ export function computeCleanedBib(
     passed: entries.filter(e => e.action === 'passed').length,
     unchanged: entries.filter(e => e.action === 'unchanged').length,
     fieldsAdded: entries.reduce((s, e) => s + e.applied.length, 0),
+    autoFromDoiMatch: entries.reduce((s, e) => s + e.applied.filter(f => f.basis === 'doi-match').length, 0),
+    autoTitleDois: entries.reduce((s, e) => s + e.applied.filter(f => f.basis === 'title-high-confidence').length, 0),
+    reviewFills: entries.reduce((s, e) => s + e.suggested.length, 0),
+    acceptedFills: entries.reduce((s, e) => s + e.acceptedFills.length, 0),
     mismatches: entries.reduce((s, e) => s + e.mismatches.length, 0),
   }
   return { entries, counts }

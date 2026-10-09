@@ -64,6 +64,11 @@ export const MATCH_SCORE_FLOOR = 0.7
 // Two DIFFERENT works whose scores are within this margin are a near-tie (e.g.
 // a book and an article with the same title): the best one is only `uncertain`.
 export const MATCH_AMBIGUITY_MARGIN = 0.05
+// v1.4.3 — a DOI found by TITLE search is written into the cleaned .bib without
+// review only for a matched-by-title whose title signal is >= this AND whose first
+// author and year (±1) are both confirmed (not merely missing), and whose type
+// isn't a different version (preprint vs published). See cleanBib.ts.
+export const AUTO_DOI_TITLE_THRESHOLD = 0.95
 // How many candidates to pull back per title search.
 export const SEARCH_PER_PAGE = 5
 

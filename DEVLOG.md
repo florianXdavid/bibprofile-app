@@ -805,6 +805,27 @@ Goal: catch retractions even when the matched record is a duplicate.
 - Manual check, since the UI isn't unit-tested: force an error row (e.g. go offline
   mid-run), then press Retry. Only those rows change, and Crossref re-runs.
 
+## v1.4.3 — never write an unverified DOI (Oct 2026; part of v1.4)
+
+Goal: the downloaded `.bib` contains nothing wrong that the user did not approve.
+
+- **Automatic fills are now limited to two kinds:**
+  - every fill on `matched-by-doi` entries;
+  - the DOI of a **high-confidence** title match: title ≥ 0.95, first author and
+    year (±1) confirmed rather than missing, and type not a different version.
+    The version clause came from the regression set: without it, the arXiv BERT
+    entry would silently have received the NAACL DOI.
+- Before v1.4.3, every `matched-by-title` fill was written. Now all other title-based
+  fills, and all `uncertain`/`suspicious` fills, are per-field **review** items
+  with Accept/Undo (accept key `offset::add:field`, in-memory) and clickable
+  `doi.org` links.
+- **Diff header** states how many fields were written automatically and why
+  (your own DOI, or high-confidence title match). New counts:
+  `autoFromDoiMatch`, `autoTitleDois`, `reviewFills`, `acceptedFills`.
+- **Regression:** asserts that every DOI the cleaned export would write
+  automatically is the known-correct record (92 of 92 on the hard set).
+- Tests: 200 → 206 (+1 skipped).
+
 > The project-layout and test-count sections below describe the state as of W4.2.
 > For the current layout, see README.md.
 
