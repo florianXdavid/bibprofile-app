@@ -645,6 +645,59 @@ Missing-citations card lost its scare/verbose lines. The Table gains a hidden
 **status explainer**, and a new top-right **About** panel (`About.tsx`) describes
 the tool, the shared-pool/key model, and credits.
 
+## Hosting & v1.0 — Worker cutover, security headers, SEO (Aug 5–9)
+
+- **Git + Cloudflare Pages.** The app went into its own repo (auto-deploys on push).
+- **Worker cutover.** A separate repo, `bibprofile-worker`, is a Cloudflare Worker
+  at `api.bibprofile.com`. It holds the shared OpenAlex key server-side and proxies
+  only `/works*` and `/rate-limit`, with an origin allowlist and loose per-IP rate
+  limits. The shared path's `VITE_OPENALEX_BASE_URL` now points at the Worker and
+  the shared key is no longer in the client bundle. The user-key path stays direct
+  to OpenAlex.
+- **Shared-pool usage bar.** No longer deferred: the Worker serves `/rate-limit` with
+  the key stripped, so the app shows a **pooled** usage bar on load and after each
+  run. The browser still never reads the shared key's usage from OpenAlex directly
+  (`fetchRateLimit` refuses when the shared base URL is `api.openalex.org`).
+- **Security.** `public/_headers` (CSP report-only, X-Frame-Options, COOP/CORP,
+  Permissions-Policy). Production builds drop `console.*`/`debugger`. The About
+  privacy text was corrected to mention the proxy hop.
+- **SEO.** Static meta + JSON-LD + a no-JS fallback in `index.html`, plus
+  `robots.txt`, `sitemap.xml`, `llms.txt` and `og-image.jpg`.
+
+## v1.1 — iOS, Google Translate, tabs, per-field review (Aug 14)
+
+- **iOS upload fix.** The file input `accept` was widened so iOS lets `.bib` files be
+  picked.
+- **Four tabs.** About · Report · Cleaned .bib · Table are always visible, with About
+  as the landing tab and placeholders until a `.bib` is analysed. Added a tagline,
+  a version history (`src/versions.ts`) and a contact address in About.
+- **Per-field mismatch review.** The cleaned export also shows fields you wrote that
+  differ from OpenAlex, as blue "review" items. Each can be accepted per field
+  (`readField`/`replaceFieldValue` in `bibWriter.ts`): only the value is replaced,
+  in place, and only when accepted. Accept state is in-memory component state.
+- **Google Translate white-screen fix.** `translate="no"`/`notranslate` on the page,
+  dynamic text wrapped in spans, and a root `ErrorBoundary` with a reload fallback.
+
+## v1.3 — report flow, exports, preprints in Report, maintenance (Aug 16)
+
+- When an analysis finishes the app **jumps to Report** and **collapses the upload
+  zone** ("↑ Upload a different .bib file" re-opens it).
+- Added a collapsible **"?" explainer** for the shared pool in the usage line.
+- **Exports:** CSV export of the current table view, and an in-page **View raw** of
+  the cleaned `.bib`. The **JSON export was removed**.
+- **Preprint → published moved from Cleaned .bib to the Report**
+  (`PreprintsCard.tsx`). It is still billable and button-gated, uses title search
+  with `type:!preprint`, and shows suggestions only, never written to the file.
+- **Maintenance page** (`public/maintenance.html`), toggled by a Cloudflare Redirect
+  Rule in the dashboard.
+- **Metadata:** refreshed `llms.txt`, JSON-LD `@graph` (SoftwareApplication +
+  Organization), a permissive app `robots.txt`, and a Worker `/robots.txt`
+  (`Disallow: /`) so the API host isn't indexed.
+- Test suite: **156 tests** (up from 146).
+
+> The project-layout and test-count sections below describe the state as of W4.2.
+> For the current layout, see README.md.
+
 ## Project layout
 
 ```
