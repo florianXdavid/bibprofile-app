@@ -124,7 +124,12 @@ Per entry, after DOI normalisation (`src/lib/doi.ts`):
    or `not-found` (see *Match score* below).
 4. Genuine misses that aren't scholarly records are reclassified `not-indexable`.
 
-Requests are sequential (~4.5/sec), retried once on a transient failure. Statuses:
+Requests are sequential (~4.5/sec), retried once on a transient failure. After a
+"too many requests" (429), the retry waits as long as the server asks (`Retry-After`
+header, or the Worker's `retry_after_seconds`), between 0.9 s and 15 s. Entries whose
+lookup still fails are `error`. A **Retry N failed entries** button re-queries only
+those, on the active credential, and keeps every other result (DOI retries are free;
+title retries cost one search each). Statuses:
 `matched-by-doi`, `matched-by-title`, `suspicious`, `uncertain`, `not-found`,
 `not-indexable`, `error`, `unparseable`. Thresholds are advisory defaults in
 `src/config.ts`. The summary is deliberately blunt about misses.
@@ -204,7 +209,7 @@ styles).
 
 **Copy summary** produces a one-paragraph plain-text description for a methods
 section. The **Table** tab has **Export CSV** (the current filtered + sorted view,
-UTF-8 with BOM for Excel, with a "Duplicate of" column), and the **Cleaned .bib** tab has **View raw** (the cleaned
+UTF-8 with BOM for Excel, with "Duplicate of" and "Error" columns), and the **Cleaned .bib** tab has **View raw** (the cleaned
 file shown in-page). The old JSON export was removed in v1.3.
 
 ## Missing citations
@@ -368,7 +373,7 @@ test/                    # vitest unit tests (pure functions; no network except 
 
 ## Testing
 
-`npm test` runs **196 tests** (plus 1 skipped: the opt-in regression recorder). Highlights: the v1.4.1
+`npm test` runs **200 tests** (plus 1 skipped: the opt-in regression recorder). Highlights: the v1.4.1
 match-score signals and the hard-titles regression (offline); parsing/DOI/title-clean/similarity
 regressions; every report statistic on fixtures (median/IQR year, top-venue
 share, OA %, self-citation matching, shape patterns + min-n floor, retraction

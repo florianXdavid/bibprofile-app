@@ -181,9 +181,10 @@ export default function ResultsTable({ rows }: { rows: ResultRow[] }) {
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
     }
     // v1.4.1 hotfix: the on-screen "dup of …" tag lives in the cite-key cell's
-    // markup only, so the CSV gets an explicit column for it.
-    const header = [...columns.map(c => esc(c.label)), 'Duplicate of'].join(',')
-    const body = visible.map(r => [...columns.map(c => esc(c.get(r))), esc(r.duplicateOf)].join(',')).join('\n')
+    // markup only, so the CSV gets an explicit column for it. v1.4.2 patch: likewise
+    // the error message (shown on screen in the topic cell of error rows).
+    const header = [...columns.map(c => esc(c.label)), 'Duplicate of', 'Error'].join(',')
+    const body = visible.map(r => [...columns.map(c => esc(c.get(r))), esc(r.duplicateOf), esc(r.error)].join(',')).join('\n')
     const blob = new Blob(['﻿' + header + '\n' + body], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

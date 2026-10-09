@@ -191,11 +191,24 @@ export default function App() {
     if (cred.kind !== 'user') return // Resume needs a user key
     const pendingEntries = rows.filter(r => r.status === 'pending' && r.entry).map(r => r.entry!)
     if (pendingEntries.length === 0) { setExhausted(null); return }
+    await requery(pendingEntries, 'Resuming…', cred)
+  }
+
+  // v1.4.2 patch — re-query ONLY the entries whose lookup failed (`error`, e.g. a
+  // transient 429/5xx), on the active credential; every other result is kept. DOI
+  // retries are free; a title retry is one billable search each.
+  async function handleRetryErrors() {
+    const failed = rows.filter(r => r.status === 'error' && r.entry).map(r => r.entry!)
+    if (failed.length > 0) await requery(failed, 'Retrying failed entries…', resolveCredential(userKey))
+  }
+
+  // Shared by Resume and Retry: match a subset again and merge it back by rowId.
+  async function requery(entries: NonNullable<ResultRow['entry']>[], label: string, cred: ReturnType<typeof resolveCredential>) {
     setPhase('working')
     setNotice('')
-    setProgress({ stage: 'parsing', label: 'Resuming…', done: 0, total: pendingEntries.length, searchCalls: 0 })
+    setProgress({ stage: 'parsing', label, done: 0, total: entries.length, searchCalls: 0 })
     try {
-      const sub = { entries: pendingEntries, unparseable: [], warnings: [] }
+      const sub = { entries, unparseable: [], warnings: [] }
       const { rows: resumedRows, summary: subSummary, exhausted: ex } = await runMatching(sub, setProgress, cred)
       const merged = mergeRows(rows, resumedRows)
       setRows(merged)
@@ -339,6 +352,12 @@ export default function App() {
           <Summary summary={summary} fileName={fileName} />
           <div className="summary toolbar" style={{ display: 'flex', gap: 12, alignItems: 'center', background: 'none', border: 'none', padding: 0, margin: '-8px 0 4px' }}>
             <button className="primary" onClick={copySummary}>{copied ? 'Copied ✓' : 'Copy summary'}</button>
+            {summary.errored > 0 && (
+              <button type="button" onClick={handleRetryErrors} disabled={busy}
+                title="Look up only the entries whose request failed; everything else is kept">
+                Retry {summary.errored} failed {summary.errored === 1 ? 'entry' : 'entries'}
+              </button>
+            )}
             {warnings.length > 0 && (
               <details>
                 <summary style={{ cursor: 'pointer', color: 'var(--muted)' }}>

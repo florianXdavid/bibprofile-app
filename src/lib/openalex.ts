@@ -124,6 +124,20 @@ export function buildFilterUrl(filter: string, withRefs = false, perPage = 50, c
   return buildUrl('/works', { filter, per_page: String(perPage) }, withRefs ? GAPS_SELECT_FIELDS : OPENALEX_SELECT_FIELDS, cred)
 }
 
+// How long to wait before the one retry after a plain (non-budget) 429. Honours
+// the server's hint: the `Retry-After` header when readable, else the JSON body's
+// `retry_after_seconds` (our Worker sends both; the header isn't CORS-exposed, so
+// the body is what the browser actually sees). At least RETRY_BACKOFF_MS, capped
+// at 15 s so a run never stalls for long. Pure; exported for tests. (v1.4.2 patch)
+export function retryDelayMs(retryAfterHeader: string | null, body: string): number {
+  let secs = Number(retryAfterHeader)
+  if (!Number.isFinite(secs) || secs <= 0) {
+    try { secs = Number((JSON.parse(body) as Record<string, unknown>)?.retry_after_seconds) } catch { secs = NaN }
+  }
+  const ms = Number.isFinite(secs) && secs > 0 ? secs * 1000 : 0
+  return Math.min(Math.max(ms, RETRY_BACKOFF_MS), 15_000)
+}
+
 // One fetch with a single retry on transient failure (network / 429 / 5xx).
 // A 404 is returned as-is (it is meaningful: "not in OpenAlex"). A 401/403 is an
 // auth rejection: thrown as OpenAlexAuthError immediately (retrying a bad key is
@@ -140,7 +154,7 @@ async function request(url: string): Promise<Response> {
         // and never reads its body, so consuming a clone here is safe).
         const body = await res.clone().text().catch(() => '')
         if (looksLikeBudgetExhaustion(body)) throw new OpenAlexBudgetError(budgetResetFromBody(body))
-        if (attempt === 0) { await sleep(RETRY_BACKOFF_MS); continue } // transient — retry once
+        if (attempt === 0) { await sleep(retryDelayMs(res.headers.get('Retry-After'), body)); continue } // transient — retry once, after the server's hint
         return res
       }
       if (attempt === 0) { await sleep(RETRY_BACKOFF_MS); continue }

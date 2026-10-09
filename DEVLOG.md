@@ -791,6 +791,20 @@ Goal: catch retractions even when the matched record is a duplicate.
 - Tests: 186 → 196 (+1 skipped recorder). The W3 retraction tests were rewritten
   for the new rows-based signature.
 
+**v1.4.2 patch — transient failures.**
+- The cause: one hard-titles entry came back `error` in a live run (its recorded
+  data matches correctly).
+- **The retry after a plain 429 now waits for the server's hint.** It reads the
+  `Retry-After` header or, because that header isn't CORS-exposed, the Worker's
+  JSON `retry_after_seconds`. The wait is 0.9 s to 15 s; before, it was always 0.9 s,
+  sooner than the Worker's 10 s.
+- **Retry button.** "Retry N failed entries" re-queries only `error` rows. It
+  shares a `requery` helper with Resume, whose behaviour is unchanged.
+- **CSV export** gains an "Error" column.
+- Tests: 200 (+1 skipped); `test/retry.test.ts` runs the delay through fake timers.
+- Manual check, since the UI isn't unit-tested: force an error row (e.g. go offline
+  mid-run), then press Retry. Only those rows change, and Crossref re-runs.
+
 > The project-layout and test-count sections below describe the state as of W4.2.
 > For the current layout, see README.md.
 
