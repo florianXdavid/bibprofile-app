@@ -180,8 +180,10 @@ export default function ResultsTable({ rows }: { rows: ResultRow[] }) {
       const s = v == null ? '' : String(v)
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
     }
-    const header = columns.map(c => esc(c.label)).join(',')
-    const body = visible.map(r => columns.map(c => esc(c.get(r))).join(',')).join('\n')
+    // v1.4.1 hotfix: the on-screen "dup of …" tag lives in the cite-key cell's
+    // markup only, so the CSV gets an explicit column for it.
+    const header = [...columns.map(c => esc(c.label)), 'Duplicate of'].join(',')
+    const body = visible.map(r => [...columns.map(c => esc(c.get(r))), esc(r.duplicateOf)].join(',')).join('\n')
     const blob = new Blob(['﻿' + header + '\n' + body], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

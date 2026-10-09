@@ -15,6 +15,7 @@ import { parseBib } from '../../src/lib/parseBib'
 import { readField } from '../../src/lib/bibWriter'
 import { toOpenAlexWork } from '../../src/lib/openalex'
 import { chooseTitleMatch, titleSimilarity } from '../../src/lib/matchScore'
+import { computeDuplicates } from '../../src/lib/match'
 
 const BIB = fileURLToPath(new URL('./hard-titles.bib', import.meta.url))
 const FIX = fileURLToPath(new URL('./hard-titles.fixture.json', import.meta.url))
@@ -33,10 +34,18 @@ type Outcome = 'correct' | 'WRONG' | 'uncertain-right' | 'uncertain-other' | 'mi
 describe.skipIf(!fixture)('title-matching regression (hard-titles.bib, offline)', () => {
   const parsed = parseBib(readFileSync(BIB, 'utf8'))
 
+  // Mirror the app's pipeline: the REAL duplicate step runs first, and a
+  // duplicate copies its canonical entry's decision (as runMatching does). The
+  // v1.4.1 hotfix bug — distinct works merged by title — lived exactly here.
+  const dupOf = computeDuplicates(parsed.entries) // rowId -> canonical cite key
+  const decide = (e: (typeof parsed.entries)[number]) =>
+    chooseTitleMatch(e, (fx[e.citeKey]?.candidates ?? []).map(toOpenAlexWork))
+  const byKey = new Map(parsed.entries.map(e => [e.citeKey, e]))
+
   const results = parsed.entries.map(e => {
     const rec = fx[e.citeKey]
-    const candidates = (rec?.candidates ?? []).map(toOpenAlexWork)
-    const d = chooseTitleMatch(e, candidates)
+    const canonicalKey = dupOf.get(e.rowId)
+    const d = decide(canonicalKey ? byKey.get(canonicalKey)! : e)
     // `expectid = {W1 | W2}`: OpenAlex holds the same work twice — either is right.
     const expectIds = (readField(e.raw, 'expectid') ?? (readField(e.raw, 'expectdoi') ? rec?.expectDoi?.id : '') ?? '').split('|').map(s => bare(s.trim())).filter(Boolean)
     const expectId = expectIds.join(' | ')
@@ -67,6 +76,10 @@ describe.skipIf(!fixture)('title-matching regression (hard-titles.bib, offline)'
     for (const r of results) tally[r.outcome] = (tally[r.outcome] ?? 0) + 1
     console.log(tally)
   }
+
+  it('no two entries are merged as duplicates (every entry here is a distinct work)', () => {
+    expect(parsed.entries.filter(e => dupOf.has(e.rowId)).map(e => `${e.citeKey} -> ${dupOf.get(e.rowId)}`)).toEqual([])
+  })
 
   it('every entry was recorded with the query the app sends today (else re-record)', () => {
     const doi = (d: string | null) => (d ? d.trim().toLowerCase() : null)

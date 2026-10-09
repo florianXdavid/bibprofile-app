@@ -55,9 +55,22 @@ describe('classifyDoiMatch (Fix A2 + A3b)', () => {
 // the multi-signal chooseTitleMatch — see test/matchScore.test.ts.
 
 describe('dedup (Fix 6)', () => {
-  it('keys by DOI, else normalised title', () => {
+  it('keys by DOI, else normalised title + year + first-author surname (v1.4.1 hotfix)', () => {
     expect(dedupKey(entry({ doi: '10.1038/nature03721' }))).toBe('doi:10.1038/nature03721')
-    expect(dedupKey(entry({ doi: null, title: 'Grid Cells!', titleForSearch: 'Grid Cells!' }))).toBe('title:grid cells')
+    expect(dedupKey(entry({ doi: null, title: 'Grid Cells!', titleForSearch: 'Grid Cells!' }))).toBe('title:grid cells|year:|author:')
+    expect(dedupKey(entry({ title: 'Grid cells', titleForSearch: 'Grid cells', year: 2005, firstAuthor: 'Hafting' }))).toBe('title:grid cells|year:2005|author:hafting')
+  })
+  it('does NOT merge different works that share a title (conference vs journal, book vs article)', () => {
+    const conf = entry({ rowId: 'e0', citeKey: 'he2017mask', title: 'Mask R-CNN', titleForSearch: 'Mask R-CNN', year: 2017, firstAuthor: 'He' })
+    const jour = entry({ rowId: 'e1', citeKey: 'he2020mask', title: 'Mask R-CNN', titleForSearch: 'Mask R-CNN', year: 2020, firstAuthor: 'He' })
+    const art = entry({ rowId: 'e2', citeKey: 'lecun2015', title: 'Deep learning', titleForSearch: 'Deep learning', year: 2015, firstAuthor: 'LeCun' })
+    const book = entry({ rowId: 'e3', citeKey: 'goodfellow2016', title: 'Deep Learning', titleForSearch: 'Deep Learning', year: 2016, firstAuthor: 'Goodfellow' })
+    expect(computeDuplicates([conf, jour, art, book]).size).toBe(0)
+  })
+  it('still merges the same paper cited twice without a DOI', () => {
+    const a = entry({ rowId: 'e0', citeKey: 'hafting2005', title: 'Microstructure of a spatial map', titleForSearch: 'Microstructure of a spatial map', year: 2005, firstAuthor: 'Hafting' })
+    const b = entry({ rowId: 'e1', citeKey: 'Hafting2005b', title: 'Microstructure of a Spatial Map.', titleForSearch: 'Microstructure of a Spatial Map.', year: 2005, firstAuthor: 'Hafting' })
+    expect(computeDuplicates([a, b]).get('e1')).toBe('hafting2005')
   })
   it('maps a duplicate DOI to its canonical cite key', () => {
     const a = entry({ rowId: 'e0', citeKey: 'hafting2005', doi: '10.1038/nature03721' })

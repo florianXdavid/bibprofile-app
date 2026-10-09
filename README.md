@@ -105,9 +105,11 @@ VITE_OPENALEX_MAILTO=you@example.com               # optional polite-pool contac
 
 Per entry, after DOI normalisation (`src/lib/doi.ts`):
 
-1. **De-duplicate** — entries sharing a normalised DOI (or, lacking one, a
-   normalised title) are queried once; duplicates are kept in the table, tagged,
-   and reported as a finding.
+1. **De-duplicate** — entries sharing a normalised DOI (or, lacking one, the same
+   normalised title **and** year **and** first-author surname) are queried once;
+   duplicates are kept in the table, tagged, and reported as a finding. A shared
+   title alone is not enough: conference/journal versions, books/articles and
+   reprints often share one.
 2. **Has a DOI → free singleton lookup** (`/works/doi:…`, free and unlimited).
    A low title similarity (0.65, or 0.75 when the year isn't confirmed), or a
    match score below 0.7, downgrades it to `suspicious` (shown, never auto-rejected).
@@ -154,8 +156,9 @@ They cover retracted papers, books vs. articles with the same title,
 preprint/proceedings/journal versions, republished classics, non-English titles,
 generic titles and fabricated titles. Each carries its correct OpenAlex record
 (via DOI or ID). `hard-titles.test.ts` replays recorded OpenAlex responses
-**offline** on every `npm test`: a confident match must never be the wrong record
-(currently 0), and recall can't drop below a floor (currently 90 of 101). Re-recording is opt-in, goes through the shared
+**offline** on every `npm test`, through the real duplicate step: a confident match
+must never be the wrong record (currently 0), and recall can't drop below a floor
+(currently 90 of 101). Re-recording is opt-in, goes through the shared
 pool, and only re-fetches changed entries (see `test/regression/record.test.ts`).
 
 ## OpenAlex fields captured
@@ -196,7 +199,7 @@ styles).
 
 **Copy summary** produces a one-paragraph plain-text description for a methods
 section. The **Table** tab has **Export CSV** (the current filtered + sorted view,
-UTF-8 with BOM for Excel), and the **Cleaned .bib** tab has **View raw** (the cleaned
+UTF-8 with BOM for Excel, with a "Duplicate of" column), and the **Cleaned .bib** tab has **View raw** (the cleaned
 file shown in-page). The old JSON export was removed in v1.3.
 
 ## Missing citations
@@ -336,7 +339,7 @@ test/                    # vitest unit tests (pure functions; no network except 
 
 ## Testing
 
-`npm test` runs **183 tests** (plus 1 skipped: the opt-in regression recorder). Highlights: the v1.4.1
+`npm test` runs **186 tests** (plus 1 skipped: the opt-in regression recorder). Highlights: the v1.4.1
 match-score signals and the hard-titles regression (offline); parsing/DOI/title-clean/similarity
 regressions; every report statistic on fixtures (median/IQR year, top-venue
 share, OA %, self-citation matching, shape patterns + min-n floor, retraction

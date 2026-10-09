@@ -741,6 +741,18 @@ Goal: never attach the wrong record, and show an honest confidence.
   replaced. One titleClean test now expects the trailing `?` to be dropped from the
   query.
 
+**v1.4.1 hotfix — duplicate detection.**
+- **Bug (since W1):** entries without a DOI were de-duplicated by title alone, so
+  different works sharing a title were merged and one record was copied onto the
+  other. Examples: conference vs journal versions, a book vs an article ("Deep
+  learning"), an original vs its reprint. On the hard-titles set that was 11 wrong
+  rows.
+- **Fix:** the duplicate key also needs the same year and first-author surname.
+- **Why the regression missed it:** it scored entries one by one. It now runs the
+  real duplicate step first and checks that no two entries in the set merge. With
+  the old key, 3 tests fail.
+- The CSV export gains a "Duplicate of" column. Tests: 186 (+1 skipped).
+
 > The project-layout and test-count sections below describe the state as of W4.2.
 > For the current layout, see README.md.
 

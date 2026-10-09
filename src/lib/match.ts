@@ -2,8 +2,9 @@
 //
 // Per-entry decision flow:
 //   1. De-duplicate (Fix 6): entries sharing a normalised DOI (or, lacking a
-//      DOI, a normalised title) are queried once; duplicates mirror the result
-//      and are tagged `duplicateOf`. Every original row is kept, in file order.
+//      DOI, the same normalised title AND year AND first-author surname — v1.4.1
+//      hotfix) are queried once; duplicates mirror the result and are tagged
+//      `duplicateOf`. Every original row is kept, in file order.
 //   2. Has a DOI -> FREE singleton /works/doi:. The returned title is scored
 //      against the .bib title; a low score becomes `suspicious` (never an
 //      auto-reject). A DOI that resolves to nothing falls through to (3).
@@ -51,10 +52,17 @@ export function compareYears(bibYear: number | null, work: OpenAlexWork | null):
   return bibYear === oaYear ? 'agree' : 'disagree'
 }
 
+// Without a DOI, a title alone is NOT enough to call two entries the same work:
+// a conference paper and its journal version, a book and an article, or an
+// original and its reprint often share a title (v1.4.1 hotfix — title-only keys
+// merged them and copied one record onto the other). Year and first-author
+// surname must agree too; a missing value only matches another missing value.
 export function dedupKey(entry: BibEntry): string {
   if (entry.doi) return `doi:${entry.doi}`
   const t = normalizeTitle(entry.titleForSearch || entry.title)
-  return t ? `title:${t}` : ''
+  if (!t) return ''
+  const surname = normalizeTitle(entry.firstAuthor ?? '').split(' ').pop() ?? ''
+  return `title:${t}|year:${entry.year ?? ''}|author:${surname}`
 }
 
 export function computeDuplicates(entries: BibEntry[]): Map<string, string> {
