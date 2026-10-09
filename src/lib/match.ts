@@ -7,9 +7,11 @@
 //   2. Has a DOI -> FREE singleton /works/doi:. The returned title is scored
 //      against the .bib title; a low score becomes `suspicious` (never an
 //      auto-reject). A DOI that resolves to nothing falls through to (3).
-//   3. No usable DOI match -> BILLABLE ?search= on the CLEANED title, fuzzy-
-//      matched against the ORIGINAL title. Accepted matches are themselves
-//      screened: below TITLE_SUSPICIOUS_THRESHOLD -> `suspicious` (Fix A3a).
+//   3. No usable DOI match -> BILLABLE ?search= on the CLEANED title. The top
+//      SEARCH_PER_PAGE candidates are scored on several signals (title, first
+//      author, year ±1, venue, type, volume/pages — lib/matchScore.ts, v1.4.1):
+//      confident -> `matched-by-title`; weak or a near-tie -> `uncertain`;
+//      below the floor -> `not-found` (nothing attached).
 //   4. A genuine miss on something that isn't a scholarly work is reclassified
 //      `not-indexable` (A4).
 // Year comparison is tri-state (agree/disagree/unverified); a missing year is
@@ -18,14 +20,14 @@
 import {
   DOI_SUSPICIOUS_THRESHOLD,
   DOI_SUSPICIOUS_THRESHOLD_ON_YEAR_MISMATCH,
+  MATCH_SCORE_FLOOR,
   REQUEST_DELAY_MS,
   SEARCH_CALL_COST_USD,
-  TITLE_MATCH_THRESHOLD,
-  TITLE_SUSPICIOUS_THRESHOLD,
 } from '../config'
 import { lookupByDoi, OpenAlexBudgetError, searchByTitle } from './openalex'
 import { sharedCredential, type Credential } from './credential'
-import { diceCoefficient, normalizeTitle } from './similarity'
+import { normalizeTitle } from './similarity'
+import { chooseTitleMatch, scoreCandidate } from './matchScore'
 import type {
   BibEntry,
   MatchStatus,
@@ -78,11 +80,6 @@ export function classifyDoiMatch(score: number, yearState: YearState): MatchStat
   return score < cutoff ? 'suspicious' : 'matched-by-doi'
 }
 
-// Screen an accepted title match (score already >= TITLE_MATCH_THRESHOLD).
-export function classifyTitleMatch(score: number): MatchStatus {
-  return score < TITLE_SUSPICIOUS_THRESHOLD ? 'suspicious' : 'matched-by-title'
-}
-
 function pendingRow(entry: BibEntry): ResultRow {
   return {
     rowId: entry.rowId,
@@ -93,6 +90,7 @@ function pendingRow(entry: BibEntry): ResultRow {
     status: 'pending',
     openalex: null,
     matchScore: null,
+    matchSignals: null,
     yearState: 'unverified',
     duplicateOf: null,
     error: null,
@@ -124,18 +122,6 @@ export function buildRows(parsed: ParseResult): ResultRow[] {
   }
   rows.sort((a, b) => a.sourceOffset - b.sourceOffset)
   return rows
-}
-
-function bestTitleMatch(
-  bibTitle: string,
-  candidates: OpenAlexWork[],
-): { work: OpenAlexWork; score: number } | null {
-  let best: { work: OpenAlexWork; score: number } | null = null
-  for (const c of candidates) {
-    const score = diceCoefficient(bibTitle, c.displayName)
-    if (!best || score > best.score) best = { work: c, score }
-  }
-  return best && best.score >= TITLE_MATCH_THRESHOLD ? best : null
 }
 
 // --- Orchestration ---------------------------------------------------------
@@ -190,14 +176,13 @@ export async function runMatching(
       row.error = res.error
       return
     }
-    const best = bestTitleMatch(entry.title, res.candidates)
-    if (best) {
-      row.openalex = best.work
-      row.matchScore = best.score
-      row.yearState = compareYears(entry.year, best.work)
-      row.status = classifyTitleMatch(best.score) // A3a: screen low title matches
-    } else {
-      row.status = 'not-found'
+    const d = chooseTitleMatch(entry, res.candidates) // v1.4.1 multi-signal
+    row.status = d.status
+    if (d.work && d.signals) {
+      row.openalex = d.work
+      row.matchScore = d.signals.score
+      row.matchSignals = d.signals
+      row.yearState = compareYears(entry.year, d.work)
     }
   }
 
@@ -212,11 +197,15 @@ export async function runMatching(
         const res = await lookupByDoi(entry.doi, cred)
         if (res.kind === 'ok') {
           const ys = compareYears(entry.year, res.work)
-          const score = diceCoefficient(entry.title, res.work.displayName)
+          const sig = scoreCandidate(entry, res.work) // v1.4.1: real composite score
           row.openalex = res.work
-          row.matchScore = score
+          row.matchScore = sig.score
+          row.matchSignals = sig
           row.yearState = ys
-          row.status = classifyDoiMatch(score, ys)
+          // Title rule as before (now retraction-prefix aware), plus: a DOI whose
+          // record disagrees on several signals at once is flagged too.
+          row.status = classifyDoiMatch(sig.title, ys)
+          if (row.status === 'matched-by-doi' && sig.score < MATCH_SCORE_FLOOR) row.status = 'suspicious'
         } else if (res.kind === 'not-found') {
           await sleep(REQUEST_DELAY_MS)
           onProgress({ stage: 'title', label: `DOI missed, searching title — ${entry.citeKey}`, done, total, searchCalls })
@@ -246,6 +235,7 @@ export async function runMatching(
         dr.status = row.status
         dr.openalex = row.openalex
         dr.matchScore = row.matchScore
+        dr.matchSignals = row.matchSignals
         dr.yearState = row.yearState
         dr.error = row.error
       }
@@ -269,6 +259,7 @@ export function summarize(rows: ResultRow[], searchCalls: number): MatchSummary 
     matchedByDoi: count('matched-by-doi'),
     matchedByTitle: count('matched-by-title'),
     suspicious: count('suspicious'),
+    uncertain: count('uncertain'),
     notFound: count('not-found'),
     notIndexable: count('not-indexable'),
     errored: count('error'),

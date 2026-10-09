@@ -100,7 +100,7 @@ a { color: var(--accent); }
 .err-text { color: var(--bad); }
 
 /* New statuses (Fix 5 / Fix 8) */
-.badge.suspicious { background: var(--warn-bg); color: #8a5a00; border-color: #e6c200; }
+.badge.suspicious, .badge.uncertain { background: var(--warn-bg); color: #8a5a00; border-color: #e6c200; }
 .badge.not-indexable { background: #eef1f4; color: #46566b; }
 .dup { color: var(--muted); font-size: 0.75rem; font-style: italic; }
 

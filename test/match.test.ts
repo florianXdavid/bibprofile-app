@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  classifyDoiMatch, classifyTitleMatch, compareYears,
+  classifyDoiMatch, compareYears,
   dedupKey, computeDuplicates, buildRows,
 } from '../src/lib/match'
 import { parseBib } from '../src/lib/parseBib'
@@ -10,7 +10,8 @@ function entry(over: Partial<BibEntry>): BibEntry {
   return {
     rowId: 'e0', sourceOffset: 0, citeKey: 'k0', entryType: 'article',
     title: 'T', titleForSearch: 'T', authors: '', year: null, venue: '',
-    doiRaw: null, doi: null, raw: '', likelyNotIndexable: false, ...over,
+    doiRaw: null, doi: null, firstAuthor: '', volume: '', pages: '', titleRetracted: false,
+    raw: '', likelyNotIndexable: false, ...over,
   }
 }
 function work(over: Partial<OpenAlexWork>): OpenAlexWork {
@@ -50,15 +51,8 @@ describe('classifyDoiMatch (Fix A2 + A3b)', () => {
   })
 })
 
-describe('classifyTitleMatch (Fix A3a)', () => {
-  it('flags an accepted-but-weak 0.83 title match as suspicious', () => {
-    expect(classifyTitleMatch(0.83)).toBe('suspicious')
-  })
-  it('trusts a strong title match', () => {
-    expect(classifyTitleMatch(0.85)).toBe('matched-by-title')
-    expect(classifyTitleMatch(0.95)).toBe('matched-by-title')
-  })
-})
+// v1.4.1: classifyTitleMatch (title-only, `suspicious` below 0.85) was replaced by
+// the multi-signal chooseTitleMatch — see test/matchScore.test.ts.
 
 describe('dedup (Fix 6)', () => {
   it('keys by DOI, else normalised title', () => {

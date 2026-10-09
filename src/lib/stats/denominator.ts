@@ -6,7 +6,7 @@
 // The four non-negotiable rules (see README "Denominator rules"):
 //   1. Duplicates count once. Exclude rows carrying `duplicateOf`; keep the
 //      canonical entry only. A paper cited four times is one work.
-//   2. `suspicious` is INCLUDED, but tracked so a card can say "3 flagged as
+//   2. `suspicious` (and, v1.4.1, `uncertain`) is INCLUDED, but tracked so a card can say "3 flagged as
 //      uncertain". Excluding it hides data; including it silently is dishonest.
 //   3. `not-indexable` is EXCLUDED from statistics and reported separately.
 //   4. Every card reports its OWN n — different fields are missing on different
@@ -26,7 +26,7 @@ export interface AnalysisWork {
   citeKey: string
   title: string // .bib title, for "your oldest reference is …"
   bibYear: number | null
-  suspicious: boolean // status was `suspicious` (included, but flagged)
+  suspicious: boolean // status was `suspicious` or `uncertain` (included, but flagged)
   work: OpenAlexWork
 }
 
@@ -60,6 +60,7 @@ const MATCHED: ReadonlySet<MatchStatus> = new Set<MatchStatus>([
   'matched-by-doi',
   'matched-by-title',
   'suspicious',
+  'uncertain',
 ])
 
 // Apply rules 1–3 to the full row set, producing the base cohort every card
@@ -90,7 +91,7 @@ export function buildCohort(rows: ResultRow[]): Cohort {
           citeKey: r.citeKey,
           title: r.title,
           bibYear: r.bibYear,
-          suspicious: r.status === 'suspicious',
+          suspicious: r.status === 'suspicious' || r.status === 'uncertain',
           work: r.openalex,
         })
       } else {

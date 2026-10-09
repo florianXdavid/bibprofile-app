@@ -1,0 +1,759 @@
+% BibProfile v1.4.1 — title-matching regression set ("hard" entries).
+%
+% None of these entries has a `doi` field, so every one goes through the title
+% search + multi-signal scoring path. Ground truth lives in custom fields that
+% BibProfile itself ignores:
+%   expectdoi = {…}  the correct record is the OpenAlex work at this DOI
+%                    (resolved to its OpenAlex ID when the fixture is recorded)
+%   expectid  = {W…} the correct OpenAlex ID, set by hand after review (no usable
+%                    DOI); `W1 | W2` = OpenAlex holds the same work twice, either is right.
+%                    The reason is recorded in `note`.
+%   expectnot = {…}  a DOI this entry must NEVER be confidently matched to
+%   expect    = {none}   no confident match is acceptable (fabricated entries)
+%   hardcase  = {…}  category: retracted | book-article | preprint-proceedings |
+%                    republished | non-english | generic | negative
+%
+% Rule checked on every test run: a confident `matched-by-title` must never be
+% the wrong record. Being `uncertain` or `not-found` on a hard entry is allowed
+% and counted (recall), not failed.
+
+% ---------------------------------------------------------------- retracted
+@article{wakefield1998,
+  title = {RETRACTED: Ileal-lymphoid-nodular hyperplasia, non-specific colitis, and pervasive developmental disorder in children},
+  author = {Wakefield, A. J. and Murch, S. H. and Anthony, A. and Linnell, J. and Casson, D. M. and Malik, M.},
+  journal = {The Lancet}, year = {1998}, volume = {351}, number = {9103}, pages = {637--641},
+  expectdoi = {10.1016/S0140-6736(97)11096-0}, hardcase = {retracted}
+}
+@article{seralini2012,
+  title = {Long term toxicity of a Roundup herbicide and a Roundup-tolerant genetically modified maize},
+  author = {S{\'e}ralini, Gilles-Eric and Clair, Emilie and Mesnage, Robin and Gress, Steeve},
+  journal = {Food and Chemical Toxicology}, year = {2012}, volume = {50}, number = {11}, pages = {4221--4231},
+  expectdoi = {10.1016/j.fct.2012.08.005}, hardcase = {retracted}
+}
+@article{obokata2014a,
+  title = {Retracted article: Stimulus-triggered fate conversion of somatic cells into pluripotency},
+  author = {Obokata, Haruko and Wakayama, Teruhiko and Sasai, Yoshiki},
+  journal = {Nature}, year = {2014}, volume = {505}, number = {7485}, pages = {641--647},
+  expectdoi = {10.1038/nature12968}, hardcase = {retracted}
+}
+@article{obokata2014b,
+  title = {Bidirectional developmental potential in reprogrammed cells with acquired pluripotency},
+  author = {Obokata, Haruko and Sasai, Yoshiki and Niwa, Hitoshi},
+  journal = {Nature}, year = {2014}, volume = {505}, number = {7485}, pages = {676--680},
+  expectdoi = {10.1038/nature12969}, hardcase = {retracted}
+}
+@article{mehra2020lancet,
+  title = {RETRACTED: Hydroxychloroquine or chloroquine with or without a macrolide for treatment of COVID-19: a multinational registry analysis},
+  author = {Mehra, Mandeep R. and Desai, Sapan S. and Ruschitzka, Frank and Patel, Amit N.},
+  journal = {The Lancet}, year = {2020},
+  expectdoi = {10.1016/S0140-6736(20)31180-6}, hardcase = {retracted}
+}
+@article{mehra2020nejm,
+  title = {Cardiovascular Disease, Drug Therapy, and Mortality in Covid-19},
+  author = {Mehra, Mandeep R. and Desai, Sapan S. and Kuy, SreyRam and Henry, Timothy D. and Patel, Amit N.},
+  journal = {New England Journal of Medicine}, year = {2020}, volume = {382}, number = {25}, pages = {e102},
+  expectdoi = {10.1056/NEJMoa2007621}, hardcase = {retracted}
+}
+@article{hwang2004,
+  title = {Evidence of a pluripotent human embryonic stem cell line derived from a cloned blastocyst},
+  author = {Hwang, Woo Suk and Ryu, Young June and Park, Jong Hyuk},
+  journal = {Science}, year = {2004}, volume = {303}, number = {5664}, pages = {1669--1674},
+  expectdoi = {10.1126/science.1094515}, hardcase = {retracted}
+}
+@article{lacour2014,
+  title = {When contact changes minds: An experiment on transmission of support for gay equality},
+  author = {LaCour, Michael J. and Green, Donald P.},
+  journal = {Science}, year = {2014}, volume = {346}, number = {6215}, pages = {1366--1369},
+  expectdoi = {10.1126/science.1256151}, hardcase = {retracted}
+}
+@article{stapel2011,
+  title = {Coping with chaos: How disordered contexts promote stereotyping and discrimination},
+  author = {Stapel, Diederik A. and Lindenberg, Siegwart},
+  journal = {Science}, year = {2011}, volume = {332}, number = {6026}, pages = {251--253},
+  expectdoi = {10.1126/science.1201068}, hardcase = {retracted}
+}
+@article{potti2006,
+  title = {Genomic signatures to guide the use of chemotherapeutics},
+  author = {Potti, Anil and Dressman, Holly K. and Bild, Andrea and Nevins, Joseph R.},
+  journal = {Nature Medicine}, year = {2006}, volume = {12}, number = {11}, pages = {1294--1300},
+  expectdoi = {10.1038/nm1491}, hardcase = {retracted}
+}
+@article{snider2020,
+  title = {Room-temperature superconductivity in a carbonaceous sulfur hydride},
+  author = {Snider, Elliot and Dasenbrock-Gammon, Nathan and Dias, Ranga P.},
+  journal = {Nature}, year = {2020}, volume = {586}, number = {7829}, pages = {373--377},
+  expectdoi = {10.1038/s41586-020-2801-z}, hardcase = {retracted}
+}
+@article{dasenbrock2023,
+  title = {Evidence of near-ambient superconductivity in a N-doped lutetium hydride},
+  author = {Dasenbrock-Gammon, Nathan and Snider, Elliot and Dias, Ranga P.},
+  journal = {Nature}, year = {2023}, volume = {615}, number = {7951}, pages = {244--250},
+  expectdoi = {10.1038/s41586-023-05742-0}, hardcase = {retracted}
+}
+@article{wolfesimon2011,
+  title = {A bacterium that can grow by using arsenic instead of phosphorus},
+  author = {Wolfe-Simon, Felisa and Blum, Jodi Switzer and Kulp, Thomas R.},
+  journal = {Science}, year = {2011}, volume = {332}, number = {6034}, pages = {1163--1166},
+  expectdoi = {10.1126/science.1197258}, hardcase = {retracted}
+}
+@article{sudbo2005,
+  title = {Non-steroidal anti-inflammatory drugs and the risk of oral cancer: a nested case-control study},
+  author = {Sudb{\o}, Jon and Lee, J. Jack and Lippman, Scott M.},
+  journal = {The Lancet}, year = {2005}, volume = {366}, number = {9494}, pages = {1359--1366},
+  expectdoi = {10.1016/S0140-6736(05)67488-0}, hardcase = {retracted}
+}
+
+% ---------------------------------------------------------------- book vs article
+@article{lecun2015,
+  title = {Deep learning},
+  author = {LeCun, Yann and Bengio, Yoshua and Hinton, Geoffrey},
+  journal = {Nature}, year = {2015}, volume = {521}, number = {7553}, pages = {436--444},
+  expectdoi = {10.1038/nature14539}, hardcase = {book-article}
+}
+@book{goodfellow2016,
+  title = {Deep Learning},
+  author = {Goodfellow, Ian and Bengio, Yoshua and Courville, Aaron},
+  publisher = {MIT Press}, year = {2016},
+  expectnot = {10.1038/nature14539}, hardcase = {book-article}
+}
+@book{bishop2006,
+  title = {Pattern Recognition and Machine Learning},
+  author = {Bishop, Christopher M.},
+  publisher = {Springer}, year = {2006},
+  expectnot = {10.1117/1.2819119}, hardcase = {book-article}
+}
+@book{hastie2009,
+  title = {The Elements of Statistical Learning: Data Mining, Inference, and Prediction},
+  author = {Hastie, Trevor and Tibshirani, Robert and Friedman, Jerome},
+  publisher = {Springer}, year = {2009}, edition = {2},
+  expectdoi = {10.1007/978-0-387-84858-7}, hardcase = {book-article}
+}
+@article{breiman2001,
+  title = {Random Forests},
+  author = {Breiman, Leo},
+  journal = {Machine Learning}, year = {2001}, volume = {45}, number = {1}, pages = {5--32},
+  expectdoi = {10.1023/A:1010933404324}, hardcase = {book-article}
+}
+@article{cortes1995,
+  title = {Support-vector networks},
+  author = {Cortes, Corinna and Vapnik, Vladimir},
+  journal = {Machine Learning}, year = {1995}, volume = {20}, number = {3}, pages = {273--297},
+  expectdoi = {10.1007/BF00994018}, hardcase = {book-article}
+}
+@book{sutton2018,
+  title = {Reinforcement Learning: An Introduction},
+  author = {Sutton, Richard S. and Barto, Andrew G.},
+  publisher = {MIT Press}, year = {2018}, edition = {2},
+  expectnot = {10.1109/TNN.1998.712192}, hardcase = {book-article}
+}
+@book{russell2010,
+  title = {Artificial Intelligence: A Modern Approach},
+  author = {Russell, Stuart and Norvig, Peter},
+  publisher = {Prentice Hall}, year = {2010}, edition = {3},
+  expect = {none}, hardcase = {book-article},
+  note = {candidates are only the 1995 first edition and book reviews; no record of the 3rd edition}
+}
+@book{kuhn1962,
+  title = {The Structure of Scientific Revolutions},
+  author = {Kuhn, Thomas S.},
+  publisher = {University of Chicago Press}, year = {1962},
+  expectid = {W2753533763 | W2752443224}, hardcase = {book-article},
+  note = {OpenAlex holds the book twice (1963, authored by Kuhn, mis-filed under Physics Today / American Journal of Physics)}
+}
+@book{kahneman2011,
+  title = {Thinking, Fast and Slow},
+  author = {Kahneman, Daniel},
+  publisher = {Farrar, Straus and Giroux}, year = {2011},
+  expectid = {W2752099845}, hardcase = {book-article},
+  note = {the book's record (2011, Kahneman, typed article by OpenAlex)}
+}
+@book{cover2006,
+  title = {Elements of Information Theory},
+  author = {Cover, Thomas M. and Thomas, Joy A.},
+  publisher = {Wiley}, year = {2006}, edition = {2},
+  expectdoi = {10.1002/047174882X}, hardcase = {book-article}
+}
+@book{boyd2004,
+  title = {Convex Optimization},
+  author = {Boyd, Stephen and Vandenberghe, Lieven},
+  publisher = {Cambridge University Press}, year = {2004},
+  expectdoi = {10.1017/CBO9780511804441}, hardcase = {book-article}
+}
+@book{murphy2012,
+  title = {Machine Learning: A Probabilistic Perspective},
+  author = {Murphy, Kevin P.},
+  publisher = {MIT Press}, year = {2012},
+  expectid = {W1503398984}, hardcase = {book-article},
+  note = {the book's record (2012, Murphy, typed article by OpenAlex)}
+}
+@book{dawkins1976,
+  title = {The Selfish Gene},
+  author = {Dawkins, Richard},
+  publisher = {Oxford University Press}, year = {1976},
+  expectid = {W2624262714}, hardcase = {book-article},
+  note = {the 1976 book record (not the 2017 Macat edition)}
+}
+@book{nielsen2010,
+  title = {Quantum Computation and Quantum Information},
+  author = {Nielsen, Michael A. and Chuang, Isaac L.},
+  publisher = {Cambridge University Press}, year = {2010},
+  expectdoi = {10.1017/CBO9780511976667}, hardcase = {book-article}
+}
+@book{press2007,
+  title = {Numerical Recipes: The Art of Scientific Computing},
+  author = {Press, William H. and Teukolsky, Saul A. and Vetterling, William T. and Flannery, Brian P.},
+  publisher = {Cambridge University Press}, year = {2007}, edition = {3},
+  expect = {none}, hardcase = {book-article},
+  note = {candidates are only 1987 first-edition records and journal book reviews; no record of the 3rd edition}
+}
+
+% ---------------------------------------------------------------- preprint / proceedings / journal versions
+@inproceedings{he2016cvpr,
+  title = {Deep Residual Learning for Image Recognition},
+  author = {He, Kaiming and Zhang, Xiangyu and Ren, Shaoqing and Sun, Jian},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year = {2016}, pages = {770--778},
+  expectdoi = {10.1109/CVPR.2016.90}, hardcase = {preprint-proceedings}
+}
+@article{he2015arxiv,
+  title = {Deep Residual Learning for Image Recognition},
+  author = {He, Kaiming and Zhang, Xiangyu and Ren, Shaoqing and Sun, Jian},
+  journal = {arXiv preprint arXiv:1512.03385}, year = {2015},
+  expectdoi = {10.48550/arXiv.1512.03385}, hardcase = {preprint-proceedings}
+}
+@article{kingma2014,
+  title = {Adam: A Method for Stochastic Optimization},
+  author = {Kingma, Diederik P. and Ba, Jimmy},
+  journal = {arXiv preprint arXiv:1412.6980}, year = {2014},
+  expectdoi = {10.48550/arXiv.1412.6980}, hardcase = {preprint-proceedings}
+}
+@article{ioffe2015,
+  title = {Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift},
+  author = {Ioffe, Sergey and Szegedy, Christian},
+  journal = {arXiv preprint arXiv:1502.03167}, year = {2015},
+  expectdoi = {10.48550/arXiv.1502.03167}, hardcase = {preprint-proceedings}
+}
+@inproceedings{goodfellow2014nips,
+  title = {Generative Adversarial Nets},
+  author = {Goodfellow, Ian and Pouget-Abadie, Jean and Mirza, Mehdi and Xu, Bing},
+  booktitle = {Advances in Neural Information Processing Systems}, volume = {27}, year = {2014},
+  expectnot = {10.1145/3422622}, hardcase = {preprint-proceedings}
+}
+@article{goodfellow2020cacm,
+  title = {Generative adversarial networks},
+  author = {Goodfellow, Ian and Pouget-Abadie, Jean and Mirza, Mehdi and Xu, Bing},
+  journal = {Communications of the ACM}, year = {2020}, volume = {63}, number = {11}, pages = {139--144},
+  expectdoi = {10.1145/3422622}, hardcase = {preprint-proceedings}
+}
+@inproceedings{devlin2019,
+  title = {{BERT}: Pre-training of Deep Bidirectional Transformers for Language Understanding},
+  author = {Devlin, Jacob and Chang, Ming-Wei and Lee, Kenton and Toutanova, Kristina},
+  booktitle = {Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics (NAACL-HLT)},
+  year = {2019}, pages = {4171--4186},
+  expectdoi = {10.18653/v1/N19-1423}, hardcase = {preprint-proceedings}
+}
+@article{devlin2018arxiv,
+  title = {{BERT}: Pre-training of Deep Bidirectional Transformers for Language Understanding},
+  author = {Devlin, Jacob and Chang, Ming-Wei and Lee, Kenton and Toutanova, Kristina},
+  journal = {arXiv preprint arXiv:1810.04805}, year = {2018},
+  expectid = {W2963341956}, hardcase = {preprint-proceedings},
+  note = {OpenAlex resolves the arXiv DOI 10.48550/arXiv.1810.04805 to an unrelated record; the BERT preprint is merged into this single BERT record}
+}
+@inproceedings{ronneberger2015,
+  title = {U-Net: Convolutional Networks for Biomedical Image Segmentation},
+  author = {Ronneberger, Olaf and Fischer, Philipp and Brox, Thomas},
+  booktitle = {Medical Image Computing and Computer-Assisted Intervention (MICCAI)},
+  year = {2015}, pages = {234--241},
+  expectdoi = {10.1007/978-3-319-24574-4_28}, hardcase = {preprint-proceedings}
+}
+@article{krizhevsky2017cacm,
+  title = {ImageNet classification with deep convolutional neural networks},
+  author = {Krizhevsky, Alex and Sutskever, Ilya and Hinton, Geoffrey E.},
+  journal = {Communications of the ACM}, year = {2017}, volume = {60}, number = {6}, pages = {84--90},
+  expectdoi = {10.1145/3065386}, hardcase = {preprint-proceedings}
+}
+@inproceedings{krizhevsky2012nips,
+  title = {ImageNet Classification with Deep Convolutional Neural Networks},
+  author = {Krizhevsky, Alex and Sutskever, Ilya and Hinton, Geoffrey E.},
+  booktitle = {Advances in Neural Information Processing Systems}, volume = {25}, year = {2012}, pages = {1097--1105},
+  expectnot = {10.1145/3065386}, hardcase = {preprint-proceedings}
+}
+@inproceedings{long2015cvpr,
+  title = {Fully Convolutional Networks for Semantic Segmentation},
+  author = {Long, Jonathan and Shelhamer, Evan and Darrell, Trevor},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year = {2015}, pages = {3431--3440},
+  expectdoi = {10.1109/CVPR.2015.7298965}, hardcase = {preprint-proceedings}
+}
+@article{shelhamer2017,
+  title = {Fully Convolutional Networks for Semantic Segmentation},
+  author = {Shelhamer, Evan and Long, Jonathan and Darrell, Trevor},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence}, year = {2017},
+  volume = {39}, number = {4}, pages = {640--651},
+  expectdoi = {10.1109/TPAMI.2016.2572683}, hardcase = {preprint-proceedings}
+}
+@inproceedings{he2017mask,
+  title = {Mask {R-CNN}},
+  author = {He, Kaiming and Gkioxari, Georgia and Doll{\'a}r, Piotr and Girshick, Ross},
+  booktitle = {Proceedings of the IEEE International Conference on Computer Vision (ICCV)},
+  year = {2017}, pages = {2961--2969},
+  expectdoi = {10.1109/ICCV.2017.322}, hardcase = {preprint-proceedings}
+}
+@article{he2020mask,
+  title = {Mask {R-CNN}},
+  author = {He, Kaiming and Gkioxari, Georgia and Doll{\'a}r, Piotr and Girshick, Ross},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence}, year = {2020},
+  volume = {42}, number = {2}, pages = {386--397},
+  expectdoi = {10.1109/TPAMI.2018.2844175}, hardcase = {preprint-proceedings}
+}
+@inproceedings{lin2017focal,
+  title = {Focal Loss for Dense Object Detection},
+  author = {Lin, Tsung-Yi and Goyal, Priya and Girshick, Ross and He, Kaiming and Doll{\'a}r, Piotr},
+  booktitle = {Proceedings of the IEEE International Conference on Computer Vision (ICCV)},
+  year = {2017}, pages = {2980--2988},
+  expectdoi = {10.1109/ICCV.2017.324}, hardcase = {preprint-proceedings}
+}
+@article{lin2020focal,
+  title = {Focal Loss for Dense Object Detection},
+  author = {Lin, Tsung-Yi and Goyal, Priya and Girshick, Ross and He, Kaiming and Doll{\'a}r, Piotr},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence}, year = {2020},
+  volume = {42}, number = {2}, pages = {318--327},
+  expectdoi = {10.1109/TPAMI.2018.2858826}, hardcase = {preprint-proceedings}
+}
+@inproceedings{hu2018se,
+  title = {Squeeze-and-Excitation Networks},
+  author = {Hu, Jie and Shen, Li and Sun, Gang},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year = {2018}, pages = {7132--7141},
+  expectdoi = {10.1109/CVPR.2018.00745}, hardcase = {preprint-proceedings}
+}
+@article{hu2020se,
+  title = {Squeeze-and-Excitation Networks},
+  author = {Hu, Jie and Shen, Li and Albanie, Samuel and Sun, Gang and Wu, Enhua},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence}, year = {2020},
+  volume = {42}, number = {8}, pages = {2011--2023},
+  expectdoi = {10.1109/TPAMI.2019.2913372}, hardcase = {preprint-proceedings}
+}
+@article{ren2017,
+  title = {Faster {R-CNN}: Towards Real-Time Object Detection with Region Proposal Networks},
+  author = {Ren, Shaoqing and He, Kaiming and Girshick, Ross and Sun, Jian},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence}, year = {2017},
+  volume = {39}, number = {6}, pages = {1137--1149},
+  expectdoi = {10.1109/TPAMI.2016.2577031}, hardcase = {preprint-proceedings}
+}
+@inproceedings{ren2015nips,
+  title = {Faster {R-CNN}: Towards Real-Time Object Detection with Region Proposal Networks},
+  author = {Ren, Shaoqing and He, Kaiming and Girshick, Ross and Sun, Jian},
+  booktitle = {Advances in Neural Information Processing Systems}, volume = {28}, year = {2015},
+  expectnot = {10.1109/TPAMI.2016.2577031}, hardcase = {preprint-proceedings}
+}
+@inproceedings{vaswani2017,
+  title = {Attention Is All You Need},
+  author = {Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and Uszkoreit, Jakob},
+  booktitle = {Advances in Neural Information Processing Systems}, volume = {30}, year = {2017},
+  expectid = {W2626778328}, hardcase = {preprint-proceedings},
+  note = {the only record of the paper (OpenAlex dates it 2025, typed preprint)}
+}
+@article{mikolov2013,
+  title = {Efficient Estimation of Word Representations in Vector Space},
+  author = {Mikolov, Tomas and Chen, Kai and Corrado, Greg and Dean, Jeffrey},
+  journal = {arXiv preprint arXiv:1301.3781}, year = {2013},
+  expectdoi = {10.48550/arXiv.1301.3781}, hardcase = {preprint-proceedings}
+}
+@article{srivastava2014,
+  title = {Dropout: A Simple Way to Prevent Neural Networks from Overfitting},
+  author = {Srivastava, Nitish and Hinton, Geoffrey and Krizhevsky, Alex and Sutskever, Ilya and Salakhutdinov, Ruslan},
+  journal = {Journal of Machine Learning Research}, year = {2014}, volume = {15}, number = {56}, pages = {1929--1958},
+  expectid = {W2095705004}, hardcase = {preprint-proceedings},
+  note = {JMLR has no DOIs; the 2014 record by Srivastava et al.}
+}
+@article{pedregosa2011,
+  title = {Scikit-learn: Machine Learning in {P}ython},
+  author = {Pedregosa, Fabian and Varoquaux, Ga{\"e}l and Gramfort, Alexandre and Michel, Vincent},
+  journal = {Journal of Machine Learning Research}, year = {2011}, volume = {12}, pages = {2825--2830},
+  expectid = {W2997591727 | W2101234009}, hardcase = {preprint-proceedings},
+  note = {two records of the same paper: the JMLR 2011 record, and the merged canonical record that carries the arXiv DOI}
+}
+@inproceedings{szegedy2015,
+  title = {Going Deeper with Convolutions},
+  author = {Szegedy, Christian and Liu, Wei and Jia, Yangqing and Sermanet, Pierre},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year = {2015}, pages = {1--9},
+  expectdoi = {10.1109/CVPR.2015.7298594}, hardcase = {preprint-proceedings}
+}
+@inproceedings{huang2017dense,
+  title = {Densely Connected Convolutional Networks},
+  author = {Huang, Gao and Liu, Zhuang and van der Maaten, Laurens and Weinberger, Kilian Q.},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year = {2017}, pages = {4700--4708},
+  expectdoi = {10.1109/CVPR.2017.243}, hardcase = {preprint-proceedings}
+}
+@inproceedings{redmon2016,
+  title = {You Only Look Once: Unified, Real-Time Object Detection},
+  author = {Redmon, Joseph and Divvala, Santosh and Girshick, Ross and Farhadi, Ali},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year = {2016}, pages = {779--788},
+  expectdoi = {10.1109/CVPR.2016.91}, hardcase = {preprint-proceedings}
+}
+@inproceedings{he2016identity,
+  title = {Identity Mappings in Deep Residual Networks},
+  author = {He, Kaiming and Zhang, Xiangyu and Ren, Shaoqing and Sun, Jian},
+  booktitle = {European Conference on Computer Vision (ECCV)},
+  year = {2016}, pages = {630--645},
+  expectdoi = {10.1007/978-3-319-46493-0_38}, hardcase = {preprint-proceedings}
+}
+@inproceedings{deng2009,
+  title = {{ImageNet}: A large-scale hierarchical image database},
+  author = {Deng, Jia and Dong, Wei and Socher, Richard and Li, Li-Jia and Li, Kai and Fei-Fei, Li},
+  booktitle = {2009 IEEE Conference on Computer Vision and Pattern Recognition},
+  year = {2009}, pages = {248--255},
+  expectdoi = {10.1109/CVPR.2009.5206848}, hardcase = {preprint-proceedings}
+}
+@inproceedings{dalal2005,
+  title = {Histograms of Oriented Gradients for Human Detection},
+  author = {Dalal, Navneet and Triggs, Bill},
+  booktitle = {IEEE Computer Society Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year = {2005}, volume = {1}, pages = {886--893},
+  expectdoi = {10.1109/CVPR.2005.177}, hardcase = {preprint-proceedings}
+}
+
+% ---------------------------------------------------------------- republished classics
+@article{shannon1948,
+  title = {A Mathematical Theory of Communication},
+  author = {Shannon, C. E.},
+  journal = {Bell System Technical Journal}, year = {1948}, volume = {27}, number = {3}, pages = {379--423},
+  expectdoi = {10.1002/j.1538-7305.1948.tb01338.x}, hardcase = {republished}
+}
+@article{shannon2001,
+  title = {A Mathematical Theory of Communication},
+  author = {Shannon, C. E.},
+  journal = {ACM SIGMOBILE Mobile Computing and Communications Review}, year = {2001},
+  volume = {5}, number = {1}, pages = {3--55},
+  expectdoi = {10.1145/584091.584093}, hardcase = {republished}
+}
+@article{turing1950,
+  title = {Computing Machinery and Intelligence},
+  author = {Turing, A. M.},
+  journal = {Mind}, year = {1950}, volume = {59}, number = {236}, pages = {433--460},
+  expectdoi = {10.1093/mind/LIX.236.433}, hardcase = {republished}
+}
+@article{turing1936,
+  title = {On Computable Numbers, with an Application to the {E}ntscheidungsproblem},
+  author = {Turing, A. M.},
+  journal = {Proceedings of the London Mathematical Society}, year = {1936}, volume = {s2-42}, number = {1}, pages = {230--265},
+  expectdoi = {10.1112/plms/s2-42.1.230}, hardcase = {republished}
+}
+@article{miller1956,
+  title = {The magical number seven, plus or minus two: Some limits on our capacity for processing information},
+  author = {Miller, George A.},
+  journal = {Psychological Review}, year = {1956}, volume = {63}, number = {2}, pages = {81--97},
+  expectdoi = {10.1037/h0043158}, hardcase = {republished}
+}
+@article{miller1994,
+  title = {The magical number seven, plus or minus two: Some limits on our capacity for processing information},
+  author = {Miller, George A.},
+  journal = {Psychological Review}, year = {1994}, volume = {101}, number = {2}, pages = {343--352},
+  expectdoi = {10.1037/0033-295X.101.2.343}, hardcase = {republished}
+}
+@article{hardin1968,
+  title = {The Tragedy of the Commons},
+  author = {Hardin, Garrett},
+  journal = {Science}, year = {1968}, volume = {162}, number = {3859}, pages = {1243--1248},
+  expectdoi = {10.1126/science.162.3859.1243}, hardcase = {republished}
+}
+@article{milgram1963,
+  title = {Behavioral Study of Obedience},
+  author = {Milgram, Stanley},
+  journal = {The Journal of Abnormal and Social Psychology}, year = {1963}, volume = {67}, number = {4}, pages = {371--378},
+  expectdoi = {10.1037/h0040525}, hardcase = {republished}
+}
+@article{granovetter1973,
+  title = {The Strength of Weak Ties},
+  author = {Granovetter, Mark S.},
+  journal = {American Journal of Sociology}, year = {1973}, volume = {78}, number = {6}, pages = {1360--1380},
+  expectdoi = {10.1086/225469}, hardcase = {republished}
+}
+@article{coase1937,
+  title = {The Nature of the Firm},
+  author = {Coase, R. H.},
+  journal = {Economica}, year = {1937}, volume = {4}, number = {16}, pages = {386--405},
+  expectdoi = {10.1111/j.1468-0335.1937.tb00002.x}, hardcase = {republished}
+}
+@article{kahneman1979,
+  title = {Prospect Theory: An Analysis of Decision under Risk},
+  author = {Kahneman, Daniel and Tversky, Amos},
+  journal = {Econometrica}, year = {1979}, volume = {47}, number = {2}, pages = {263--291},
+  expectdoi = {10.2307/1914185}, hardcase = {republished}
+}
+@article{tversky1974,
+  title = {Judgment under Uncertainty: Heuristics and Biases},
+  author = {Tversky, Amos and Kahneman, Daniel},
+  journal = {Science}, year = {1974}, volume = {185}, number = {4157}, pages = {1124--1131},
+  expectdoi = {10.1126/science.185.4157.1124}, hardcase = {republished}
+}
+@article{akerlof1970,
+  title = {The Market for ``Lemons'': Quality Uncertainty and the Market Mechanism},
+  author = {Akerlof, George A.},
+  journal = {The Quarterly Journal of Economics}, year = {1970}, volume = {84}, number = {3}, pages = {488--500},
+  expectdoi = {10.2307/1879431}, hardcase = {republished}
+}
+@article{nash1950,
+  title = {Equilibrium points in n-person games},
+  author = {Nash, John F.},
+  journal = {Proceedings of the National Academy of Sciences}, year = {1950}, volume = {36}, number = {1}, pages = {48--49},
+  expectdoi = {10.1073/pnas.36.1.48}, hardcase = {republished}
+}
+@article{watson1953,
+  title = {Molecular Structure of Nucleic Acids: A Structure for Deoxyribose Nucleic Acid},
+  author = {Watson, J. D. and Crick, F. H. C.},
+  journal = {Nature}, year = {1953}, volume = {171}, number = {4356}, pages = {737--738},
+  expectdoi = {10.1038/171737a0}, hardcase = {republished}
+}
+@article{hodgkin1952,
+  title = {A quantitative description of membrane current and its application to conduction and excitation in nerve},
+  author = {Hodgkin, A. L. and Huxley, A. F.},
+  journal = {The Journal of Physiology}, year = {1952}, volume = {117}, number = {4}, pages = {500--544},
+  expectdoi = {10.1113/jphysiol.1952.sp004764}, hardcase = {republished}
+}
+@article{lowry1951,
+  title = {Protein measurement with the Folin phenol reagent},
+  author = {Lowry, Oliver H. and Rosebrough, Nira J. and Farr, A. Lewis and Randall, Rose J.},
+  journal = {Journal of Biological Chemistry}, year = {1951}, volume = {193}, number = {1}, pages = {265--275},
+  expectdoi = {10.1016/S0021-9258(19)52451-6}, hardcase = {republished}
+}
+@article{epr1935,
+  title = {Can Quantum-Mechanical Description of Physical Reality Be Considered Complete?},
+  author = {Einstein, A. and Podolsky, B. and Rosen, N.},
+  journal = {Physical Review}, year = {1935}, volume = {47}, number = {10}, pages = {777--780},
+  expectdoi = {10.1103/PhysRev.47.777}, hardcase = {republished}
+}
+@article{bell1964,
+  title = {On the {E}instein {P}odolsky {R}osen paradox},
+  author = {Bell, J. S.},
+  journal = {Physics Physique Fizika}, year = {1964}, volume = {1}, number = {3}, pages = {195--200},
+  expectdoi = {10.1103/PhysicsPhysiqueFizika.1.195}, hardcase = {republished}
+}
+
+% ---------------------------------------------------------------- non-English titles
+@article{einstein1905sr,
+  title = {Zur Elektrodynamik bewegter K{\"o}rper},
+  author = {Einstein, A.},
+  journal = {Annalen der Physik}, year = {1905}, volume = {322}, number = {10}, pages = {891--921},
+  expectdoi = {10.1002/andp.19053221004}, hardcase = {non-english}
+}
+@article{einstein1905emc,
+  title = {Ist die Tr{\"a}gheit eines K{\"o}rpers von seinem Energieinhalt abh{\"a}ngig?},
+  author = {Einstein, A.},
+  journal = {Annalen der Physik}, year = {1905}, volume = {323}, number = {13}, pages = {639--641},
+  expectdoi = {10.1002/andp.19053231314}, hardcase = {non-english}
+}
+@article{einstein1905photo,
+  title = {{\"U}ber einen die Erzeugung und Verwandlung des Lichtes betreffenden heuristischen Gesichtspunkt},
+  author = {Einstein, A.},
+  journal = {Annalen der Physik}, year = {1905}, volume = {322}, number = {6}, pages = {132--148},
+  expectdoi = {10.1002/andp.19053220607}, hardcase = {non-english}
+}
+@article{einstein1905sr_en,
+  title = {On the Electrodynamics of Moving Bodies},
+  author = {Einstein, Albert},
+  journal = {Annalen der Physik}, year = {1905}, volume = {17}, pages = {891--921},
+  expectdoi = {10.1002/andp.19053221004}, hardcase = {non-english},
+  note = {translation: English title of the German original; the correct record is the original}
+}
+@article{godel1931,
+  title = {{\"U}ber formal unentscheidbare S{\"a}tze der {P}rincipia {M}athematica und verwandter {S}ysteme {I}},
+  author = {G{\"o}del, Kurt},
+  journal = {Monatshefte f{\"u}r Mathematik und Physik}, year = {1931}, volume = {38}, number = {1}, pages = {173--198},
+  expectdoi = {10.1007/BF01700692}, hardcase = {non-english}
+}
+@article{heisenberg1927,
+  title = {{\"U}ber den anschaulichen Inhalt der quantentheoretischen Kinematik und Mechanik},
+  author = {Heisenberg, W.},
+  journal = {Zeitschrift f{\"u}r Physik}, year = {1927}, volume = {43}, number = {3}, pages = {172--198},
+  expectdoi = {10.1007/BF01397280}, hardcase = {non-english}
+}
+@article{schrodinger1935,
+  title = {Die gegenw{\"a}rtige Situation in der Quantenmechanik},
+  author = {Schr{\"o}dinger, E.},
+  journal = {Die Naturwissenschaften}, year = {1935}, volume = {23}, number = {48}, pages = {807--812},
+  expectdoi = {10.1007/BF01491891}, hardcase = {non-english}
+}
+@article{schrodinger1926,
+  title = {Quantisierung als Eigenwertproblem},
+  author = {Schr{\"o}dinger, E.},
+  journal = {Annalen der Physik}, year = {1926}, volume = {384}, number = {4}, pages = {361--376},
+  expectdoi = {10.1002/andp.19263840404}, hardcase = {non-english}
+}
+@article{planck1901,
+  title = {Ueber das Gesetz der Energieverteilung im Normalspectrum},
+  author = {Planck, Max},
+  journal = {Annalen der Physik}, year = {1901}, volume = {309}, number = {3}, pages = {553--563},
+  expectdoi = {10.1002/andp.19013090310}, hardcase = {non-english}
+}
+@article{debroglie1925,
+  title = {Recherches sur la th{\'e}orie des Quanta},
+  author = {de Broglie, Louis},
+  journal = {Annales de Physique}, year = {1925}, volume = {10}, number = {3}, pages = {22--128},
+  expectdoi = {10.1051/anphys/192510030022}, hardcase = {non-english}
+}
+@article{poincare1890,
+  title = {Sur le probl{\`e}me des trois corps et les {\'e}quations de la dynamique},
+  author = {Poincar{\'e}, H.},
+  journal = {Acta Mathematica}, year = {1890}, volume = {13}, pages = {1--270},
+  expect = {none}, hardcase = {non-english},
+  note = {OpenAlex splits this memoir into separate part records (DOI 10.1007/BF02392506 is its Introduction); there is no single record of the whole memoir}
+}
+@article{cantor1874,
+  title = {Ueber eine Eigenschaft des Inbegriffes aller reellen algebraischen Zahlen},
+  author = {Cantor, Georg},
+  journal = {Journal f{\"u}r die reine und angewandte Mathematik}, year = {1874}, volume = {77}, pages = {258--262},
+  expectdoi = {10.1515/crll.1874.77.258}, hardcase = {non-english}
+}
+
+% ---------------------------------------------------------------- generic / frequently-reused titles
+@article{tibshirani1996,
+  title = {Regression Shrinkage and Selection via the Lasso},
+  author = {Tibshirani, Robert},
+  journal = {Journal of the Royal Statistical Society: Series B (Methodological)}, year = {1996}, volume = {58}, number = {1}, pages = {267--288},
+  expectdoi = {10.1111/j.2517-6161.1996.tb02080.x}, hardcase = {generic}
+}
+@article{benjamini1995,
+  title = {Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing},
+  author = {Benjamini, Yoav and Hochberg, Yosef},
+  journal = {J. R. Stat. Soc. B}, year = {1995}, volume = {57}, number = {1}, pages = {289--300},
+  expectdoi = {10.1111/j.2517-6161.1995.tb02031.x}, hardcase = {generic}
+}
+@article{dempster1977,
+  title = {Maximum Likelihood from Incomplete Data via the {EM} Algorithm},
+  author = {Dempster, A. P. and Laird, N. M. and Rubin, D. B.},
+  journal = {Journal of the Royal Statistical Society: Series B (Methodological)}, year = {1977}, volume = {39}, number = {1}, pages = {1--22},
+  expectdoi = {10.1111/j.2517-6161.1977.tb01600.x}, hardcase = {generic}
+}
+@article{efron1979,
+  title = {Bootstrap Methods: Another Look at the Jackknife},
+  author = {Efron, B.},
+  journal = {The Annals of Statistics}, year = {1979}, volume = {7}, number = {1}, pages = {1--26},
+  expectdoi = {10.1214/aos/1176344552}, hardcase = {generic}
+}
+@article{hochreiter1997,
+  title = {Long Short-Term Memory},
+  author = {Hochreiter, Sepp and Schmidhuber, J{\"u}rgen},
+  journal = {Neural Computation}, year = {1997}, volume = {9}, number = {8}, pages = {1735--1780},
+  expectdoi = {10.1162/neco.1997.9.8.1735}, hardcase = {generic}
+}
+@article{watts1998,
+  title = {Collective dynamics of `small-world' networks},
+  author = {Watts, Duncan J. and Strogatz, Steven H.},
+  journal = {Nature}, year = {1998}, volume = {393}, number = {6684}, pages = {440--442},
+  expectdoi = {10.1038/30918}, hardcase = {generic}
+}
+@article{barabasi1999,
+  title = {Emergence of Scaling in Random Networks},
+  author = {Barab{\'a}si, Albert-L{\'a}szl{\'o} and Albert, R{\'e}ka},
+  journal = {Science}, year = {1999}, volume = {286}, number = {5439}, pages = {509--512},
+  expectdoi = {10.1126/science.286.5439.509}, hardcase = {generic}
+}
+@article{rumelhart1986,
+  title = {Learning representations by back-propagating errors},
+  author = {Rumelhart, David E. and Hinton, Geoffrey E. and Williams, Ronald J.},
+  journal = {Nature}, year = {1986}, volume = {323}, number = {6088}, pages = {533--536},
+  expectdoi = {10.1038/323533a0}, hardcase = {generic}
+}
+@article{metropolis1953,
+  title = {Equation of State Calculations by Fast Computing Machines},
+  author = {Metropolis, Nicholas and Rosenbluth, Arianna W. and Rosenbluth, Marshall N. and Teller, Augusta H. and Teller, Edward},
+  journal = {The Journal of Chemical Physics}, year = {1953}, volume = {21}, number = {6}, pages = {1087--1092},
+  expectdoi = {10.1063/1.1699114}, hardcase = {generic}
+}
+@article{kohn1965,
+  title = {Self-Consistent Equations Including Exchange and Correlation Effects},
+  author = {Kohn, W. and Sham, L. J.},
+  journal = {Phys. Rev.}, year = {1965}, volume = {140}, number = {4A}, pages = {A1133--A1138},
+  expectdoi = {10.1103/PhysRev.140.A1133}, hardcase = {generic}
+}
+@article{perdew1996,
+  title = {Generalized Gradient Approximation Made Simple},
+  author = {Perdew, John P. and Burke, Kieron and Ernzerhof, Matthias},
+  journal = {Phys. Rev. Lett.}, year = {1996}, volume = {77}, number = {18}, pages = {3865--3868},
+  expectdoi = {10.1103/PhysRevLett.77.3865}, hardcase = {generic}
+}
+@article{jumper2021,
+  title = {Highly accurate protein structure prediction with {AlphaFold}},
+  author = {Jumper, John and Evans, Richard and Pritzel, Alexander and Green, Tim},
+  journal = {Nature}, year = {2021}, volume = {596}, number = {7873}, pages = {583--589},
+  expectdoi = {10.1038/s41586-021-03819-2}, hardcase = {generic}
+}
+@article{silver2016,
+  title = {Mastering the game of {Go} with deep neural networks and tree search},
+  author = {Silver, David and Huang, Aja and Maddison, Chris J. and Guez, Arthur},
+  journal = {Nature}, year = {2016}, volume = {529}, number = {7587}, pages = {484--489},
+  expectdoi = {10.1038/nature16961}, hardcase = {generic}
+}
+@article{mnih2015,
+  title = {Human-level control through deep reinforcement learning},
+  author = {Mnih, Volodymyr and Kavukcuoglu, Koray and Silver, David},
+  journal = {Nature}, year = {2015}, volume = {518}, number = {7540}, pages = {529--533},
+  expectdoi = {10.1038/nature14236}, hardcase = {generic}
+}
+@article{newman2003,
+  title = {The Structure and Function of Complex Networks},
+  author = {Newman, M. E. J.},
+  journal = {SIAM Review}, year = {2003}, volume = {45}, number = {2}, pages = {167--256},
+  expectdoi = {10.1137/S003614450342480}, hardcase = {generic}
+}
+@article{albert2002,
+  title = {Statistical mechanics of complex networks},
+  author = {Albert, R{\'e}ka and Barab{\'a}si, Albert-L{\'a}szl{\'o}},
+  journal = {Reviews of Modern Physics}, year = {2002}, volume = {74}, number = {1}, pages = {47--97},
+  expectdoi = {10.1103/RevModPhys.74.47}, hardcase = {generic}
+}
+@article{hinton2006,
+  title = {Reducing the Dimensionality of Data with Neural Networks},
+  author = {Hinton, G. E. and Salakhutdinov, R. R.},
+  journal = {Science}, year = {2006}, volume = {313}, number = {5786}, pages = {504--507},
+  expectdoi = {10.1126/science.1127647}, hardcase = {generic}
+}
+@article{lowe2004,
+  title = {Distinctive Image Features from Scale-Invariant Keypoints},
+  author = {Lowe, David G.},
+  journal = {International Journal of Computer Vision}, year = {2004}, volume = {60}, number = {2}, pages = {91--110},
+  expectdoi = {10.1023/B:VISI.0000029664.99615.94}, hardcase = {generic}
+}
+
+% ---------------------------------------------------------------- negative (fabricated; nothing should match confidently)
+@article{fake_recency,
+  title = {A unified theory of citation recency in neuroscience bibliographies},
+  author = {Doe, Jane},
+  journal = {Journal of Imaginary Results}, year = {2021}, volume = {3}, pages = {1--12},
+  expect = {none}, hardcase = {negative}
+}
+@inproceedings{fake_avocado,
+  title = {Deep learning for predicting the ripeness of avocados from smartphone audio},
+  author = {Nobody, Alex},
+  booktitle = {Proceedings of the Workshop on Unreal Things}, year = {2023},
+  expect = {none}, hardcase = {negative}
+}
+@article{fake_forest,
+  title = {On the convergence of random forests grown on hyperbolic tea leaves},
+  author = {Placeholder, Pat},
+  journal = {Annals of Nonexistent Statistics}, year = {2019},
+  expect = {none}, hardcase = {negative}
+}
+@article{fake_intro,
+  title = {Introduction},
+  author = {Smith, John},
+  journal = {Annual Review of Things That Do Not Exist}, year = {2019}, volume = {1}, pages = {1--3},
+  expect = {none}, hardcase = {negative}
+}
+@article{fake_attention,
+  title = {Attention is all you need for sourdough fermentation},
+  author = {Baker, Bea},
+  journal = {Journal of Fictional Food Science}, year = {2024},
+  expect = {none}, hardcase = {negative}
+}
+@article{fake_dna_review,
+  title = {Molecular structure of nucleic acids revisited: a structure for imaginary acid},
+  author = {Watsonne, Jim},
+  journal = {Nature}, year = {2022},
+  expect = {none}, hardcase = {negative}
+}

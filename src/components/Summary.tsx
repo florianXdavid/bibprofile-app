@@ -6,7 +6,8 @@ export default function Summary({ summary, fileName }: { summary: MatchSummary; 
   const parseable = summary.total - summary.unparseable
 
   const notes: string[] = []
-  if (summary.suspicious) notes.push(`${summary.suspicious} suspicious (low-similarity DOI match)`)
+  if (summary.suspicious) notes.push(`${summary.suspicious} suspicious (DOI record disagrees)`)
+  if (summary.uncertain) notes.push(`${summary.uncertain} uncertain (title match below confidence)`)
   if (summary.notFound) notes.push(`${summary.notFound} not found`)
   if (summary.notIndexable) notes.push(`${summary.notIndexable} not indexable`)
   if (summary.errored) notes.push(`${summary.errored} errored`)

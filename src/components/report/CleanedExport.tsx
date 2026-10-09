@@ -62,7 +62,7 @@ export default function CleanedExport({ rows, sourceText, fileName }: Props) {
       <div className="card-note warn" style={{ marginTop: 4 }}>
         <strong>Suggested fixes — review before use.</strong> This adds missing fields from OpenAlex;
         it never changes cite keys, drops entries, or edits text you already wrote. DOI matches are
-        applied confidently; title matches are applied but flagged; suspicious matches are shown as
+        applied confidently; title matches are applied but flagged; suspicious and uncertain matches are shown as
         suggestions only and are <em>not</em> written to the file. Where a field you wrote <em>differs</em> from OpenAlex, it's
         shown as a review-only suggestion you can accept per field — OpenAlex may differ for legitimate
         reasons (online-first vs print year, venue normalisation, LaTeX in titles), so accept only real fixes.
@@ -93,7 +93,7 @@ export default function CleanedExport({ rows, sourceText, fileName }: Props) {
         <div className="diff-legend">
           <span><span className="diff-tag ok">applied</span> written into the downloaded file</span>
           <span><span className="diff-tag review">review</span> your value differs from OpenAlex — accept per field to write it</span>
-          <span><span className="diff-tag warn">suggested</span> shown to review — not written (suspicious matches)</span>
+          <span><span className="diff-tag warn">suggested</span> shown to review — not written (suspicious or uncertain matches)</span>
         </div>
       )}
       {changed.length === 0 ? (

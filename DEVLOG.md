@@ -695,6 +695,52 @@ the tool, the shared-pool/key model, and credits.
   (`Disallow: /`) so the API host isn't indexed.
 - Test suite: **156 tests** (up from 146).
 
+## v1.4.1 — multi-signal title matching (Oct 2026; part of v1.4)
+
+Goal: never attach the wrong record, and show an honest confidence.
+
+- **`src/lib/matchScore.ts` (pure).** Every title-search candidate (top 5) is scored
+  on title, first-author family name, year ±1, venue, entry type and volume/first
+  page. The score is the weighted mean of the signals present (weights in `config.ts`).
+- **Decision** (`chooseTitleMatch`):
+  - ≥ 0.85 → `matched-by-title`.
+  - 0.7–0.85, or a near-tie (within 0.05) with a different work → **`uncertain`**
+    (new status).
+  - < 0.7 → `not-found`, with nothing attached.
+  - Retraction/erratum notices are dropped.
+  - OpenAlex duplicate records of one work collapse onto the most-cited one.
+- **`uncertain`** behaves like `suspicious`: flagged in report stats, suggestion-only
+  in the cleaned `.bib`. `suspicious` is now DOI-path only. A DOI match also
+  becomes `suspicious` when its score is < 0.7.
+- **Real score.** The table now shows the combined score (DOI and title matches),
+  not the bare title similarity, with a per-signal tooltip.
+- **Retraction prefixes** ("RETRACTED:", "Retracted article:", "[Retracted]") are
+  stripped before comparing and from the search query. The fact is kept as
+  `BibEntry.titleRetracted` for v1.4.2.
+- **Search-query fix.** OpenAlex returned no results for queries with accented
+  letters or `?`, so every non-English title missed (Gödel, Heisenberg, Einstein
+  1905…). The query is now folded to plain letters and `?`/`*` are dropped.
+  Display and scoring still use the original title.
+- **Regression set:** `test/regression/hard-titles.bib`.
+  - 116 entries: retracted papers, books vs. articles, preprint/proceedings/journal
+    versions, republished classics, non-English titles, generic and fabricated
+    titles.
+  - Ground truth is a DOI or a hand-checked OpenAlex ID; each judgement is noted in
+    the entry.
+  - It is replayed **offline** from `hard-titles.fixture.json` on every test run.
+    The opt-in recorder (`record.test.ts`, shared pool, incremental) refreshes it.
+  - The run caught three wrong ground truths, which were fixed: OpenAlex maps BERT's
+    arXiv DOI to an unrelated paper; scikit-learn exists as two records; Poincaré's
+    DOI is only the memoir's "Introduction".
+  - **Result: 0 wrong confident matches.** 90 of the 101 entries with a known
+    correct record are matched confidently (the recall floor); 4 are `uncertain`, 7
+    missed.
+  - The misses are mostly German titles that OpenAlex search doesn't surface. Some
+    are stored with broken characters (`�ber`), so they can't be found by title.
+- Tests: 156 → 183 (+1 skipped recorder). The two `classifyTitleMatch` tests were
+  replaced. One titleClean test now expects the trailing `?` to be dropped from the
+  query.
+
 > The project-layout and test-count sections below describe the state as of W4.2.
 > For the current layout, see README.md.
 

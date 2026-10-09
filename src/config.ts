@@ -38,14 +38,32 @@ export const OPENALEX_MAILTO: string = import.meta.env.VITE_OPENALEX_MAILTO ?? '
 export const REQUEST_DELAY_MS = 220
 // One retry on transient failure (network / 429 / 5xx), then give up.
 export const RETRY_BACKOFF_MS = 900
-// Title-search fuzzy-match acceptance threshold (Dice coefficient, 0..1).
-// A wrong match is worse than no match, so this is deliberately strict.
+// Title-similarity GATE (Dice coefficient, 0..1): a search candidate whose title
+// similarity is below this is never considered. A wrong match is worse than no
+// match, so this is deliberately strict.
 export const TITLE_MATCH_THRESHOLD = 0.7
-// A title match is ACCEPTED at >= TITLE_MATCH_THRESHOLD, but a match below
-// TITLE_SUSPICIOUS_THRESHOLD is flagged `suspicious` (shown, not auto-rejected)
-// rather than trusted as a clean `matched-by-title`. Separate from the DOI
-// threshold; also tuned on few points.
-export const TITLE_SUSPICIOUS_THRESHOLD = 0.85
+
+// --- v1.4.1 multi-signal match score (src/lib/matchScore.ts) ---------------
+// Each candidate is scored on several signals (each 0..1, or skipped when it
+// can't be compared); the score is the weighted mean over the signals present.
+// Title dominates; the others confirm or contradict it.
+export const MATCH_WEIGHTS = {
+  title: 0.5,
+  author: 0.15, // first-author family name
+  year: 0.12, // within ±1
+  venue: 0.08, // journal / booktitle / publisher
+  type: 0.1, // article vs book vs proceedings vs preprint (tells versions apart)
+  biblio: 0.05, // volume and first page, when both sides have them
+} as const
+// Title path: >= CONFIDENT (and no near-tie) -> `matched-by-title`;
+// >= FLOOR -> `uncertain` (shown, flagged, never written to the cleaned .bib);
+// below FLOOR -> `not-found` (nothing attached). DOI path: a DOI match scoring
+// below FLOOR is flagged `suspicious`.
+export const MATCH_CONFIDENT_THRESHOLD = 0.85
+export const MATCH_SCORE_FLOOR = 0.7
+// Two DIFFERENT works whose scores are within this margin are a near-tie (e.g.
+// a book and an article with the same title): the best one is only `uncertain`.
+export const MATCH_AMBIGUITY_MARGIN = 0.05
 // How many candidates to pull back per title search.
 export const SEARCH_PER_PAGE = 5
 

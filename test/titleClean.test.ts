@@ -33,9 +33,11 @@ describe('cleanTitleForSearch — dash/prefix rules (kept)', () => {
     expect(cleanTitleForSearch('Grid cells - a review of the evidence'))
       .toBe('Grid cells - a review of the evidence')
   })
-  it('leaves a colon subtitle (and trailing ?) alone', () => {
+  // v1.4.1: the colon subtitle is still kept, but the trailing `?` is now dropped
+  // from the QUERY (OpenAlex returned no results for queries containing `?`).
+  it('leaves a colon subtitle alone (trailing ? dropped from the query since v1.4.1)', () => {
     expect(cleanTitleForSearch('The free-energy principle: a unified brain theory?'))
-      .toBe('The free-energy principle: a unified brain theory?')
+      .toBe('The free-energy principle: a unified brain theory')
   })
   it('maps guillemet ligatures back to ascii', () => {
     expect(cleanTitleForSearch('http:« archive')).toBe('http:<< archive')

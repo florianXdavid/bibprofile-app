@@ -36,7 +36,7 @@ const SITE_NAMES = new Set([
   'psychology today', 'bohrium',
 ])
 
-const LEADING_JUNK = /^\s*(PEER REVIEW|From the Cover|Editorial|Correction|Retraction|Erratum|Commentary|Preprint)\s*[:\-–—|]\s*/i
+const LEADING_JUNK = /^\s*(PEER REVIEW|From the Cover|Editorial|Correction|Retracted(?: article)?|Retraction|Erratum|Commentary|Preprint)\s*[:\-–—|]\s*/i
 
 function longestPipeSegment(t: string): string {
   const segs = t.split('|').map(s => s.trim()).filter(Boolean)
@@ -81,6 +81,11 @@ export function cleanTitleForSearch(title: string): string {
   // Conservative dash-suffix / leading-tag cleanup for known sites only.
   t = stripTrailingSite(t)
   t = stripLeadingSite(t)
+  // v1.4.1: OpenAlex search returned nothing for queries with accented letters or
+  // `?` / `*` (wildcard syntax) — e.g. Gödel 1931, Einstein 1905 — so the QUERY is
+  // folded to plain letters and those characters dropped. Display and scoring
+  // still use the original title.
+  t = t.normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[?*]/g, ' ')
   t = t.replace(/\s+/g, ' ').trim()
   return t || title.trim()
 }

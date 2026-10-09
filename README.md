@@ -109,17 +109,54 @@ Per entry, after DOI normalisation (`src/lib/doi.ts`):
    normalised title) are queried once; duplicates are kept in the table, tagged,
    and reported as a finding.
 2. **Has a DOI → free singleton lookup** (`/works/doi:…`, free and unlimited).
-   The returned title is scored against the `.bib` title; a low score downgrades
-   the match to `suspicious` (shown, never auto-rejected).
-3. **No usable DOI → billable title search** (`?search=` on a cleaned title,
-   fuzzy-matched with Sørensen–Dice against the original). Below threshold is
-   `not-found`; an accepted-but-weak match is `suspicious`.
+   A low title similarity (0.65, or 0.75 when the year isn't confirmed), or a
+   match score below 0.7, downgrades it to `suspicious` (shown, never auto-rejected).
+3. **No usable DOI → billable title search** (`?search=` on a cleaned title; the
+   query drops site cruft and "RETRACTED:" prefixes, folds accents and drops
+   `?`/`*`). The top 5 candidates are each scored by **`src/lib/matchScore.ts`**
+   (v1.4.1) and the best one decides the status: `matched-by-title`, `uncertain`
+   or `not-found` (see *Match score* below).
 4. Genuine misses that aren't scholarly records are reclassified `not-indexable`.
 
 Requests are sequential (~4.5/sec), retried once on a transient failure. Statuses:
-`matched-by-doi`, `matched-by-title`, `suspicious`, `not-found`, `not-indexable`,
-`error`, `unparseable`. Thresholds (title 0.7 / 0.85, DOI 0.65/0.75) are advisory
-defaults in `src/config.ts`. The summary is deliberately blunt about misses.
+`matched-by-doi`, `matched-by-title`, `suspicious`, `uncertain`, `not-found`,
+`not-indexable`, `error`, `unparseable`. Thresholds are advisory defaults in
+`src/config.ts`. The summary is deliberately blunt about misses.
+
+### Match score (v1.4.1)
+
+Pure and deterministic. Each candidate gets six signals, each 0–1, or skipped when
+either side lacks the data:
+
+| Signal | Weight | Rule |
+|---|---|---|
+| title | 0.50 | Dice similarity after stripping "RETRACTED:"-style prefixes; a title missing only its subtitle scores 0.9 |
+| first author | 0.15 | family name = OpenAlex first author 1, a later author 0.7, absent 0 |
+| year | 0.12 | within ±1 → 1, else 0 |
+| venue | 0.08 | abbreviation/acronym aware ("Phys. Rev. Lett.", "PNAS", "CVPR"), else token overlap |
+| type | 0.10 | @article / @book / @inproceedings / preprint vs OpenAlex type (1, 0.5 partial, 0) |
+| volume/pages | 0.05 | volume and first page equal |
+
+**Score** = weighted mean of the signals present. Rules:
+- A candidate needs title ≥ 0.7. Retraction or erratum *notices* are never candidates.
+- Best score ≥ **0.85** with no near-tie → `matched-by-title`.
+- A score from 0.7 up to 0.85, or a different work within **0.05** of the best → `uncertain`.
+- Below 0.7 → `not-found`, and nothing is attached.
+- OpenAlex duplicate records of one work (same title, year, first author, venue
+  and type) aren't a tie; the most-cited one is kept.
+
+The table shows the score next to the status and the per-signal breakdown on
+hover. `uncertain` is treated like `suspicious`: counted in the report but
+flagged, and never written to the cleaned `.bib`.
+
+**Regression set:** `test/regression/hard-titles.bib` holds ~100 hard entries.
+They cover retracted papers, books vs. articles with the same title,
+preprint/proceedings/journal versions, republished classics, non-English titles,
+generic titles and fabricated titles. Each carries its correct OpenAlex record
+(via DOI or ID). `hard-titles.test.ts` replays recorded OpenAlex responses
+**offline** on every `npm test`: a confident match must never be the wrong record
+(currently 0), and recall can't drop below a floor (currently 90 of 101). Re-recording is opt-in, goes through the shared
+pool, and only re-fetches changed entries (see `test/regression/record.test.ts`).
 
 ## OpenAlex fields captured
 
@@ -141,7 +178,7 @@ to **Report** and collapses the upload zone (a link re-opens it). The raw table
 stays as the "show me the data" affordance.
 
 **Denominator rules** (enforced once in `src/lib/stats/denominator.ts`, never
-re-derived per card): duplicates count once; `suspicious` is included but flagged;
+re-derived per card): duplicates count once; `suspicious` / `uncertain` are included but flagged;
 `not-indexable` is excluded and reported separately; and **every card reports its
 own `n`** (different fields are missing on different works). Baselines
 (`src/lib/baselines.ts`) are stubbed — cards render a field comparison only
@@ -188,7 +225,7 @@ the parser's AST — which would turn `\"{o}` into `ö` and drop brace-caps / cu
 fields), so LaTeX escapes, Zotero fields, `@string` macros and comments survive
 byte-identical, and **cite keys and entry count are invariant** (asserted by
 test). Action is tiered by match status: `matched-by-doi` filled confidently,
-`matched-by-title` filled but flagged, `suspicious` shown as a suggestion (never
+`matched-by-title` filled but flagged, `suspicious` / `uncertain` shown as a suggestion (never
 written), everything else passed through. Fields you wrote that **differ** from
 OpenAlex are surfaced as review-only suggestions you accept per field. A colour
 legend maps green = applied, yellow = suggested-not-applied, blue = review.
@@ -282,6 +319,7 @@ src/
     doi.ts  similarity.ts  titleClean.ts  parseBib.ts  validateBib.ts
     credential.ts        # pure: shared vs. user-key resolution (the one active-credential decision)
     rateLimit.ts         # pure: defensive /rate-limit parse + formatting
+    matchScore.ts        # v1.4.1 pure multi-signal match score + title-candidate decision
     openalex.ts          # the ONLY fetch layer (URLs, credential, retry, mapping, auth/budget errors, /rate-limit)
     match.ts             # orchestration: dedup, DOI-first (free), then title; halt/Resume on exhaustion
     gaps.ts              # citation-gap orchestration (co-citation + forward)
@@ -293,11 +331,13 @@ src/
       duplicates.ts  summaryText.ts  shape.ts  retractions.ts  coCitation.ts
       preprints.ts  cleanBib.ts
 test/                    # vitest unit tests (pure functions; no network except mocked)
+  regression/            # hard-titles.bib + recorded fixture (offline replay) + opt-in recorder
 ```
 
 ## Testing
 
-`npm test` runs **156 tests**. Highlights: parsing/DOI/title-clean/similarity
+`npm test` runs **183 tests** (plus 1 skipped: the opt-in regression recorder). Highlights: the v1.4.1
+match-score signals and the hard-titles regression (offline); parsing/DOI/title-clean/similarity
 regressions; every report statistic on fixtures (median/IQR year, top-venue
 share, OA %, self-citation matching, shape patterns + min-n floor, retraction
 filter, co-citation counting, preprint detection); the cleaned-export cite-key /

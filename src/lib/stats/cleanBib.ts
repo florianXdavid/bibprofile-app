@@ -8,7 +8,7 @@
 //     an entry's verbatim source; cite keys and entry count are untouched.
 //   • `not-found` / `error` / `unparseable` pass through byte-identical.
 //   • `not-indexable` passes through unchanged, labelled "left unchanged".
-//   • `suspicious` fills are shown as SUGGESTIONS only — never written.
+//   • `suspicious` / `uncertain` fills are shown as SUGGESTIONS only — never written.
 
 import type { MatchStatus, OpenAlexBiblio, ResultRow } from '../../types'
 import { normalizeDoi } from '../doi'
@@ -199,9 +199,9 @@ export function computeCleanedBib(
     const confidence: Confidence =
       row.status === 'matched-by-doi' ? 'confident'
         : row.status === 'matched-by-title' ? 'tentative'
-          : 'none' // suspicious
+          : 'none' // suspicious / uncertain
 
-    // matched-by-doi / matched-by-title WRITE additive fills; suspicious only suggests.
+    // matched-by-doi / matched-by-title WRITE additive fills; suspicious / uncertain only suggest.
     const writes = confidence !== 'none'
     const applied = writes ? fills : []
     const suggested = writes ? [] : fills

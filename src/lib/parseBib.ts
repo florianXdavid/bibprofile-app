@@ -18,6 +18,7 @@ import { parse, type Entry, type Creator } from '@retorquere/bibtex-parser'
 import type { BibEntry, ParseResult, UnparseableEntry } from '../types'
 import { normalizeDoi } from './doi'
 import { cleanTitleForSearch, looksNotIndexable } from './titleClean'
+import { stripRetractedPrefix } from './matchScore'
 
 const ENTRY_BLOCK = /@\s*[A-Za-z]+\s*\{/
 
@@ -56,6 +57,14 @@ function formatCreators(creators: Creator[] | undefined): string {
   }).filter(Boolean)
   if (names.length <= 3) return names.join('; ')
   return `${names.slice(0, 3).join('; ')}; et al.`
+}
+
+// v1.4.1 — first author's (or, failing that, first editor's) family name, for the
+// match-scoring author signal. Institutional names come through as `name`.
+function firstFamilyName(fields: Entry['fields']): string {
+  const c = (fields.author && fields.author[0]) || (fields.editor && fields.editor[0])
+  if (!c) return ''
+  return stripMarkup(c.lastName || c.name || '')
 }
 
 function extractYear(fields: Entry['fields']): number | null {
@@ -159,6 +168,10 @@ export function parseBib(text: string): ParseResult {
       venue,
       doiRaw,
       doi,
+      firstAuthor: firstFamilyName(entry.fields),
+      volume: asString((entry.fields as Record<string, unknown>).volume),
+      pages: asString((entry.fields as Record<string, unknown>).pages),
+      titleRetracted: stripRetractedPrefix(rawTitle).retracted,
       raw: entry.input,
       likelyNotIndexable: looksNotIndexable({ entryType: entry.type, title: rawTitle, venue, doi, year }),
     })

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { MatchStatus, ResultRow } from '../types'
+import type { MatchSignals, MatchStatus, ResultRow } from '../types'
 
 type SortDir = 'asc' | 'desc'
 type Primitive = string | number | null
@@ -23,8 +23,16 @@ function yesNo(v: boolean | null): string {
   return v ? 'Yes' : 'No'
 }
 
+// v1.4.1 — tooltip for the match score: the per-signal breakdown (— = not compared).
+function signalsTitle(s: MatchSignals | null | undefined): string {
+  const base = 'match score (0–1): title, first author, year ±1, venue, type, volume/pages'
+  if (!s) return base
+  const f = (v: number | null) => (v == null ? '—' : v.toFixed(2))
+  return `${base}\ntitle ${f(s.title)} · author ${f(s.author)} · year ${f(s.year)} · venue ${f(s.venue)} · type ${f(s.type)} · vol/pages ${f(s.biblio)}`
+}
+
 const STATUS_ORDER: MatchStatus[] = [
-  'matched-by-doi', 'matched-by-title', 'suspicious',
+  'matched-by-doi', 'matched-by-title', 'suspicious', 'uncertain',
   'not-found', 'not-indexable', 'error', 'unparseable',
 ]
 
@@ -59,8 +67,8 @@ const columns: Column[] = [
         <span className={`badge ${r.status}`}>{r.status}</span>
         {r.matchScore != null && (
           <span
-            className={r.status === 'suspicious' ? 'flag' : 'muted'}
-            title="title-match similarity (bib vs OpenAlex)"
+            className={r.status === 'suspicious' || r.status === 'uncertain' ? 'flag' : 'muted'}
+            title={signalsTitle(r.matchSignals)}
           > {r.matchScore.toFixed(2)}</span>
         )}
       </>
@@ -212,14 +220,15 @@ export default function ResultsTable({ rows }: { rows: ResultRow[] }) {
         <ul>
           <li><strong>matched-by-doi</strong> — matched via its DOI (authoritative).</li>
           <li><strong>matched-by-title</strong> — no usable DOI; matched by a title search that cleared the similarity bar.</li>
-          <li><strong>suspicious</strong> — matched, but the title similarity is low — shown for you to judge (often a wrong <code>.bib</code> DOI, sometimes a real work with truncated metadata).</li>
+          <li><strong>suspicious</strong> — matched by DOI, but the OpenAlex record disagrees with your entry (title, or several details at once) — shown for you to judge (often a wrong <code>.bib</code> DOI, sometimes a real work with truncated metadata).</li>
+          <li><strong>uncertain</strong> — no usable DOI; a title search found a likely candidate, but not confidently (weak overall score, or two different works scored almost the same) — shown for you to judge, never written to the cleaned <code>.bib</code>.</li>
           <li><strong>not-found</strong> — looked up, but nothing acceptable came back.</li>
           <li><strong>not-indexable</strong> — not the kind of record OpenAlex indexes (a dataset, a software library, a URL used as a title).</li>
           <li><strong>error</strong> — a network or server failure after one retry.</li>
           <li><strong>unparseable</strong> — the <code>.bib</code> block couldn't be turned into a usable record.</li>
           <li><strong>duplicates</strong> — the same work cited more than once; collapsed to one before analysis (tagged “dup of …”).</li>
         </ul>
-        <p className="muted">The “Yr (OA)” column also shows ⚠ when the <code>.bib</code> year and the OpenAlex year disagree, and ? when a year is missing on either side.</p>
+        <p className="muted">The number after the status is the match score (0–1), combining title, first author, year (±1), venue, entry type and volume/pages — hover it for the breakdown. The “Yr (OA)” column also shows ⚠ when the <code>.bib</code> year and the OpenAlex year disagree, and ? when a year is missing on either side.</p>
       </details>
 
       <div className="table-wrap">

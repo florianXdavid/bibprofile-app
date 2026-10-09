@@ -3,7 +3,8 @@
 export type MatchStatus =
   | 'matched-by-doi'
   | 'matched-by-title'
-  | 'suspicious' // matched but title similarity is low — user should judge
+  | 'suspicious' // DOI matched, but the record disagrees with the .bib — user should judge
+  | 'uncertain' // v1.4.1: title search found a candidate, but below the confidence bar (or a near-tie) — user should judge
   | 'not-found'
   | 'not-indexable' // not a scholarly work OpenAlex would index
   | 'error'
@@ -26,6 +27,11 @@ export interface BibEntry {
   venue: string
   doiRaw: string | null // exactly as it appeared in the .bib (NOT html-sanitised)
   doi: string | null // normalised (see lib/doi.ts)
+  // v1.4.1 match-scoring signals (from the .bib; empty string when absent)
+  firstAuthor: string // first author's (or editor's) family name, as written
+  volume: string
+  pages: string
+  titleRetracted: boolean // title carried a "RETRACTED:" / "Retracted article:" prefix (kept for v1.4.2)
   raw: string
   likelyNotIndexable: boolean // Fix 8/A4 pre-flag; used only to classify a miss
 }
@@ -86,12 +92,26 @@ export interface ResultRow {
   bibYear: number | null
   status: MatchStatus
   openalex: OpenAlexWork | null
-  matchScore: number | null // title similarity — populated for DOI matches too
+  matchScore: number | null // v1.4.1: composite match score 0..1 (lib/matchScore.ts) — DOI and title matches
+  matchSignals?: MatchSignals | null // v1.4.1: the per-signal breakdown behind matchScore (table tooltip)
   yearState: YearState // agree / disagree / unverified
   duplicateOf: string | null
   error: string | null
   raw: string
   entry: BibEntry | null // null for unparseable rows
+}
+
+// v1.4.1 — per-signal breakdown of one .bib entry vs one OpenAlex work. Each signal
+// is 0..1, or null when it can't be compared (missing on either side). `score` is
+// the weighted mean over the non-null signals (weights in config.ts).
+export interface MatchSignals {
+  title: number
+  author: number | null
+  year: number | null
+  venue: number | null
+  type: number | null
+  biblio: number | null
+  score: number
 }
 
 export interface ParseResult {
@@ -115,6 +135,7 @@ export interface MatchSummary {
   matchedByDoi: number
   matchedByTitle: number
   suspicious: number
+  uncertain: number
   notFound: number
   notIndexable: number
   errored: number
