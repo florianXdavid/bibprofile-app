@@ -46,7 +46,9 @@ export default function About() {
         Everything runs in your browser. To match your references, their titles and DOIs are sent to
         OpenAlex. On the shared pool (the default), they pass through BibProfile's own proxy at{' '}
         <code>api.bibprofile.com</code>, which forwards them to OpenAlex and stores nothing; if you use
-        your own key, queries go straight to OpenAlex and your key never touches our proxy. Nothing is
+        your own key, queries go straight to OpenAlex and your key never touches our proxy. To check for
+        retractions and corrections, the DOIs of your references are also sent to Crossref
+        (<code>api.crossref.org</code>), which includes the Retraction Watch database. Nothing is
         stored, there's no account, and there's no tracking.
       </p>
 
@@ -63,6 +65,7 @@ export default function About() {
       <h3>Credits</h3>
       <ul className="about-list">
         <li>Bibliographic data from <a href="https://openalex.org" target="_blank" rel="noreferrer">OpenAlex</a>.</li>
+        <li>Retraction data from <a href="https://www.crossref.org" target="_blank" rel="noreferrer">Crossref</a>, including <a href="https://retractionwatch.com" target="_blank" rel="noreferrer">Retraction Watch</a>.</li>
         <li>Built with React, Vite, and <code>@retorquere/bibtex-parser</code>.</li>
         <li>Built with the assistance of Claude (Anthropic's AI).</li>
         <li>

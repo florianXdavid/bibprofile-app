@@ -57,7 +57,7 @@ export default function FileDrop({ onText, disabled }: Props) {
           }}
         />
       </div>
-      <div className="hint">Everything runs in your browser. The only network calls are to the OpenAlex API.</div>
+      <div className="hint">Everything runs in your browser. References are looked up in OpenAlex; their DOIs are also checked against Crossref for retractions.</div>
     </div>
   )
 }

@@ -7,8 +7,10 @@ before you submit a paper to a journal or conference.
 
 Everything runs in your browser. On the shared pool, queries pass through
 BibProfile's own proxy (`api.bibprofile.com`), which forwards them to OpenAlex and
-stores nothing; with your own key they go straight to OpenAlex. Nothing is stored,
-no account, no tracking.
+stores nothing; with your own key they go straight to OpenAlex. To check for
+retractions and corrections, the DOIs of your references are also sent to Crossref
+(`api.crossref.org`), which includes the Retraction Watch database. Nothing is
+stored, no account, no tracking.
 
 > Building this project was a **week-by-week** effort. The full history — every
 > feature, fix and scope decision in order — lives in **[DEVLOG.md](./DEVLOG.md)**.
@@ -38,13 +40,15 @@ These are load-bearing — the whole design depends on them.
 
 - **No backend, no database, no auth, no persistence** — no `localStorage`,
   `sessionStorage`, IndexedDB, or cookies. Nothing is stored or sent anywhere
-  except OpenAlex. (A static test, `test/noPersistence.test.ts`, fails if any
+  except OpenAlex (and, DOIs only, Crossref). (A static test, `test/noPersistence.test.ts`, fails if any
   source file references a storage API.)
-- **One fetch layer** (`src/lib/openalex.ts`) reaching a small, fixed set of hosts:
-  the shared proxy (`api.bibprofile.com`, which just forwards to OpenAlex) or, for a
-  user key, OpenAlex directly (`api.openalex.org`). OpenAlex is the only data host;
-  the proxy stores nothing. No component calls `fetch` directly — that would bypass
-  the pacing, retry, credential and cost logic.
+- **Two fetch modules, a fixed set of hosts.** `src/lib/openalex.ts` reaches the
+  shared proxy (`api.bibprofile.com`, which just forwards to OpenAlex) or, for a
+  user key, OpenAlex directly (`api.openalex.org`); the proxy stores nothing.
+  `src/lib/crossref.ts` (v1.4.2) reaches `api.crossref.org` for retraction /
+  correction notices — free, key-less, DOIs only. No component calls `fetch`
+  directly — that would bypass the pacing, retry, credential and cost logic. (A new
+  host also needs adding to the CSP in `public/_headers`.)
 - **No chart library.** The two charts (year histogram, venue bars) are
   hand-rolled inline SVG.
 - Deploys as a **static site**: `npm run build` emits `/dist`.
@@ -158,7 +162,8 @@ generic titles and fabricated titles. Each carries its correct OpenAlex record
 (via DOI or ID). `hard-titles.test.ts` replays recorded OpenAlex responses
 **offline** on every `npm test`, through the real duplicate step: a confident match
 must never be the wrong record (currently 0), and recall can't drop below a floor
-(currently 90 of 101). Re-recording is opt-in, goes through the shared
+(currently 100 of 111). It also checks the retraction report: all 24 known
+retractions flagged, nothing else, and the Wakefield duplicate case. Re-recording is opt-in, goes through the shared
 pool, and only re-fetches changed entries (see `test/regression/record.test.ts`).
 
 ## OpenAlex fields captured
@@ -192,7 +197,7 @@ histogram), **shape** (neutral patterns: stale tail, narrow window, gap,
 concentration — gated behind a minimum n), **journal concentration** (top
 venues, preprint servers separated), **self-citation** (name or ORCID, matched
 references shown for review), **open access** (share + status breakdown, unknown
-counted separately), **retractions** (OpenAlex's `is_retracted` flag only —
+counted separately), **retractions & corrections** (multi-signal — see below;
 verify, never "remove"), **missing citations** (below), **preprint → published**
 (below), and **duplicates** (surfaces the de-duplication, flags mixed cite-key
 styles).
@@ -241,6 +246,29 @@ preprint). It therefore runs only when the user presses the button — never
 automatically, so it can't quietly spend the shared budget. Matches are
 **suggestions only** — a preprint is often cited on purpose, so applying the swap is
 left to the user.
+
+## Retractions & corrections (v1.4.2)
+
+`src/lib/stats/retractions.ts` (pure) merges several signals. An entry is reported
+**retracted** when any of these says so:
+- the matched OpenAlex record is flagged `is_retracted`;
+- **another OpenAlex record of the same work** is flagged. OpenAlex holds some works
+  several times and may flag only one; the Wakefield 1998 Lancet paper has four
+  records. These "twins" are near-identical-title candidates whose first author and
+  year don't contradict the entry (`findTwins` in `matchScore.ts`);
+- the `.bib` or OpenAlex title carries a "RETRACTED:" / "Retracted article:" prefix;
+- a **Crossref** update record, either publisher-deposited or from **Retraction Watch**.
+
+Expressions of concern and corrections come from Crossref and are listed
+**separately**. Each entry appears once, under its most serious status. References
+with no data at all are counted, never assumed clean.
+
+**How the Crossref check runs.** `src/lib/crossref.ts` runs it **automatically**
+after matching: it's free and doesn't touch the OpenAlex budget. It sends the DOIs
+of the `.bib` entry, the match and its twins, about 40 per request, using
+`filter=updates:…` (the notices pointing at those DOIs, each with `update-to`).
+
+A failed batch is reported as "could not be checked", never as clean.
 
 ## Usage readout & graceful exhaustion
 
@@ -316,13 +344,14 @@ src/
     report/              # the analysis report + cleaned export tab
       ReportView.tsx  CardShell.tsx  Histogram.tsx  BarChart.tsx  format.ts
       RecencyCard.tsx  ShapeCard.tsx  VenuesCard.tsx  SelfCitationCard.tsx
-      OpenAccessCard.tsx  RetractionsCard.tsx  GapsCard.tsx  PreprintsCard.tsx
+      OpenAccessCard.tsx  RetractionsCard.tsx (v1.4.2: retractions & corrections)  GapsCard.tsx  PreprintsCard.tsx
       DuplicatesCard.tsx  CleanedExport.tsx
   lib/
     doi.ts  similarity.ts  titleClean.ts  parseBib.ts  validateBib.ts
     credential.ts        # pure: shared vs. user-key resolution (the one active-credential decision)
     rateLimit.ts         # pure: defensive /rate-limit parse + formatting
-    matchScore.ts        # v1.4.1 pure multi-signal match score + title-candidate decision
+    matchScore.ts        # v1.4.1 pure multi-signal match score + title-candidate decision (+ v1.4.2 findTwins)
+    crossref.ts          # v1.4.2 the second fetch module: Crossref update records (retractions, concerns, corrections)
     openalex.ts          # the ONLY fetch layer (URLs, credential, retry, mapping, auth/budget errors, /rate-limit)
     match.ts             # orchestration: dedup, DOI-first (free), then title; halt/Resume on exhaustion
     gaps.ts              # citation-gap orchestration (co-citation + forward)
@@ -339,7 +368,7 @@ test/                    # vitest unit tests (pure functions; no network except 
 
 ## Testing
 
-`npm test` runs **186 tests** (plus 1 skipped: the opt-in regression recorder). Highlights: the v1.4.1
+`npm test` runs **196 tests** (plus 1 skipped: the opt-in regression recorder). Highlights: the v1.4.1
 match-score signals and the hard-titles regression (offline); parsing/DOI/title-clean/similarity
 regressions; every report statistic on fixtures (median/IQR year, top-venue
 share, OA %, self-citation matching, shape patterns + min-n floor, retraction
@@ -354,13 +383,15 @@ DEVLOG.md).
 ## Out of scope
 
 Field baselines (stubbed) · topic/field-spread and impact-spread cards ·
-similarity clustering · PNG export · accounts, storage, analytics · Crossref or
-any second network host · the Retraction Watch CSV · paginated forward-citation ·
+similarity clustering · PNG export · accounts, storage, analytics · any network
+host beyond OpenAlex and Crossref · the Retraction Watch CSV (its data comes via
+Crossref) · paginated forward-citation ·
 full reference *validation* (we check retraction and suggest fixes; we
 don't claim to verify references are real).
 
 ## Credits
 
-Bibliographic data from [OpenAlex](https://openalex.org). Built with React, Vite,
+Bibliographic data from [OpenAlex](https://openalex.org). Retraction data from
+[Crossref](https://www.crossref.org), including Retraction Watch. Built with React, Vite,
 and `@retorquere/bibtex-parser`, with the assistance of Claude (Anthropic's AI).
 Built by Florian David (ORCID: [0009-0001-7990-3186](https://orcid.org/0009-0001-7990-3186)).

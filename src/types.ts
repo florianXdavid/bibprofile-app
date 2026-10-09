@@ -94,11 +94,20 @@ export interface ResultRow {
   openalex: OpenAlexWork | null
   matchScore: number | null // v1.4.1: composite match score 0..1 (lib/matchScore.ts) — DOI and title matches
   matchSignals?: MatchSignals | null // v1.4.1: the per-signal breakdown behind matchScore (table tooltip)
+  twins?: TwinWork[] // v1.4.2: other OpenAlex records that look like the SAME work (retraction check)
   yearState: YearState // agree / disagree / unverified
   duplicateOf: string | null
   error: string | null
   raw: string
   entry: BibEntry | null // null for unparseable rows
+}
+
+// v1.4.2 — another OpenAlex record of (apparently) the same work as the match.
+// OpenAlex sometimes flags only one of several duplicate records as retracted.
+export interface TwinWork {
+  id: string
+  doi: string | null
+  isRetracted: boolean | null
 }
 
 // v1.4.1 — per-signal breakdown of one .bib entry vs one OpenAlex work. Each signal

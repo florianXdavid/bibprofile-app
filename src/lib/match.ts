@@ -191,6 +191,7 @@ export async function runMatching(
       row.matchScore = d.signals.score
       row.matchSignals = d.signals
       row.yearState = compareYears(entry.year, d.work)
+      row.twins = d.twins.map(t => ({ id: t.id, doi: t.doi, isRetracted: t.isRetracted })) // v1.4.2
     }
   }
 
@@ -244,6 +245,7 @@ export async function runMatching(
         dr.openalex = row.openalex
         dr.matchScore = row.matchScore
         dr.matchSignals = row.matchSignals
+        dr.twins = row.twins
         dr.yearState = row.yearState
         dr.error = row.error
       }

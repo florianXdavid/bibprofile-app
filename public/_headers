@@ -7,7 +7,8 @@
 #   - script-src 'self'      : the app loads only its own hashed bundle (no inline <script>).
 #   - style-src needs 'unsafe-inline' : the app uses React inline style={{…}} attributes
 #                                        (and inline-SVG chart styles); dropping it would break layout.
-#   - connect-src            : the two API hosts the app calls (our proxy + OpenAlex direct for own-key).
+#   - connect-src            : the API hosts the app calls (our proxy, OpenAlex direct for own-key,
+#                              and Crossref for retraction/correction notices — v1.4.2).
 /*
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
@@ -15,4 +16,4 @@
   Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=()
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Resource-Policy: same-origin
-  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self'; connect-src 'self' https://api.bibprofile.com https://api.openalex.org; img-src 'self' data:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self'; connect-src 'self' https://api.bibprofile.com https://api.openalex.org https://api.crossref.org; img-src 'self' data:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'

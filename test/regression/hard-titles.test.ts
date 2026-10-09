@@ -14,7 +14,10 @@ import { fileURLToPath } from 'node:url'
 import { parseBib } from '../../src/lib/parseBib'
 import { readField } from '../../src/lib/bibWriter'
 import { toOpenAlexWork } from '../../src/lib/openalex'
-import { chooseTitleMatch, titleSimilarity } from '../../src/lib/matchScore'
+import { chooseTitleMatch, findTwins, titleSimilarity } from '../../src/lib/matchScore'
+import { parseCrossrefItems, type CrossrefResult, type CrossrefUpdate } from '../../src/lib/crossref'
+import { computeRetractions } from '../../src/lib/stats/retractions'
+import type { ResultRow } from '../../src/types'
 import { computeDuplicates } from '../../src/lib/match'
 
 const BIB = fileURLToPath(new URL('./hard-titles.bib', import.meta.url))
@@ -23,7 +26,7 @@ const FIX = fileURLToPath(new URL('./hard-titles.fixture.json', import.meta.url)
 // Recall floor: confident-and-correct matches out of the entries with a known
 // correct record. Set from the first recorded run; raise it when matching
 // improves, never lower it to make a change pass.
-const MIN_CORRECT = 90 // first recording, 2026-10-09: 90 of 101 entries with a known correct record
+const MIN_CORRECT = 100 // 2026-10-09 (v1.4.2, +10 retraction entries): 100 of 111 entries with a known correct record
 
 const fixture = existsSync(FIX) ? JSON.parse(readFileSync(FIX, 'utf8')) : null
 const fx: Record<string, any> = fixture?.entries ?? {}
@@ -76,6 +79,57 @@ describe.skipIf(!fixture)('title-matching regression (hard-titles.bib, offline)'
     for (const r of results) tally[r.outcome] = (tally[r.outcome] ?? 0) + 1
     console.log(tally)
   }
+
+  // ---- v1.4.2 retraction check, replayed on the recorded OpenAlex + Crossref data ----
+  const crossref: CrossrefResult = (() => {
+    const checked: string[] = fixture?.crossref?.checked ?? []
+    const updates = new Map<string, CrossrefUpdate[]>()
+    for (const u of parseCrossrefItems(fixture?.crossref?.items ?? [], new Set(checked))) {
+      updates.set(u.target, [...(updates.get(u.target) ?? []), u])
+    }
+    return { updates, checked: checked.length, failed: 0 }
+  })()
+  const asRow = (r: (typeof results)[number]): ResultRow => ({
+    rowId: r.e.rowId, sourceOffset: r.e.sourceOffset, citeKey: r.e.citeKey, title: r.e.title, bibYear: r.e.year,
+    status: r.d.status, openalex: r.d.work, matchScore: r.d.signals?.score ?? null, yearState: 'unverified',
+    duplicateOf: dupOf.get(r.e.rowId) ?? null, error: null, raw: r.e.raw, entry: r.e,
+    twins: r.d.twins.map(t => ({ id: t.id, doi: t.doi, isRetracted: t.isRetracted })),
+  })
+  const report = computeRetractions(results.map(asRow), crossref)
+  const retractedKeys = new Set(report.retracted.map(f => f.citeKey))
+
+  if (process.env.BIBPROFILE_REGRESSION_REPORT) {
+    for (const f of report.retracted) console.log('RETRACTED ', f.citeKey.padEnd(20), f.signals.join(','), f.updates.map(u => `${u.kind}/${u.source}`).join(' '))
+    for (const f of report.concerns) console.log('CONCERN   ', f.citeKey.padEnd(20), f.updates.map(u => `${u.kind}/${u.source}`).join(' '))
+    for (const f of report.corrections) console.log('CORRECTION', f.citeKey.padEnd(20), f.updates.map(u => `${u.kind}/${u.source}`).join(' '))
+  }
+
+  it('Crossref notices were recorded for the candidate DOIs', () => {
+    expect(crossref.checked).toBeGreaterThan(0)
+  })
+
+  it('reports every known retraction as retracted', () => {
+    const missed = parsed.entries.filter(e => readField(e.raw, 'retraction') === 'retracted' && !retractedKeys.has(e.citeKey)).map(e => e.citeKey)
+    expect(missed).toEqual([])
+  })
+
+  it('reports nothing else as retracted (no false alarms)', () => {
+    const extra = parsed.entries.filter(e => readField(e.raw, 'retraction') !== 'retracted' && retractedKeys.has(e.citeKey)).map(e => e.citeKey)
+    expect(extra).toEqual([])
+  })
+
+  it('the Wakefield case: matched to an UNFLAGGED duplicate record, still reported retracted', () => {
+    // OpenAlex holds Wakefield 1998 several times; only one record is flagged. Force
+    // the match onto the unflagged UCL repository copy and check the twin catches it.
+    const e = byKey.get('wakefield1998')!
+    const cands = (fx.wakefield1998?.candidates ?? []).map(toOpenAlexWork)
+    const unflagged = cands.find(c => bare(c.id) === 'W2730456447')!
+    expect(unflagged.isRetracted).toBe(false)
+    const row: ResultRow = { ...asRow(results.find(r => r.e.citeKey === 'wakefield1998')!), openalex: unflagged,
+      twins: findTwins(e, unflagged, cands).map(t => ({ id: t.id, doi: t.doi, isRetracted: t.isRetracted })) }
+    const r = computeRetractions([{ ...row, entry: { ...e, titleRetracted: false } }], null) // no title prefix, no Crossref: twins only
+    expect(r.retracted[0]?.signals).toEqual(['openalex-duplicate'])
+  })
 
   it('no two entries are merged as duplicates (every entry here is a distinct work)', () => {
     expect(parsed.entries.filter(e => dupOf.has(e.rowId)).map(e => `${e.citeKey} -> ${dupOf.get(e.rowId)}`)).toEqual([])

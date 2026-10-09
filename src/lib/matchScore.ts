@@ -255,6 +255,20 @@ export interface TitleDecision {
   work: OpenAlexWork | null // null for not-found — nothing is attached
   signals: MatchSignals | null
   ambiguous: boolean // a different work scored within MATCH_AMBIGUITY_MARGIN
+  twins: OpenAlexWork[] // v1.4.2: other candidates that look like the same work as `work`
+}
+
+// v1.4.2 — candidates that look like the SAME work as the chosen one: near-identical
+// title (>= 0.9, retraction prefixes ignored), first author and year (±1) not
+// contradicting the entry, and not a notice. Used only to widen the retraction
+// check (OpenAlex may flag just one of several duplicate records).
+export function findTwins(e: BibEntry, chosen: OpenAlexWork, candidates: OpenAlexWork[]): OpenAlexWork[] {
+  return candidates.filter(c =>
+    bareId(c.id) !== bareId(chosen.id)
+    && !isNoticeWork(c)
+    && titleSimilarity(e.title, c.displayName) >= 0.9
+    && authorSignal(e.firstAuthor, c) !== 0
+    && yearSignal(e.year, c) !== 0)
 }
 
 const bareId = (id: string) => (id || '').replace(/^https?:\/\/openalex\.org\//i, '')
@@ -283,7 +297,7 @@ export function chooseTitleMatch(e: BibEntry, candidates: OpenAlexWork[]): Title
 
   const top = scored[0]
   if (!top || top.sig.score < MATCH_SCORE_FLOOR) {
-    return { status: 'not-found', work: null, signals: top?.sig ?? null, ambiguous: false }
+    return { status: 'not-found', work: null, signals: top?.sig ?? null, ambiguous: false, twins: [] }
   }
   // Collapse near-tied duplicates of the top record onto the most-cited one.
   const dupes = scored.filter(c => c.sig.score >= top.sig.score - MATCH_AMBIGUITY_MARGIN && sameWork(c.w, top.w))
@@ -291,5 +305,5 @@ export function chooseTitleMatch(e: BibEntry, candidates: OpenAlexWork[]): Title
   const runnerUp = scored.find(c => !dupes.includes(c) && bareId(c.w.id) !== bareId(best.w.id))
   const ambiguous = !!runnerUp && runnerUp.sig.score >= best.sig.score - MATCH_AMBIGUITY_MARGIN
   const confident = best.sig.score >= MATCH_CONFIDENT_THRESHOLD && !ambiguous
-  return { status: confident ? 'matched-by-title' : 'uncertain', work: best.w, signals: best.sig, ambiguous }
+  return { status: confident ? 'matched-by-title' : 'uncertain', work: best.w, signals: best.sig, ambiguous, twins: findTwins(e, best.w, candidates) }
 }

@@ -4,7 +4,9 @@
 // because it makes real network calls through the SHARED pool (api.bibprofile.com,
 // no key sent — the Worker injects it):
 //   • one BILLABLE title search per .bib entry (the exact query the app sends), and
-//   • FREE DOI singleton lookups to resolve each ground-truth DOI to its OpenAlex ID.
+//   • FREE DOI singleton lookups to resolve each ground-truth DOI to its OpenAlex ID,
+//   • v1.4.2: FREE Crossref update-record lookups (api.crossref.org, batched) for
+//     every candidate DOI — the retraction / concern / correction notices.
 // It writes test/regression/hard-titles.fixture.json; hard-titles.test.ts then
 // replays that fixture OFFLINE on every run.
 //
@@ -23,6 +25,7 @@ import { parseBib } from '../../src/lib/parseBib'
 import { readField } from '../../src/lib/bibWriter'
 import { normalizeDoi } from '../../src/lib/doi'
 import { buildDoiUrl, buildWorksSearchUrl } from '../../src/lib/openalex'
+import { buildCrossrefUrl, CROSSREF_BATCH } from '../../src/lib/crossref'
 import type { Credential } from '../../src/lib/credential'
 
 const BIB = fileURLToPath(new URL('./hard-titles.bib', import.meta.url))
@@ -98,9 +101,37 @@ describe.skipIf(!process.env.BIBPROFILE_RECORD)('record hard-titles fixture (net
       }
       console.log(`[${searches}] ${e.citeKey}`)
     }
+    // v1.4.2 — Crossref notices for every candidate DOI (and ground-truth DOI).
+    // Incremental too: DOIs already checked in the previous fixture are kept.
+    const prevFx = process.env.BIBPROFILE_RECORD !== 'all' && existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : null
+    const prevChecked = new Set<string>(prevFx?.crossref?.checked ?? [])
+    const items: unknown[] = [...(prevFx?.crossref?.items ?? [])]
+    const all = new Set<string>()
+    for (const r of Object.values(entries) as any[]) {
+      for (const c of r.candidates) if (c.doi) all.add(normalizeDoi(c.doi) ?? '')
+      for (const x of [r.expectDoi, r.expectNot]) if (x?.doi) all.add(x.doi)
+    }
+    all.delete('')
+    const todo = [...all].filter(d => !prevChecked.has(d) && !d.includes(','))
+    let crossrefCalls = 0
+    for (let i = 0; i < todo.length; i += CROSSREF_BATCH) {
+      const batch = todo.slice(i, i + CROSSREF_BATCH)
+      const res = await fetch(buildCrossrefUrl(batch), { headers: { Accept: 'application/json' } })
+      if (!res.ok) throw new Error(`Crossref HTTP ${res.status}`)
+      const json: any = await res.json()
+      for (const it of json?.message?.items ?? []) {
+        if (it['update-to']) items.push({ DOI: it.DOI, 'update-to': it['update-to'] })
+      }
+      crossrefCalls++
+      await sleep(300)
+      console.log(`[crossref] ${Math.min(i + CROSSREF_BATCH, todo.length)}/${todo.length} DOIs`)
+    }
+    const checked = [...new Set([...prevChecked, ...todo])].filter(d => all.has(d)).sort()
+
     writeFileSync(OUT, JSON.stringify({
-      recordedAt: new Date().toISOString(), base: BASE, searchCalls: searches, entries,
+      recordedAt: new Date().toISOString(), base: BASE, searchCalls: searches, crossrefCalls, entries,
+      crossref: { checked, items },
     }, null, 1) + '\n')
-    console.log(`Wrote ${OUT} — ${searches} billable searches.`)
+    console.log(`Wrote ${OUT} — ${searches} billable searches, ${crossrefCalls} free Crossref calls.`)
   }, 30 * 60 * 1000)
 })

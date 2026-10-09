@@ -753,6 +753,44 @@ Goal: never attach the wrong record, and show an honest confidence.
   the old key, 3 tests fail.
 - The CSV export gains a "Duplicate of" column. Tests: 186 (+1 skipped).
 
+## v1.4.2 — multi-signal retraction check (Oct 2026; part of v1.4)
+
+Goal: catch retractions even when the matched record is a duplicate.
+
+- **Signals** (`stats/retractions.ts`, pure). An entry is retracted when any of
+  these says so:
+  - OpenAlex `is_retracted` on the match;
+  - the same flag on a same-work **twin** (`findTwins`: other candidates with a
+    near-identical title and no contradicting first author or year);
+  - a "RETRACTED:" title prefix on either side;
+  - a **Crossref** update record (publisher, or Retraction Watch).
+- **Expressions of concern** and **corrections** are listed separately. Each entry
+  appears once, under its most serious status.
+- **Crossref** is a deliberate scope reversal of "no second network host":
+  - `lib/crossref.ts` is the second fetch module.
+  - It runs automatically after matching: free, DOIs only, browser-direct to
+    `api.crossref.org`, one `filter=updates:` request per 40 DOIs.
+  - It never throws; failed batches are reported as unchecked.
+  - Reading the originals' `updated-by` as well was measured and added nothing,
+    so it isn't fetched.
+  - CSP `connect-src` gains `api.crossref.org`.
+  - Privacy copy and a Crossref/Retraction Watch credit were added to About,
+    README, `llms.txt` and `index.html`. The upload hint no longer claims
+    "only OpenAlex".
+- **Regression:**
+  - The 14 retracted entries are marked `retraction = {retracted}`, and 10 more
+    known retractions were added (Gautret 2020, Jungebluth/Macchiarini 2011,
+    Lesné 2006, Schön 2000, Hwang 2005, Shu 2012, Stein 2001, Bonnefoi 2007,
+    Cho 2019, Zhang 2018).
+  - Crossref notices for all 535 candidate DOIs are recorded in the fixture.
+  - Result: all 24 reported retracted, no false alarms in the 126 entries, all 10
+    new entries matched correctly. The recall floor rose to 100 of 111.
+  - The **Wakefield case** is tested on the real records: OpenAlex holds the paper
+    four times and flags one. With the match forced onto an unflagged copy, the
+    twin still catches it.
+- Tests: 186 → 196 (+1 skipped recorder). The W3 retraction tests were rewritten
+  for the new rows-based signature.
+
 > The project-layout and test-count sections below describe the state as of W4.2.
 > For the current layout, see README.md.
 

@@ -52,6 +52,7 @@ export function mkRow(over: Partial<ResultRow> = {}): ResultRow {
     error: over.error ?? null,
     raw: over.raw ?? '',
     entry: over.entry ?? null,
+    twins: over.twins,
   }
 }
 

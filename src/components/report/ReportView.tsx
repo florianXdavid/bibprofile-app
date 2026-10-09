@@ -16,6 +16,7 @@ import GapsCard from './GapsCard'
 import PreprintsCard from './PreprintsCard'
 import DuplicatesCard from './DuplicatesCard'
 import type { PreprintRunState } from '../../lib/preprintResolve'
+import type { CrossrefRunState } from '../../lib/crossref'
 
 // The gaps card's billable results are owned by App (W3.1) and passed straight
 // through — ReportView holds none of that state itself.
@@ -32,9 +33,10 @@ interface Props {
   gaps: GapsProps
   preprints: PreprintRunState
   onResolvePreprints: () => void
+  crossref: CrossrefRunState // v1.4.2 — owned by App, fetched after matching
 }
 
-export default function ReportView({ rows, referenceYear, gaps, preprints, onResolvePreprints }: Props) {
+export default function ReportView({ rows, referenceYear, gaps, preprints, onResolvePreprints, crossref }: Props) {
   const cohort = useMemo(() => buildCohort(rows), [rows])
 
   if (cohort.works.length === 0) {
@@ -44,6 +46,7 @@ export default function ReportView({ rows, referenceYear, gaps, preprints, onRes
           Nothing matched OpenAlex, so there are no works to profile. The table view still
           shows every entry and why it didn't match.
         </p>
+        <RetractionsCard rows={rows} crossref={crossref} />
         <DuplicatesCard rows={rows} />
       </div>
     )
@@ -56,7 +59,7 @@ export default function ReportView({ rows, referenceYear, gaps, preprints, onRes
       <VenuesCard cohort={cohort} />
       <SelfCitationCard cohort={cohort} />
       <OpenAccessCard cohort={cohort} />
-      <RetractionsCard cohort={cohort} />
+      <RetractionsCard rows={rows} crossref={crossref} />
       <GapsCard rows={rows} {...gaps} />
       <PreprintsCard rows={rows} preprints={preprints} onResolve={onResolvePreprints} />
       <DuplicatesCard rows={rows} />

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import FileDrop from './components/FileDrop'
 import Progress from './components/Progress'
 import Summary from './components/Summary'
@@ -24,6 +24,8 @@ import { runPreprintResolution, type PreprintRunState } from './lib/preprintReso
 import { fetchRateLimit, OpenAlexAuthError, OpenAlexBudgetError } from './lib/openalex'
 import { OPENALEX_DIRECT_URL, resolveCredential, type UserCredential } from './lib/credential'
 import { formatResetClockUtc } from './lib/rateLimit'
+import { fetchCrossrefUpdates, type CrossrefRunState } from './lib/crossref'
+import { retractionDois } from './lib/stats/retractions'
 import type { MatchSummary, Progress as ProgressState, ResultRow } from './types'
 
 type Phase = 'idle' | 'working' | 'done'
@@ -53,6 +55,19 @@ export default function App() {
   const [gapsCo, setGapsCo] = useState<GapsRunState<CoCiteResult>>({ status: 'idle' })
   const [gapsFw, setGapsFw] = useState<GapsRunState<ForwardResult>>({ status: 'idle' })
   const [preprints, setPreprints] = useState<PreprintRunState>({ status: 'idle' })
+  // v1.4.2 — Crossref retraction / concern / correction notices. FREE (no OpenAlex
+  // budget), so it runs automatically after matching. `crossrefRun` drops a stale
+  // result if a new file was uploaded while it was in flight.
+  const [crossref, setCrossref] = useState<CrossrefRunState>({ status: 'idle' })
+  const crossrefRun = useRef(0)
+  async function checkCrossref(forRows: ResultRow[]) {
+    const runId = ++crossrefRun.current
+    const dois = retractionDois(forRows)
+    if (dois.length === 0) { setCrossref({ status: 'done', result: { updates: new Map(), checked: 0, failed: 0 } }); return }
+    setCrossref({ status: 'running' })
+    const result = await fetchCrossrefUpdates(dois) // never throws
+    if (runId === crossrefRun.current) setCrossref({ status: 'done', result })
+  }
 
   // W4 — the user's OWN OpenAlex key (opt-in). In-memory ONLY: dies on reload,
   // never persisted anywhere. null = the shared pool (default). `keyError` holds
@@ -114,6 +129,8 @@ export default function App() {
     setGapsCo({ status: 'idle' })
     setGapsFw({ status: 'idle' })
     setPreprints({ status: 'idle' })
+    crossrefRun.current++ // invalidate any in-flight Crossref check
+    setCrossref({ status: 'idle' })
     setExhausted(null) // W4.1 — a fresh run clears any prior exhaustion banner
     setProgress({ stage: 'parsing', label: 'Parsing .bib…', done: 0, total: 0, searchCalls: 0 })
 
@@ -158,6 +175,7 @@ export default function App() {
       // W4.1 — a budget halt keeps partial results; the rest stay pending.
       setExhausted(ex ? { resetsAt: ex.resetsAt, kind: cred.kind } : null)
       void refreshUsageFor(userKey)
+      void checkCrossref(resultRows) // v1.4.2 — free, automatic
     } catch (e) {
       if (e instanceof OpenAlexAuthError) reportAuthError()
       else setNotice('Something went wrong reaching OpenAlex. Please try again.')
@@ -185,6 +203,7 @@ export default function App() {
       setExhausted(ex ? { resetsAt: ex.resetsAt, kind: cred.kind } : null)
       setPhase('done')
       void refreshUsageFor(userKey)
+      void checkCrossref(merged) // v1.4.2 — re-check with the resumed matches
     } catch (e) {
       if (e instanceof OpenAlexAuthError) reportAuthError()
       else setNotice('Something went wrong reaching OpenAlex. Please try again.')
@@ -357,6 +376,7 @@ export default function App() {
             gaps={{ co: gapsCo, fw: gapsFw, onRunCoCitation: handleCoCitation, onRunForward: handleForward }}
             preprints={preprints}
             onResolvePreprints={handleResolvePreprints}
+            crossref={crossref}
           />
         )
         : tabPlaceholder('Your report'))}
