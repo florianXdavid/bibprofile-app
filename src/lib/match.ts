@@ -18,6 +18,12 @@
 //      below the floor -> `not-found` (nothing attached).
 //   4. A genuine miss on something that isn't a scholarly work is reclassified
 //      `not-indexable` (A4).
+//   v1.4.5: (2) also runs for a free identifier found OUTSIDE the doi field (url,
+//      note, eprint/arXiv, PMID…; parseBib's altId). Such an identifier is a hint:
+//      if its record disagrees with the entry it is ignored and (3) runs instead.
+//      Entries sharing a DOI are merged only if their titles agree (C2). After the
+//      loop, confident rows that landed on the SAME OpenAlex work are marked
+//      duplicates too (H2), and each row gets plain-language notes.
 // Year comparison is tri-state (agree/disagree/unverified); a missing year is
 // never treated as agreement (Fix A3b). Requests are strictly sequential.
 
@@ -27,13 +33,14 @@ import {
   MATCH_SCORE_FLOOR,
   REQUEST_DELAY_MS,
   SEARCH_CALL_COST_USD,
+  TITLE_MATCH_THRESHOLD,
 } from '../config'
-import { lookupByDoi, OpenAlexBudgetError, searchByTitle, type TitleSearch } from './openalex'
+import { lookupByDoi, lookupWork, OpenAlexBudgetError, searchByTitle, type DoiLookup, type TitleSearch } from './openalex'
 import { searchCrossref } from './crossref'
 import { normalizeDoi } from './doi'
 import { sharedCredential, type Credential } from './credential'
 import { normalizeTitle } from './similarity'
-import { chooseTitleMatch, scoreCandidate, type TitleDecision } from './matchScore'
+import { chooseTitleMatch, scoreCandidate, titleSimilarity, type TitleDecision } from './matchScore'
 import type {
   BibEntry,
   MatchStatus,
@@ -63,24 +70,35 @@ export function compareYears(bibYear: number | null, work: OpenAlexWork | null):
 // merged them and copied one record onto the other). Year and first-author
 // surname must agree too; a missing value only matches another missing value.
 export function dedupKey(entry: BibEntry): string {
-  if (entry.doi) return `doi:${entry.doi}`
+  const doi = entry.doi ?? entry.altId?.doi // v1.4.5: a DOI found in url / note … counts too
+  if (doi) return `doi:${doi}`
   const t = normalizeTitle(entry.titleForSearch || entry.title)
   if (!t) return ''
   const surname = normalizeTitle(entry.firstAuthor ?? '').split(' ').pop() ?? ''
   return `title:${t}|year:${entry.year ?? ''}|author:${surname}`
 }
 
-export function computeDuplicates(entries: BibEntry[]): Map<string, string> {
-  const firstByKey = new Map<string, BibEntry>()
-  const dup = new Map<string, string>()
+// rowId -> its canonical (first) entry. v1.4.5 (C2): entries sharing a DOI are the
+// same work only if their titles agree too — a DOI pasted onto the wrong entry must
+// not hide behind the entry that owns it (each is then looked up on its own).
+export function duplicateCanon(entries: BibEntry[]): Map<string, BibEntry> {
+  const firstByKey = new Map<string, BibEntry[]>()
+  const dup = new Map<string, BibEntry>()
+  const titled = (e: BibEntry) => e.title !== '(no title)'
   for (const e of entries) {
     const k = dedupKey(e)
     if (!k) continue
-    const canon = firstByKey.get(k)
-    if (canon) dup.set(e.rowId, canon.citeKey)
-    else firstByKey.set(k, e)
+    const canons = firstByKey.get(k) ?? []
+    const canon = canons.find(c => !k.startsWith('doi:') || !titled(c) || !titled(e)
+      || titleSimilarity(c.titleForSearch || c.title, e.titleForSearch || e.title) >= TITLE_MATCH_THRESHOLD)
+    if (canon) dup.set(e.rowId, canon)
+    else firstByKey.set(k, [...canons, e])
   }
   return dup
+}
+
+export function computeDuplicates(entries: BibEntry[]): Map<string, string> {
+  return new Map([...duplicateCanon(entries)].map(([id, c]) => [id, c.citeKey]))
 }
 
 // Classify a DOI match by title similarity. NEVER rejects — only flags. Only a
@@ -94,7 +112,11 @@ export function classifyDoiMatch(score: number, yearState: YearState): MatchStat
 }
 
 function pendingRow(entry: BibEntry): ResultRow {
+  const notes = entry.dupKeyIndex == null ? [] // v1.4.5 (H3)
+    : entry.dupKeyIndex === 1 ? ['cite key used more than once — BibTeX uses this copy (#1)']
+      : [`duplicate cite key (copy #${entry.dupKeyIndex}) — BibTeX uses copy #1 and ignores this one`]
   return {
+    notes,
     rowId: entry.rowId,
     sourceOffset: entry.sourceOffset,
     citeKey: entry.citeKey,
@@ -145,6 +167,8 @@ export interface TitleSources {
   crossref: (e: BibEntry) => Promise<OpenAlexWork[] | null> // null = unavailable
   openalexByDoi: (doi: string) => Promise<OpenAlexWork | null> // FREE singleton
   openalexSearch: (query: string) => Promise<TitleSearch> // BILLABLE
+  lookup: (key: string) => Promise<DoiLookup> // v1.4.5: FREE singleton by "doi:…" / "pmid:…" / "pmcid:…"
+  pause: (ms: number) => Promise<void> // v1.4.5: request pacing (instant in the offline regression)
 }
 
 export interface TitleResolution {
@@ -162,8 +186,9 @@ export function usesCrossref(e: BibEntry): boolean {
 
 export async function resolveByTitle(
   entry: BibEntry,
-  src: TitleSources,
+  src: Pick<TitleSources, 'crossref' | 'openalexByDoi' | 'openalexSearch'>,
   onStep: (label: string) => void = () => {},
+  missingDoi: string | null = null, // v1.4.5 (H8): a cited DOI OpenAlex doesn't know
 ): Promise<TitleResolution> {
   const q = entry.titleForSearch || (entry.title === '(no title)' ? '' : entry.title)
   if (!q) return { decision: null, via: 'openalex-search', billable: false, error: null }
@@ -171,12 +196,12 @@ export async function resolveByTitle(
   if (usesCrossref(entry)) {
     onStep(`Crossref search (free) — ${entry.citeKey}`)
     const cands = await src.crossref(entry)
-    const d1 = cands ? chooseTitleMatch(entry, cands) : null
+    const d1 = cands ? chooseTitleMatch(entry, cands, missingDoi) : null
     const doi = d1?.status === 'matched-by-title' && d1.work?.doi ? normalizeDoi(d1.work.doi) : null
     if (doi) {
       const oa = await src.openalexByDoi(doi)
       // Re-score the OpenAlex record itself; accept only if it is still confident.
-      const d2 = oa ? chooseTitleMatch(entry, [oa]) : null
+      const d2 = oa ? chooseTitleMatch(entry, [oa], missingDoi) : null
       if (d2?.status === 'matched-by-title') return { decision: d2, via: 'crossref', billable: false, error: null }
     }
   }
@@ -184,7 +209,50 @@ export async function resolveByTitle(
   onStep(`Title search (billable) — ${entry.citeKey}`)
   const res = await src.openalexSearch(q)
   if (res.kind === 'error') return { decision: null, via: 'openalex-search', billable: true, error: res.error }
-  return { decision: chooseTitleMatch(entry, res.candidates), via: 'openalex-search', billable: true, error: null }
+  return { decision: chooseTitleMatch(entry, res.candidates, missingDoi), via: 'openalex-search', billable: true, error: null }
+}
+
+// --- v1.4.5: post-match notes and same-work duplicates -----------------------
+
+const PREPRINT_VENUE = /arxiv|biorxiv|medrxiv|chemrxiv|ssrn|research\s*square|preprint/i
+const bare = (id: string | null | undefined) => (id ?? '').replace(/^https?:\/\/openalex\.org\//i, '')
+const isConfident = (r: ResultRow) => r.status === 'matched-by-doi' || r.status === 'matched-by-title'
+const note = (r: ResultRow, n: string) => { if (!r.notes?.includes(n)) r.notes = [...(r.notes ?? []), n] }
+
+// Idempotent (Resume / Retry run it again over the merged rows).
+export function finishRows(rows: ResultRow[]): void {
+  // H9 — cited as a journal / proceedings paper, but only the preprint is indexed.
+  for (const r of rows) {
+    const e = r.entry
+    if (!e || !r.openalex || !isConfident(r)) continue
+    if (r.openalex.type === 'preprint' && e.venue && !PREPRINT_VENUE.test(e.venue)) {
+      r.preprintVersion = true
+      note(r, `matched to the preprint version — your entry cites ${e.venue}`)
+    }
+  }
+  // H2 — confident rows on the SAME OpenAlex work are one reference: later rows
+  // point to the first. An uncertain row on that work only gets a hint.
+  const firstById = new Map<string, ResultRow>()
+  for (const r of rows) {
+    if (r.duplicateOf || !r.openalex || !isConfident(r)) continue
+    const id = bare(r.openalex.id)
+    const first = firstById.get(id)
+    if (first) { r.duplicateOf = first.citeKey; note(r, `same OpenAlex work as ${first.citeKey}`) }
+    else firstById.set(id, r)
+  }
+  for (const r of rows) {
+    if (r.duplicateOf || r.status !== 'uncertain' || !r.openalex) continue
+    const first = firstById.get(bare(r.openalex.id))
+    if (first) note(r, `possibly the same work as ${first.citeKey}`)
+  }
+  // C2 — a suspicious DOI that another entry carries: say whose it is.
+  const byDoi = new Map<string, ResultRow[]>()
+  for (const r of rows) if (r.entry?.doi) byDoi.set(r.entry.doi, [...(byDoi.get(r.entry.doi) ?? []), r])
+  for (const r of rows) {
+    if (r.status !== 'suspicious' || !r.entry?.doi) continue
+    const owner = (byDoi.get(r.entry.doi) ?? []).find(o => o !== r && isConfident(o))
+    if (owner) note(r, `this DOI belongs to ${owner.citeKey}: "${owner.openalex?.displayName ?? ''}"`)
+  }
 }
 
 // --- Orchestration ---------------------------------------------------------
@@ -208,36 +276,30 @@ export async function runMatching(
     crossref: searchCrossref,
     openalexByDoi: async doi => { const r = await lookupByDoi(doi, cred); return r.kind === 'ok' ? r.work : null },
     openalexSearch: q => searchByTitle(q, false, cred),
+    lookup: key => lookupWork(key, cred),
+    pause: sleep,
     ...sourceOverrides,
   }
   const rows = buildRows(parsed)
   const byRowId = new Map(rows.map(r => [r.rowId, r]))
 
-  const duplicates = computeDuplicates(parsed.entries)
+  const duplicates = duplicateCanon(parsed.entries)
   const canonicalEntries = parsed.entries.filter(e => !duplicates.has(e.rowId))
-  const canonByKey = new Map<string, BibEntry>()
-  for (const e of canonicalEntries) {
-    const k = dedupKey(e)
-    if (k) canonByKey.set(k, e)
-  }
   const dupsByCanonRowId = new Map<string, BibEntry[]>()
   for (const e of parsed.entries) {
-    if (!duplicates.has(e.rowId)) continue
-    const canon = canonByKey.get(dedupKey(e))
-    const dupRow = byRowId.get(e.rowId)
-    if (dupRow) dupRow.duplicateOf = duplicates.get(e.rowId) ?? null
+    const canon = duplicates.get(e.rowId)
     if (!canon) continue
-    const arr = dupsByCanonRowId.get(canon.rowId) ?? []
-    arr.push(e)
-    dupsByCanonRowId.set(canon.rowId, arr)
+    const dupRow = byRowId.get(e.rowId)
+    if (dupRow) dupRow.duplicateOf = canon.citeKey
+    dupsByCanonRowId.set(canon.rowId, [...(dupsByCanonRowId.get(canon.rowId) ?? []), e])
   }
 
   let done = 0
   let searchCalls = 0
   const total = canonicalEntries.length
 
-  async function attemptTitleSearch(entry: BibEntry, row: ResultRow): Promise<void> {
-    const r = await resolveByTitle(entry, sources, label => onProgress({ stage: 'title', label, done, total, searchCalls }))
+  async function attemptTitleSearch(entry: BibEntry, row: ResultRow, missingDoi: string | null = null): Promise<void> {
+    const r = await resolveByTitle(entry, sources, label => onProgress({ stage: 'title', label, done, total, searchCalls }), missingDoi)
     if (r.billable) searchCalls++
     if (r.error) { row.status = 'error'; row.error = r.error; return }
     const d = r.decision
@@ -250,6 +312,7 @@ export async function runMatching(
       row.matchSignals = d.signals
       row.yearState = compareYears(entry.year, d.work)
       row.twins = d.twins.map(t => ({ id: t.id, doi: t.doi, isRetracted: t.isRetracted })) // v1.4.2
+      if (d.status === 'uncertain' && d.reasons?.length) row.notes = [...(row.notes ?? []), `uncertain: ${d.reasons.join('; ')}`]
     }
   }
 
@@ -259,27 +322,45 @@ export async function runMatching(
     const row = byRowId.get(entry.rowId)!
 
     try {
-      if (entry.doi) {
-        onProgress({ stage: 'doi', label: `DOI lookup (free) — ${entry.citeKey}`, done, total, searchCalls })
-        const res = await lookupByDoi(entry.doi, cred)
-        if (res.kind === 'ok') {
-          const ys = compareYears(entry.year, res.work)
-          const sig = scoreCandidate(entry, res.work) // v1.4.1: real composite score
+      // The doi field, else (v1.4.5) a free identifier found elsewhere in the entry.
+      const idKey = entry.doi ? `doi:${entry.doi}` : entry.altId?.key ?? null
+      const idField = entry.doi ? 'doi' : entry.altId?.field ?? null
+      if (idKey) {
+        onProgress({ stage: 'doi', label: `${entry.doi ? 'DOI' : 'Identifier'} lookup (free) — ${entry.citeKey}`, done, total, searchCalls })
+        const res = await sources.lookup(idKey)
+        const sig = res.kind === 'ok' ? scoreCandidate(entry, res.work) : null // v1.4.1: real composite score
+        const ys = res.kind === 'ok' ? compareYears(entry.year, res.work) : 'unverified'
+        // Title rule as before (now retraction-prefix aware), plus: a DOI whose
+        // record disagrees on several signals at once is flagged too.
+        let status: MatchStatus = sig ? classifyDoiMatch(sig.title, ys) : 'pending'
+        if (sig && status === 'matched-by-doi' && sig.score < MATCH_SCORE_FLOOR) status = 'suspicious'
+        if (res.kind === 'ok' && sig && (entry.doi || status === 'matched-by-doi')) {
           row.openalex = res.work
           row.matchScore = sig.score
           row.matchSignals = sig
           row.yearState = ys
-          // Title rule as before (now retraction-prefix aware), plus: a DOI whose
-          // record disagrees on several signals at once is flagged too.
-          row.status = classifyDoiMatch(sig.title, ys)
-          if (row.status === 'matched-by-doi' && sig.score < MATCH_SCORE_FLOOR) row.status = 'suspicious'
-        } else if (res.kind === 'not-found') {
-          await sleep(REQUEST_DELAY_MS)
-          onProgress({ stage: 'title', label: `DOI missed, searching title — ${entry.citeKey}`, done, total, searchCalls })
-          await attemptTitleSearch(entry, row)
-        } else {
+          row.status = status
+          row.idSource = idField
+          if (!entry.doi) row.notes = [...(row.notes ?? []), `identified by the ${idKey.replace(/:.*/, '').toUpperCase()} in ${idField}`]
+          if (status === 'suspicious') row.notes = [...(row.notes ?? []), sig.title < 0.7
+            ? `the DOI's record has another title: "${res.work.displayName}"`
+            : `the DOI's record disagrees on several details (score ${sig.score.toFixed(2)})`]
+          const cited = entry.doi ?? entry.altId?.doi
+          const own = res.work.doi ? normalizeDoi(res.work.doi) : null
+          if (status === 'matched-by-doi' && cited && own && own !== cited) { // M5
+            row.notes = [...(row.notes ?? []), `resolved to merged record ${own} (${res.work.hostVenue ?? 'no venue'}, ${res.work.publicationYear ?? 'no year'})`]
+          }
+        } else if (res.kind === 'error') {
           row.status = 'error'
           row.error = res.error
+        } else {
+          // Not in OpenAlex, or (an identifier outside the doi field) its record is
+          // another work: fall back to the title path.
+          if (res.kind === 'ok') row.notes = [...(row.notes ?? []), `the identifier in ${idField} points to another work ("${res.work.displayName}") — ignored`]
+          await sources.pause(REQUEST_DELAY_MS)
+          onProgress({ stage: 'title', label: `Identifier missed, searching title — ${entry.citeKey}`, done, total, searchCalls })
+          const missing = res.kind === 'not-found' ? (entry.doi ?? entry.altId?.doi ?? null) : null
+          await attemptTitleSearch(entry, row, missing)
         }
       } else {
         onProgress({ stage: 'title', label: `Looking up title — ${entry.citeKey}`, done, total, searchCalls })
@@ -307,13 +388,15 @@ export async function runMatching(
         dr.matchedVia = row.matchedVia
         dr.yearState = row.yearState
         dr.error = row.error
+        dr.idSource = row.idSource
       }
     }
 
     done++
-    await sleep(REQUEST_DELAY_MS)
+    await sources.pause(REQUEST_DELAY_MS)
   }
 
+  finishRows(rows)
   onProgress({ stage: 'done', label: 'Done', done, total, searchCalls })
   return { rows, summary: summarize(rows, searchCalls), exhausted }
 }
@@ -344,5 +427,7 @@ export function summarize(rows: ResultRow[], searchCalls: number): MatchSummary 
 // were re-queried replace their pending placeholders; everything else is kept.
 export function mergeRows(master: ResultRow[], resumed: ResultRow[]): ResultRow[] {
   const byId = new Map(resumed.map(r => [r.rowId, r]))
-  return master.map(r => byId.get(r.rowId) ?? r)
+  const merged = master.map(r => byId.get(r.rowId) ?? r)
+  finishRows(merged) // v1.4.5: same-work duplicates across the two runs
+  return merged
 }

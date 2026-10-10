@@ -8,7 +8,10 @@
 //   • v1.4.2: FREE Crossref update-record lookups (api.crossref.org, batched) for
 //     every candidate DOI — the retraction / concern / correction notices,
 //   • v1.4.4: FREE Crossref title searches (public pool, >= 1.1 s apart) and the
-//     OpenAlex record (free singleton) for every Crossref candidate DOI.
+//     OpenAlex record (free singleton) for every Crossref candidate DOI,
+//   • v1.4.5: FREE OpenAlex singletons for every entry's DOI or other identifier
+//     (url / note / eprint / PMID …), and one BILLABLE `type:!preprint` search for
+//     each entry with `expectpublishednot` (the Preprint → published check).
 // It writes test/regression/hard-titles.fixture.json; hard-titles.test.ts then
 // replays that fixture OFFLINE on every run.
 //
@@ -26,16 +29,20 @@ import { fileURLToPath } from 'node:url'
 import { parseBib } from '../../src/lib/parseBib'
 import { readField } from '../../src/lib/bibWriter'
 import { normalizeDoi } from '../../src/lib/doi'
-import { buildDoiUrl, buildWorksSearchUrl } from '../../src/lib/openalex'
+import { buildDoiUrl, buildLookupUrl, buildWorksSearchUrl } from '../../src/lib/openalex'
 import { buildCrossrefSearchUrl, buildCrossrefUrl, CROSSREF_BATCH } from '../../src/lib/crossref'
 import { usesCrossref } from '../../src/lib/match'
 import type { Credential } from '../../src/lib/credential'
+import type { BibEntry } from '../../src/types'
 
 const BIB = fileURLToPath(new URL('./hard-titles.bib', import.meta.url))
 const OUT = fileURLToPath(new URL('./hard-titles.fixture.json', import.meta.url))
 const BASE = 'https://api.bibprofile.com'
 const cred: Credential = { kind: 'shared', baseUrl: BASE, apiKey: '', mailto: '' }
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+// v1.4.5: a cite key may occur twice — records are keyed by occurrence (as in hard-titles.test.ts).
+const fxKey = (e: BibEntry) => ((e.dupKeyIndex ?? 1) > 1 ? `${e.citeKey}#${e.dupKeyIndex}` : e.citeKey)
+const lc = (s: string | null | undefined) => (s ?? '').toLowerCase()
 
 // Keep only what toOpenAlexWork reads (smaller, stable fixture; long author
 // lists capped at 15 — the author signal only needs the first few).
@@ -78,17 +85,18 @@ async function resolveDoi(doi: string) {
 describe.skipIf(!process.env.BIBPROFILE_RECORD)('record hard-titles fixture (network, shared pool)', () => {
   it('records top-5 candidates + ground truth for every entry', async () => {
     const parsed = parseBib(readFileSync(BIB, 'utf8'))
-    expect(parsed.unparseable).toEqual([])
+    expect(parsed.unparseable.map(u => u.citeKey)).toEqual(['empty_entry']) // the one deliberate parse-error case
     const prev: Record<string, any> = process.env.BIBPROFILE_RECORD !== 'all' && existsSync(OUT)
       ? JSON.parse(readFileSync(OUT, 'utf8')).entries : {}
     const entries: Record<string, unknown> = {}
     let searches = 0
     for (const e of parsed.entries) {
       const query = e.titleForSearch || e.title
-      const old = prev[e.citeKey]
+      const old = prev[fxKey(e)]
       const sameDoi = (r: any, d: string | null) => (r?.doi ?? null) === (d ? normalizeDoi(d) : null)
-      if (old && old.query === query && sameDoi(old.expectDoi, readField(e.raw, 'expectdoi')) && sameDoi(old.expectNot, readField(e.raw, 'expectnot'))) {
-        entries[e.citeKey] = old // unchanged — keep the recorded responses
+      // (case-insensitive: OpenAlex search ignores case, and v1.4.5 stopped lower-casing titles)
+      if (old && lc(old.query) === lc(query) && sameDoi(old.expectDoi, readField(e.raw, 'expectdoi')) && sameDoi(old.expectNot, readField(e.raw, 'expectnot'))) {
+        entries[fxKey(e)] = old // unchanged — keep the recorded responses
         continue
       }
       const { json } = await getJson(buildWorksSearchUrl(query, false, cred))
@@ -96,7 +104,7 @@ describe.skipIf(!process.env.BIBPROFILE_RECORD)('record hard-titles fixture (net
       await sleep(250)
       const expectDoi = readField(e.raw, 'expectdoi')
       const expectNot = readField(e.raw, 'expectnot')
-      entries[e.citeKey] = {
+      entries[fxKey(e)] = {
         query,
         candidates: (Array.isArray(json?.results) ? json.results : []).map(trim),
         expectDoi: expectDoi ? await resolveDoi(expectDoi) : null,
@@ -109,9 +117,9 @@ describe.skipIf(!process.env.BIBPROFILE_RECORD)('record hard-titles fixture (net
     let crossrefSearches = 0
     for (const e of parsed.entries) {
       if (!usesCrossref(e)) continue
-      const r: any = entries[e.citeKey]
+      const r: any = entries[fxKey(e)]
       const url = buildCrossrefSearchUrl(e)
-      if (r.crossrefUrl === url && Array.isArray(r.crossrefItems)) continue
+      if (lc(r.crossrefUrl) === lc(url) && Array.isArray(r.crossrefItems)) continue
       await sleep(1100) // public pool: 1 list request / s
       const { json } = await getJson(url)
       r.crossrefUrl = url
@@ -133,7 +141,36 @@ describe.skipIf(!process.env.BIBPROFILE_RECORD)('record hard-titles fixture (net
         await sleep(250)
       }
     }
-    console.log(`[crossref] ${crossrefSearches} searches, ${oaLookups} OpenAlex-by-DOI lookups (free)`)
+    // v1.4.5 — every entry's own identifier: the doi field, or a DOI / arXiv id /
+    // PMID found elsewhere (parseBib's altId). Stored in oaByDoi under the bare DOI
+    // or "pmid:…" / "pmcid:…"; null = OpenAlex 404.
+    for (const e of parsed.entries) {
+      const key = e.doi ? `doi:${e.doi}` : e.altId?.key
+      if (!key) continue
+      const k = key.replace(/^doi:/, '')
+      if (k in oaByDoi) continue
+      if (k in prevOa) { oaByDoi[k] = prevOa[k]; continue }
+      const { status, json } = await getJson(buildLookupUrl(key, cred))
+      oaByDoi[k] = status === 200 && json ? trim(json) : null
+      oaLookups++
+      await sleep(250)
+    }
+    console.log(`[crossref] ${crossrefSearches} searches, ${oaLookups} OpenAlex lookups by DOI / identifier (free)`)
+
+    // v1.4.5 — Preprint -> published candidates (the app's type:!preprint search on
+    // the .bib title) for entries with `expectpublishednot`.
+    let publishedSearches = 0
+    for (const e of parsed.entries) {
+      if (!readField(e.raw, 'expectpublishednot')) continue
+      const r: any = entries[fxKey(e)]
+      if (Array.isArray(r.publishedCandidates) && lc(r.publishedQuery) === lc(e.title)) continue
+      const { json } = await getJson(buildWorksSearchUrl(e.title, true, cred))
+      r.publishedQuery = e.title
+      r.publishedCandidates = (Array.isArray(json?.results) ? json.results : []).map(trim)
+      publishedSearches++
+      searches++
+      await sleep(250)
+    }
 
     // v1.4.2 — Crossref notices for every candidate DOI (and ground-truth DOI).
     // Incremental too: DOIs already checked in the previous fixture are kept.
@@ -145,7 +182,10 @@ describe.skipIf(!process.env.BIBPROFILE_RECORD)('record hard-titles fixture (net
       for (const c of r.candidates) if (c.doi) all.add(normalizeDoi(c.doi) ?? '')
       for (const x of [r.expectDoi, r.expectNot]) if (x?.doi) all.add(x.doi)
     }
-    for (const d of Object.keys(oaByDoi)) all.add(d) // v1.4.4: DOIs reached through Crossref
+    for (const [k, w] of Object.entries(oaByDoi) as [string, any][]) {
+      if (!k.includes(':')) all.add(k) // v1.4.4: DOIs reached through Crossref (v1.4.5: and the entries' own)
+      if (w?.doi) all.add(normalizeDoi(w.doi) ?? '')
+    }
     all.delete('')
     const todo = [...all].filter(d => !prevChecked.has(d) && !d.includes(','))
     let crossrefCalls = 0

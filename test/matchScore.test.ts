@@ -12,7 +12,7 @@ function entry(over: Partial<BibEntry> = {}): BibEntry {
     rowId: 'e0', sourceOffset: 0, citeKey: 'k0', entryType: 'article',
     title: 'T', titleForSearch: 'T', authors: '', year: null, venue: '',
     doiRaw: null, doi: null, firstAuthor: '', volume: '', pages: '', titleRetracted: false,
-    raw: '', likelyNotIndexable: false, ...over,
+    altId: null, dupKeyIndex: null, raw: '', likelyNotIndexable: false, ...over,
   }
 }
 let n = 0
@@ -190,5 +190,51 @@ describe('chooseTitleMatch', () => {
     // title similarity 0.783 (< 0.85) and nothing else to compare
     const d = chooseTitleMatch(entry({ title: 'Statistical mechanics of complex networks' }), [work({ displayName: 'Statistical mechanics of complex networks and their applications' })])
     expect(d.status).toBe('uncertain')
+  })
+})
+
+describe('v1.4.5 confidence rules', () => {
+  const T = 'High performance communication by people with paralysis using an intracortical brain-computer interface'
+  it("accepts OpenAlex's A&A title truncated at the first '. ' (H1)", () => {
+    expect(titleSimilarity('Gaia Data Release 2. Summary of the contents and survey properties', 'Gaia Data Release 2')).toBe(0.9)
+    expect(titleSimilarity('Rotation velocities of white dwarfs. III. DA stars with convective atmospheres', 'Rotation velocities of white dwarfs')).toBe(0.9)
+    expect(titleSimilarity('Dr. Who and the Daleks', 'Dr')).toBeLessThan(0.7) // a 1-word head never counts
+  })
+  it('a title-only match needs the author or the year to be confident (H6)', () => {
+    const w = work({ displayName: T, authorships: au('Chethan Pandarinath'), publicationYear: 2017 })
+    expect(chooseTitleMatch(entry({ title: T, titleForSearch: T }), [w]).status).toBe('uncertain')
+    expect(chooseTitleMatch(entry({ title: T, titleForSearch: T, year: 2017 }), [w]).status).toBe('matched-by-title')
+  })
+  it('a saved peer-review page is never confident (H6)', () => {
+    const t = 'PEER REVIEW - Decoding of intuitive motor imagery paradigm based on frequency-band double-branch network'
+    const w = work({ displayName: 'Decoding of intuitive motor imagery paradigm based on frequency-band double-branch network', authorships: au('A. Author'), publicationYear: 2025 })
+    const d = chooseTitleMatch(entry({ title: t, titleForSearch: cleanTitleForSearch(t), firstAuthor: 'Author', year: 2025 }), [w])
+    expect(d.status).toBe('uncertain')
+    expect(d.reasons).toContain('the title is a peer-review page, not the paper')
+  })
+  it('prefers a real record over a stub (no DOI, one author, junk venue); a stub alone is uncertain (H7)', () => {
+    const t = 'ImageNet classification with deep convolutional neural networks'
+    const e = entry({ title: t, titleForSearch: t, firstAuthor: 'Krizhevsky', authors: 'Krizhevsky, Alex; Sutskever, Ilya; Hinton, Geoffrey', year: 2012, entryType: 'inproceedings' })
+    const stub = work({ displayName: t, authorships: au('Krizhevsky'), publicationYear: 2012, hostVenue: 'Medical Entomology and Zoology', citedByCount: 9999 })
+    const real = work({ displayName: t, authorships: au('Alex Krizhevsky', 'Ilya Sutskever', 'Geoffrey E. Hinton'), publicationYear: 2012, doi: 'https://doi.org/10.1/nips' })
+    expect(chooseTitleMatch(e, [stub, real]).work).toBe(real)
+    expect(chooseTitleMatch(e, [stub]).status).toBe('uncertain')
+  })
+  it('a very short title needs the author and the venue (or year) too (H8)', () => {
+    const e = entry({ title: 'somatomotor', titleForSearch: 'somatomotor', firstAuthor: 'Lin', year: 2025, venue: 'OpenNeuro [Data set]', entryType: 'misc' })
+    const mirror = work({ displayName: 'somatomotor', authorships: au('Fa-Hsuan Lin'), publicationYear: 2026, hostVenue: 'UC San Diego' })
+    expect(chooseTitleMatch(e, [mirror]).status).toBe('uncertain')
+    const mask = entry({ title: 'Mask R-CNN', titleForSearch: 'Mask R-CNN', firstAuthor: 'He', year: 2020, venue: 'IEEE Transactions on Pattern Analysis and Machine Intelligence' })
+    const tpami = work({ displayName: 'Mask R-CNN', authorships: au('Kaiming He'), publicationYear: 2018, hostVenue: 'IEEE Transactions on Pattern Analysis and Machine Intelligence', type: 'article' })
+    expect(chooseTitleMatch(mask, [tpami]).status).toBe('matched-by-title')
+  })
+  it('a cited DOI OpenAlex lacks: a record with ANOTHER DOI is not confident (H8)', () => {
+    const t = 'A long enough dataset title about somatomotor mapping'
+    const e = entry({ title: t, titleForSearch: t, firstAuthor: 'Lin', year: 2025 })
+    const w = work({ displayName: t, authorships: au('Fa-Hsuan Lin'), publicationYear: 2025, doi: 'https://doi.org/10.82901/nemar.on006035.v1.0.0' })
+    expect(chooseTitleMatch(e, [w]).status).toBe('matched-by-title')
+    const d = chooseTitleMatch(e, [w], '10.18112/openneuro.ds006035.v1.0.0')
+    expect(d.status).toBe('uncertain')
+    expect(d.reasons).toContain('same title, different DOI')
   })
 })

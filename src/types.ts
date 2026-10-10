@@ -32,8 +32,17 @@ export interface BibEntry {
   volume: string
   pages: string
   titleRetracted: boolean // title carried a "RETRACTED:" / "Retracted article:" prefix (kept for v1.4.2)
+  altId: AltId | null // v1.4.5: a free identifier found OUTSIDE the doi field (url, note, eprint, pmid, …)
+  dupKeyIndex: number | null // v1.4.5: 1, 2, … when this cite key occurs more than once in the file
   raw: string
   likelyNotIndexable: boolean // Fix 8/A4 pre-flag; used only to classify a miss
+}
+
+// v1.4.5 — an identifier the .bib carries outside its `doi` field.
+export interface AltId {
+  key: string // OpenAlex singleton key: "doi:10.x/y" | "pmid:123" | "pmcid:PMC123"
+  doi: string | null // the DOI when the identifier is (or maps to) one
+  field: string // where it was found: url, note, howpublished, eprint, journal, annote, pmid, pmcid
 }
 
 export interface UnparseableEntry {
@@ -96,6 +105,9 @@ export interface ResultRow {
   matchSignals?: MatchSignals | null // v1.4.1: the per-signal breakdown behind matchScore (table tooltip)
   twins?: TwinWork[] // v1.4.2: other OpenAlex records that look like the SAME work (retraction check)
   matchedVia?: 'crossref' | 'openalex-search' // v1.4.4: how a title match was found (free Crossref vs billable search)
+  idSource?: string | null // v1.4.5: the identifier that found the record — 'doi' (the field) or an AltId field
+  preprintVersion?: boolean // v1.4.5: cited as a journal/proceedings paper, but matched to the preprint record
+  notes?: string[] // v1.4.5: why a row is flagged, and hints (table tooltip + CSV)
   yearState: YearState // agree / disagree / unverified
   duplicateOf: string | null
   error: string | null

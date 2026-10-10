@@ -81,7 +81,9 @@ interface FieldSpan { valueStart: number; valueEnd: number; inner: string }
 // required `=` (so `journal` won't match `journaltitle`). Returns the value span
 // (delimiters included) and its inner text, or null if not found / unbalanced.
 function locateField(raw: string, field: string): FieldSpan | null {
-  const m = new RegExp(`[,{]\\s*${field}\\s*=\\s*`, 'i').exec(raw)
+  // Fields follow a comma (the first one follows `key,`). v1.4.5: not `{` — that
+  // also matched text inside a value, e.g. `note = {journal=…}`.
+  const m = new RegExp(`,\\s*${field}\\s*=\\s*`, 'i').exec(raw)
   if (!m) return null
   const s = m.index + m[0].length
   const ch = raw[s]

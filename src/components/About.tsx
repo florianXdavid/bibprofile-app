@@ -27,7 +27,7 @@ export default function About() {
         </li>
         <li>
           <strong>Missing citations</strong> — finds works your references collectively point to but
-          you haven't cited (missing <em>foundations</em>), and recent work that cites your set
+          you haven't cited (missing <em>foundations</em>), and later work that cites your set
           (<em>adjacent work</em>).
         </li>
         <li>
@@ -43,7 +43,7 @@ export default function About() {
 
       <h3>Privacy</h3>
       <p>
-        Everything runs in your browser. To match your references, their titles and DOIs are sent to
+        Everything runs in your browser. To match your references, their titles and identifiers (DOI, arXiv or PubMed ID) are sent to
         OpenAlex. On the shared pool (the default), they pass through BibProfile's own proxy at{' '}
         <code>api.bibprofile.com</code>, which forwards them to OpenAlex and stores nothing; if you use
         your own key, queries go straight to OpenAlex and your key never touches our proxy. To find each

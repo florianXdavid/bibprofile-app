@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react'
 import type { MatchSignals, MatchStatus, ResultRow } from '../types'
+import type { CrossrefRunState } from '../lib/crossref'
+import { computeRetractions } from '../lib/stats/retractions'
+import { normalizeDoi } from '../lib/doi'
 
 type SortDir = 'asc' | 'desc'
 type Primitive = string | number | null
@@ -31,6 +34,12 @@ function signalsTitle(s: MatchSignals | null | undefined): string {
   return `${base}\ntitle ${f(s.title)} · author ${f(s.author)} · year ${f(s.year)} · venue ${f(s.venue)} · type ${f(s.type)} · vol/pages ${f(s.biblio)}`
 }
 
+// v1.4.5 (H3): a duplicate CITE KEY points to its first copy, never to "itself".
+function dupLabel(r: ResultRow): string | null {
+  if (!r.duplicateOf) return null
+  return r.duplicateOf === r.citeKey ? `${r.citeKey} (copy #1)` : r.duplicateOf
+}
+
 const STATUS_ORDER: MatchStatus[] = [
   'matched-by-doi', 'matched-by-title', 'suspicious', 'uncertain',
   'not-found', 'not-indexable', 'error', 'unparseable',
@@ -43,8 +52,11 @@ const columns: Column[] = [
     cell: r => (
       <span title={r.citeKey}>
         {r.citeKey}
+        {r.entry?.dupKeyIndex != null && (
+          <span className="flag" title="This cite key occurs more than once — BibTeX uses copy #1 and ignores the others"> #{r.entry.dupKeyIndex} duplicate key</span>
+        )}
         {r.duplicateOf && (
-          <span className="dup" title={`duplicate of ${r.duplicateOf}`}> ↳ dup of {r.duplicateOf}</span>
+          <span className="dup" title={`duplicate of ${dupLabel(r)}`}> ↳ dup of {dupLabel(r)}</span>
         )}
       </span>
     ),
@@ -71,6 +83,8 @@ const columns: Column[] = [
             title={signalsTitle(r.matchSignals) + (r.matchedVia === 'crossref' ? '\nfound via Crossref, record from OpenAlex by DOI' : '')}
           > {r.matchScore.toFixed(2)}</span>
         )}
+        {r.preprintVersion && <span className="dup" title="Cited as a journal / proceedings paper; matched to its preprint record (the only one indexed)"> preprint version</span>}
+        {(r.notes?.length ?? 0) > 0 && <span className="note-mark" title={r.notes!.join('\n')}> ⓘ</span>}
       </>
     ),
   },
@@ -146,7 +160,7 @@ function compare(a: Primitive, b: Primitive, numeric: boolean): number {
   return String(a).localeCompare(String(b))
 }
 
-export default function ResultsTable({ rows }: { rows: ResultRow[] }) {
+export default function ResultsTable({ rows, crossref }: { rows: ResultRow[]; crossref?: CrossrefRunState }) {
   const [sortKey, setSortKey] = useState<string>('') // '' = original .bib file order (Fix A5)
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [filter, setFilter] = useState<Filter>('all')
@@ -183,8 +197,17 @@ export default function ResultsTable({ rows }: { rows: ResultRow[] }) {
     // v1.4.1 hotfix: the on-screen "dup of …" tag lives in the cite-key cell's
     // markup only, so the CSV gets an explicit column for it. v1.4.2 patch: likewise
     // the error message (shown on screen in the topic cell of error rows).
-    const header = [...columns.map(c => esc(c.label)), 'Duplicate of', 'Error'].join(',')
-    const body = visible.map(r => [...columns.map(c => esc(c.get(r))), esc(r.duplicateOf), esc(r.error)].join(',')).join('\n')
+    // v1.4.5 (M6): enough to audit a run — appended, so existing columns keep their place.
+    const retracted = new Map(computeRetractions(rows, crossref?.status === 'done' ? crossref.result : null)
+      .retracted.map(f => [f.rowId, f.signals.join(' + ')]))
+    const header = [...columns.map(c => esc(c.label)), 'Duplicate of', 'Error',
+      'Match score', 'Matched DOI', 'OpenAlex title', 'Notes', 'Retracted', 'Preprint version', 'Identified by'].join(',')
+    const body = visible.map(r => [
+      ...columns.map(c => esc(c.get(r))), esc(dupLabel(r)), esc(r.error),
+      esc(r.matchScore), esc(r.openalex?.doi ? normalizeDoi(r.openalex.doi) : null), esc(r.openalex?.displayName ?? null),
+      esc((r.notes ?? []).join(' | ') || null), esc(retracted.has(r.rowId) ? `yes (${retracted.get(r.rowId)})` : (r.openalex ? 'no' : null)),
+      esc(r.preprintVersion ? 'yes' : null), esc(r.idSource ?? null),
+    ].join(',')).join('\n')
     const blob = new Blob(['﻿' + header + '\n' + body], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -229,8 +252,9 @@ export default function ResultsTable({ rows }: { rows: ResultRow[] }) {
           <li><strong>not-indexable</strong> — not the kind of record OpenAlex indexes (a dataset, a software library, a URL used as a title).</li>
           <li><strong>error</strong> — a network or server failure after one retry.</li>
           <li><strong>unparseable</strong> — the <code>.bib</code> block couldn't be turned into a usable record.</li>
-          <li><strong>duplicates</strong> — the same work cited more than once; collapsed to one before analysis (tagged “dup of …”).</li>
+          <li><strong>duplicates</strong> — the same work cited more than once (same DOI, or the same OpenAlex record); collapsed to one before analysis (tagged “dup of …”).</li>
         </ul>
+        <p className="muted">ⓘ marks a row with notes — why it is flagged, where its identifier was found, or a hint (hover it; also in the CSV). “preprint version” = cited as a journal or proceedings paper, but only its preprint is indexed.</p>
         <p className="muted">The number after the status is the match score (0–1), combining title, first author, year (±1), venue, entry type and volume/pages — hover it for the breakdown. The “Yr (OA)” column also shows ⚠ when the <code>.bib</code> year and the OpenAlex year disagree, and ? when a year is missing on either side.</p>
       </details>
 

@@ -26,7 +26,7 @@ function entry(over: Partial<BibEntry>): BibEntry {
     rowId: 'e', sourceOffset: 0, citeKey: 'k', entryType: 'article',
     title: 'T', titleForSearch: 'T', authors: '', year: null, venue: '',
     doiRaw: null, doi: null, firstAuthor: '', volume: '', pages: '', titleRetracted: false,
-    raw: '', likelyNotIndexable: false, ...over,
+    altId: null, dupKeyIndex: null, raw: '', likelyNotIndexable: false, ...over,
   }
 }
 const parsed = (entries: BibEntry[]): ParseResult => ({ entries, unparseable: [], warnings: [] })

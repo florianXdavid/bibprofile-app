@@ -34,3 +34,57 @@ export function normalizeDoi(input: string | null | undefined): string | null {
 
   return doi
 }
+
+// --- v1.4.5 (H4): identifiers OUTSIDE the doi field ---------------------------
+// Zotero, Google Scholar, ADS and hand-written entries often carry the DOI in
+// `url` / `note` / `howpublished`, an arXiv id in `eprint` / `journal`, or a
+// PubMed id. Each of these is a FREE OpenAlex singleton lookup — far better than
+// a billable title search. Read from the VERBATIM source fields (`read`), in
+// priority order: pmid/pmcid fields, then a DOI, an arXiv id, a PubMed / PMC URL,
+// an eLife article URL (searched across ALT_FIELDS for each pattern in turn).
+
+const ALT_FIELDS = ['url', 'note', 'howpublished', 'eprint', 'journal', 'annote']
+const DOI_IN_TEXT = /(?:doi\.org\/|\bdoi:\s*)(10\.\d{4,9}\/[^\s{}"<>\\]+)/i
+const ARXIV = '([a-z-]+(?:\\.[a-z]{2})?\\/\\d{7}|\\d{4}\\.\\d{4,5})'
+const ARXIV_URL = new RegExp(`arxiv\\.org\\/(?:abs|pdf)\\/${ARXIV}`, 'i')
+const ARXIV_TAG = new RegExp(`\\barxiv:\\s*${ARXIV}`, 'i')
+const ARXIV_BARE = new RegExp(`^\\s*${ARXIV}(?:v\\d+)?\\s*$`, 'i')
+
+export interface FoundId { key: string; doi: string | null; field: string }
+
+function cleanDoiMatch(s: string): string | null {
+  let d = s.replace(/[.,;]+$/, '')
+  if (d.endsWith(')') && !d.includes('(')) d = d.slice(0, -1)
+  try { d = decodeURIComponent(d) } catch { /* keep as is */ }
+  return normalizeDoi(d)
+}
+
+export function findAltId(read: (field: string) => string | null): FoundId | null {
+  const pmid = (read('pmid') ?? '').match(/^\s*(\d+)\s*$/)
+  if (pmid) return { key: `pmid:${pmid[1]}`, doi: null, field: 'pmid' }
+  const pmcid = (read('pmcid') ?? '').match(/^\s*(PMC\d+)\s*$/i)
+  if (pmcid) return { key: `pmcid:${pmcid[1].toUpperCase()}`, doi: null, field: 'pmcid' }
+
+  const vals = ALT_FIELDS.map(f => [f, read(f) ?? ''] as const).filter(([, v]) => v)
+  const isArxivEprint = /arxiv/i.test(read('archiveprefix') ?? read('eprinttype') ?? '')
+  const asDoi = (doi: string | null, field: string): FoundId | null => (doi ? { key: `doi:${doi}`, doi, field } : null)
+
+  for (const [f, v] of vals) {
+    const m = v.match(DOI_IN_TEXT)
+    const hit = m && asDoi(cleanDoiMatch(m[1]), f)
+    if (hit) return hit
+  }
+  for (const [f, v] of vals) {
+    const m = v.match(ARXIV_URL) ?? v.match(ARXIV_TAG) ?? (f === 'eprint' && isArxivEprint ? v.match(ARXIV_BARE) : null)
+    if (m) return asDoi(`10.48550/arxiv.${m[1].toLowerCase()}`, f)
+  }
+  for (const [f, v] of vals) {
+    const pm = v.match(/pubmed\.ncbi\.nlm\.nih\.gov\/(\d+)/i)
+    if (pm) return { key: `pmid:${pm[1]}`, doi: null, field: f }
+    const pmc = v.match(/\/pmc\/articles\/(PMC\d+)/i)
+    if (pmc) return { key: `pmcid:${pmc[1].toUpperCase()}`, doi: null, field: f }
+    const el = v.match(/elifesciences\.org\/articles\/(\d+)/i)
+    if (el) return asDoi(`10.7554/elife.${el[1]}`, f)
+  }
+  return null
+}

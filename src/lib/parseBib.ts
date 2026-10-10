@@ -16,7 +16,8 @@
 
 import { parse, type Entry, type Creator } from '@retorquere/bibtex-parser'
 import type { BibEntry, ParseResult, UnparseableEntry } from '../types'
-import { normalizeDoi } from './doi'
+import { findAltId, normalizeDoi } from './doi'
+import { readField } from './bibWriter'
 import { cleanTitleForSearch, looksNotIndexable } from './titleClean'
 import { stripRetractedPrefix } from './matchScore'
 
@@ -61,9 +62,15 @@ function formatCreators(creators: Creator[] | undefined): string {
 
 // v1.4.1 — first author's (or, failing that, first editor's) family name, for the
 // match-scoring author signal. Institutional names come through as `name`.
+// v1.4.5 (H1) — a corporate author ({Gaia Collaboration}, a consortium, a team)
+// is skipped in favour of the first PERSON, as OpenAlex lists people.
+const CORPORATE = /\b(collaboration|consortium|group|team|laborator(y|ies)|project)\b/i
 function firstFamilyName(fields: Entry['fields']): string {
-  const c = (fields.author && fields.author[0]) || (fields.editor && fields.editor[0])
-  if (!c) return ''
+  const list = (fields.author && fields.author.length ? fields.author : fields.editor) ?? []
+  if (!list.length) return ''
+  const isCorporate = (c: Creator) => (c.name ? !c.name.includes(',') : false)
+    || CORPORATE.test(c.name ?? `${c.firstName ?? ''} ${c.lastName ?? ''}`)
+  const c = list.find(x => !isCorporate(x)) ?? list[0]
   return stripMarkup(c.lastName || c.name || '')
 }
 
@@ -73,7 +80,18 @@ function extractYear(fields: Entry['fields']): number | null {
   if (m) return parseInt(m[0], 10)
   const d = asString(fields.date) // biblatex `date = {2020-05-01}`
   const dm = d.match(/\d{4}/)
-  return dm ? parseInt(dm[0], 10) : null
+  if (dm) return parseInt(dm[0], 10)
+  // v1.4.5 (L1): "bioRxiv … [Preprint] (2021)" — a year in parentheses in howpublished / note.
+  const hm = `${asString(fields.howpublished)} ${asString(fields.note)}`.match(/\(((?:19|20)\d{2})\)/)
+  return hm ? parseInt(hm[1], 10) : null
+}
+
+// v1.4.5 (M3): the parser maps `<` / `>` to the OT1 glyphs `¡` / `¿` (what LaTeX would
+// print in text mode), and leaves \raisebox's length behind — the user meant the symbols.
+function displayTitle(t: string, rawTitle: string): string {
+  let s = (/[¡¿]/.test(rawTitle) ? t : t.replace(/¡/g, '<').replace(/¿/g, '>')).normalize('NFC')
+  if (/\\raisebox/.test(rawTitle)) s = s.replace(/-?\d*\.?\d+(?:ex|em|pt)\b/g, '')
+  return s
 }
 
 function extractVenue(fields: Entry['fields']): string {
@@ -99,14 +117,20 @@ export function parseBib(text: string): ParseResult {
   const warnings: string[] = []
 
   // Offset of a raw block within the source; -1 pushed to the end but stable.
+  // v1.4.5: two byte-identical blocks (a duplicated entry) get their own offsets.
+  const usedOffsets = new Set<number>()
   const offsetOf = (raw: string, fallback: number): number => {
-    const idx = raw ? text.indexOf(raw) : -1
-    return idx >= 0 ? idx : text.length + fallback
+    let idx = raw ? text.indexOf(raw) : -1
+    while (idx >= 0 && usedOffsets.has(idx)) idx = text.indexOf(raw, idx + 1)
+    if (idx >= 0) { usedOffsets.add(idx); return idx }
+    return text.length + fallback
   }
 
   let library
   try {
-    library = parse(text, { unsupported: 'ignore' })
+    // v1.4.5 (M3): english:false = no sentence-casing. The title stays as the user
+    // wrote it (minus TeX); `{SDSS-V}` and German nouns keep their capitals.
+    library = parse(text, { unsupported: 'ignore', english: false })
   } catch (err) {
     unparseable.push({
       rowId: 'u0', sourceOffset: 0, citeKey: null,
@@ -138,13 +162,16 @@ export function parseBib(text: string): ParseResult {
   library.entries.forEach((entry: Entry, i: number) => {
     if (entry.key && failedKeys.has(entry.key)) return
 
-    const rawTitle = asString(entry.fields.title) || asString(entry.fields.booktitle)
+    const rawTitle = displayTitle(asString(entry.fields.title) || asString(entry.fields.booktitle),
+      readField(entry.input, 'title') ?? readField(entry.input, 'booktitle') ?? '')
     const authors = formatCreators(entry.fields.author) || formatCreators(entry.fields.editor)
     const year = extractYear(entry.fields)
     const venue = extractVenue(entry.fields)
     const doiRaw = asIdentifier(entry.fields.doi) || null
     const doi = normalizeDoi(doiRaw)
     const offset = offsetOf(entry.input, i)
+    const altId = doi ? null : findAltId(f => readField(entry.input, f)) // v1.4.5 (H4)
+    const hasUrl = !!readField(entry.input, 'url')
 
     if (!rawTitle && !doi && !authors && !venue && year == null) {
       unparseable.push({
@@ -172,10 +199,21 @@ export function parseBib(text: string): ParseResult {
       volume: asString((entry.fields as Record<string, unknown>).volume),
       pages: asString((entry.fields as Record<string, unknown>).pages),
       titleRetracted: stripRetractedPrefix(rawTitle).retracted,
+      altId,
+      dupKeyIndex: null,
       raw: entry.input,
-      likelyNotIndexable: looksNotIndexable({ entryType: entry.type, title: rawTitle, venue, doi, year }),
+      likelyNotIndexable: looksNotIndexable({ entryType: entry.type, title: rawTitle, venue, doi: doi ?? altId?.key ?? null, year, hasUrl }),
     })
   })
+
+  // v1.4.5 (H3): a cite key used twice. BibTeX keeps the first copy and ignores the
+  // rest; each copy is numbered so it can be told apart (never "duplicate of itself").
+  const byKey = new Map<string, BibEntry[]>()
+  for (const e of entries) byKey.set(e.citeKey, [...(byKey.get(e.citeKey) ?? []), e])
+  for (const group of byKey.values()) {
+    if (group.length < 2) continue
+    group.sort((a, b) => a.sourceOffset - b.sourceOffset).forEach((e, k) => { e.dupKeyIndex = k + 1 })
+  }
 
   return { entries, unparseable, warnings }
 }

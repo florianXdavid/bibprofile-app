@@ -20,6 +20,7 @@ export interface PreprintDetection {
   citeKey: string
   title: string
   year: number | null
+  firstAuthor: string // v1.4.5 (M7): the published version must share it
   server: string
   via: 'doi' | 'eprint' | 'venue'
 }
@@ -58,7 +59,7 @@ export function detectPreprints(rows: ResultRow[]): PreprintDetection[] {
       raw: row.raw,
     })
     if (sig) {
-      out.push({ rowId: row.rowId, citeKey: row.citeKey, title: row.entry.title, year: row.entry.year, server: sig.server, via: sig.via })
+      out.push({ rowId: row.rowId, citeKey: row.citeKey, title: row.entry.title, year: row.entry.year, firstAuthor: row.entry.firstAuthor, server: sig.server, via: sig.via })
     }
   }
   return out
@@ -85,7 +86,7 @@ export async function runPreprintResolution(
     const res = await searchByTitle(d.title, true, cred) // exclude type:preprint
     billable++
     if (res.kind === 'ok') {
-      const best = bestPublishedMatch(d.title, d.year, res.candidates)
+      const best = bestPublishedMatch(d.title, d.year, res.candidates, d.firstAuthor)
       if (best) {
         resolved.set(d.rowId, {
           server: d.server,

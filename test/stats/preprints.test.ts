@@ -50,3 +50,18 @@ describe('bestPublishedMatch', () => {
     expect(bestPublishedMatch(title, 2015, cands)).toBeNull()
   })
 })
+
+describe('bestPublishedMatch (v1.4.5, M7)', () => {
+  const adam = 'Adam: A Method for Stochastic Optimization'
+  it('rejects software / dataset records and package repositories (Adam -> MADGRAD on CRAN)', () => {
+    const madgrad = mkWork({ displayName: "madgrad: 'MADGRAD' Method for Stochastic Optimization", type: 'article', publicationYear: 2021, doi: 'https://doi.org/10.32614/cran.package.madgrad', authorships: [{ authorName: 'Aaron Defazio', orcid: null }] })
+    expect(bestPublishedMatch(adam, 2014, [madgrad], 'Kingma')).toBeNull()
+    expect(bestPublishedMatch(adam, 2014, [mkWork({ displayName: adam, type: 'dataset', publicationYear: 2015 })])).toBeNull()
+  })
+  it('requires the same first author when the .bib has one', () => {
+    const other = mkWork({ displayName: adam, type: 'article', publicationYear: 2015, authorships: [{ authorName: 'Someone Else', orcid: null }] })
+    expect(bestPublishedMatch(adam, 2014, [other], 'Kingma')).toBeNull()
+    const same = mkWork({ displayName: adam, type: 'article', publicationYear: 2015, authorships: [{ authorName: 'Diederik P. Kingma', orcid: null }] })
+    expect(bestPublishedMatch(adam, 2014, [same], 'Kingma')?.work).toBe(same)
+  })
+})

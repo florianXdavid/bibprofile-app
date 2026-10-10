@@ -11,7 +11,7 @@ function entry(over: Partial<BibEntry>): BibEntry {
     rowId: 'e0', sourceOffset: 0, citeKey: 'k0', entryType: 'article',
     title: 'T', titleForSearch: 'T', authors: '', year: null, venue: '',
     doiRaw: null, doi: null, firstAuthor: '', volume: '', pages: '', titleRetracted: false,
-    raw: '', likelyNotIndexable: false, ...over,
+    altId: null, dupKeyIndex: null, raw: '', likelyNotIndexable: false, ...over,
   }
 }
 function work(over: Partial<OpenAlexWork>): OpenAlexWork {
@@ -94,5 +94,56 @@ describe('buildRows preserves .bib file order (Fix A5)', () => {
     ].join('\n')
     const rows = buildRows(parseBib(bib))
     expect(rows.map(r => r.citeKey)).toEqual(['aaa', 'brokenmid', 'bbb'])
+  })
+})
+
+// v1.4.5 — the whole run with injected sources (no network).
+describe('runMatching v1.4.5 (shared DOIs, identifiers, same-work duplicates)', () => {
+  const W = (id: string, over: Partial<OpenAlexWork>) => work({ id: `https://openalex.org/${id}`, ...over })
+  const zim = W('W1980793772', { doi: 'https://doi.org/10.1016/j.cell.2008.06.053', displayName: 'In vivo imaging of oskar mRNA transport reveals the mechanism of posterior localization', publicationYear: 2008, authorships: [{ authorName: 'V. L. Zimyanin', orcid: null }], biblio: { volume: '134', issue: '5', firstPage: '843', lastPage: '853' } })
+  const pmidWork = W('W3180220247', { doi: 'https://doi.org/10.1056/nejmoa2027540', displayName: 'Neuroprosthesis for Decoding Speech in a Paralyzed Person with Anarthria', publicationYear: 2021, authorships: [{ authorName: 'David A. Moses', orcid: null }] })
+  const clip = W('W3135367836', { displayName: 'Learning Transferable Visual Models From Natural Language Supervision', publicationYear: 2021, type: 'preprint', hostVenue: 'arXiv (Cornell University)', authorships: [{ authorName: 'Alec Radford', orcid: null }] })
+  const lookups: Record<string, OpenAlexWork | null> = { 'doi:10.1016/j.cell.2008.06.053': zim, 'pmid:34260835': pmidWork, 'doi:10.1056/nejmoa2027540': pmidWork }
+  const src = {
+    lookup: async (k: string) => (lookups[k] ? { kind: 'ok' as const, work: lookups[k]! } : { kind: 'not-found' as const }),
+    crossref: async () => null,
+    openalexByDoi: async () => null,
+    openalexSearch: async (q: string) => ({ kind: 'ok' as const, candidates: /transferable/i.test(q) ? [clip] : [] }),
+    pause: async () => {},
+  }
+  const BIB = `@article{zimyanin2008, title={In vivo imaging of oskar mRNA transport reveals the mechanism of posterior localization}, author={Zimyanin, V. L.}, year={2008}, doi={10.1016/j.cell.2008.06.053}}
+@article{goodwin2010, title={Patronin regulates the microtubule network by protecting microtubule minus ends}, author={Goodwin, Sarah S}, year={2010}, doi={https://doi.org/10.1016/j.cell.2008.06.053}}
+@article{moses2021, title={Neuroprosthesis for Decoding Speech in a Paralyzed Person with Anarthria}, author={Moses, David A.}, year={2021}, doi={10.1056/NEJMoa2027540}}
+@misc{moses2021_pubmed, title={Neuroprosthesis for {Decoding} {Speech} in a {Paralyzed} {Person} with {Anarthria} - {PubMed}}, url={https://pubmed.ncbi.nlm.nih.gov/34260835/}}
+@inproceedings{radford2021clip, title={Learning Transferable Visual Models from Natural Language Supervision}, author={Radford, Alec}, booktitle={Proceedings of the 38th International Conference on Machine Learning}, year={2021}}`
+  const run = async () => {
+    const { runMatching } = await import('../src/lib/match')
+    const { rows } = await runMatching(parseBib(BIB), () => {}, undefined, src)
+    return Object.fromEntries(rows.map(r => [r.citeKey, r]))
+  }
+
+  it('a DOI pasted onto another entry is not hidden as a duplicate: suspicious, with its owner named (C2)', async () => {
+    const r = await run()
+    expect(r.zimyanin2008.status).toBe('matched-by-doi')
+    expect(r.goodwin2010.status).toBe('suspicious')
+    expect(r.goodwin2010.duplicateOf).toBeNull()
+    expect(r.goodwin2010.notes?.join(' ')).toMatch(/belongs to zimyanin2008/)
+  })
+  it('an identifier outside the doi field identifies the record for free; the same work twice is one reference (H4, H2)', async () => {
+    const r = await run()
+    expect(r.moses2021_pubmed).toMatchObject({ status: 'matched-by-doi', idSource: 'url', duplicateOf: 'moses2021' })
+  })
+  it('a proceedings paper matched to its preprint record is labelled (H9)', async () => {
+    const r = await run()
+    expect(r.radford2021clip.status).toBe('matched-by-title')
+    expect(r.radford2021clip.preprintVersion).toBe(true)
+  })
+  it('entries sharing a DOI merge only when their titles agree (C2)', () => {
+    const a = entry({ rowId: 'a', citeKey: 'a', title: 'Alpha beta gamma', titleForSearch: 'Alpha beta gamma', doi: '10.1/x' })
+    const b = entry({ rowId: 'b', citeKey: 'b', title: 'Alpha beta gamma', titleForSearch: 'Alpha beta gamma', doi: '10.1/x' })
+    const c = entry({ rowId: 'c', citeKey: 'c', title: 'Something else entirely', titleForSearch: 'Something else entirely', doi: '10.1/x' })
+    const d = computeDuplicates([a, b, c])
+    expect(d.get('b')).toBe('a')
+    expect(d.has('c')).toBe(false)
   })
 })

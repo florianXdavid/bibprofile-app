@@ -116,8 +116,11 @@ export default function CleanedExport({ rows, sourceText, fileName }: Props) {
                 <span className={`badge ${e.status}`}>{e.status}</span>
                 {e.applied.length > 0
                   ? <span className="diff-tag ok">applied · {CONF_LABEL[e.confidence]}</span>
-                  : <span className="diff-tag review">review · {CONF_LABEL[e.confidence]}</span>}
+                  : e.action === 'applied' && e.suggested.length + e.mismatches.length === 0
+                    ? <span className="diff-tag ok">comment added</span>
+                    : <span className="diff-tag review">review · {CONF_LABEL[e.confidence]}</span>}
               </div>
+              {e.note && <p className="muted diff-note">{e.note}</p>}
               {(e.applied.length > 0 || e.suggested.length > 0 || e.mismatches.length > 0) && (
                 <ul className="diff-fields">
                   {e.applied.map(f => (

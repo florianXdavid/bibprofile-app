@@ -10,7 +10,7 @@ and gives you a cleaned .bib back.
 - Report: recency, journal concentration, self-citation, open access, retractions,
   and duplicates. Every card is descriptive — never a score or judgement.
 - Missing citations: foundational works your references collectively point to but you
-  didn't cite, and recent work that cites your set.
+  didn't cite, and later work that cites your set.
 - Preprint to published: detect preprints (arXiv, bioRxiv, medRxiv, SSRN) and look up
   their published versions.
 - Cleaned .bib: suggested fixes (missing DOIs, venues, volume/pages) as a reviewable

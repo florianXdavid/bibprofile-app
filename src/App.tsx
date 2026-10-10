@@ -408,7 +408,7 @@ export default function App() {
           />
         )
         : tabPlaceholder('Your cleaned .bib'))}
-      {view === 'table' && (hasResults ? <ResultsTable rows={rows} /> : tabPlaceholder('The match table'))}
+      {view === 'table' && (hasResults ? <ResultsTable rows={rows} crossref={crossref} /> : tabPlaceholder('The match table'))}
     </div>
   )
 }

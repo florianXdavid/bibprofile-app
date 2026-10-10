@@ -7,9 +7,16 @@
 // We SUGGEST, never auto-replace: people cite preprints deliberately (the
 // version differs, or the published one is paywalled).
 
-import { TITLE_MATCH_THRESHOLD } from '../../config'
-import { diceCoefficient } from '../similarity'
+import { authorSignal, titleSimilarity } from '../matchScore'
 import type { OpenAlexWork } from '../../types'
+
+// v1.4.5 (M7) — a published version must be a real publication of the SAME work:
+// near-identical title, the same first author, not a dataset / software package
+// (Adam was offered the MADGRAD R package on CRAN).
+const PUBLISHED_TITLE_MIN = 0.9
+const NOT_PUBLISHED_TYPES = new Set(['preprint', 'dataset', 'software', 'other', 'paratext', 'peer-review', 'erratum'])
+const PACKAGE_SOURCE = /\bcran\b|pypi|zenodo|figshare|github|software heritage/i
+const PACKAGE_DOI = /(?:^|doi\.org\/)10\.(?:32614|5281|6084)\//i
 
 export interface PreprintSignal {
   server: string // arXiv, bioRxiv, medRxiv, SSRN, ChemRxiv, …
@@ -62,19 +69,23 @@ export function detectPreprint(e: {
 }
 
 // Pure acceptance test for a resolved published version. Accept the best
-// candidate only if it is NOT itself a preprint, clears the title-similarity
-// bar, and is published no earlier than the preprint.
+// candidate only if it is NOT itself a preprint (nor a dataset / software package),
+// clears the title-similarity bar, shares the first author (when the .bib has one),
+// and is published no earlier than the preprint.
 export function bestPublishedMatch(
   preprintTitle: string,
   preprintYear: number | null,
   candidates: OpenAlexWork[],
+  firstAuthor = '',
 ): { work: OpenAlexWork; score: number } | null {
   let best: { work: OpenAlexWork; score: number } | null = null
   for (const c of candidates) {
-    if (c.type === 'preprint') continue
+    if (NOT_PUBLISHED_TYPES.has((c.type ?? '').toLowerCase())) continue
+    if (PACKAGE_SOURCE.test(c.hostVenue ?? '') || PACKAGE_DOI.test(c.doi ?? '')) continue
     if (preprintYear != null && c.publicationYear != null && c.publicationYear < preprintYear) continue
-    const score = diceCoefficient(preprintTitle, c.displayName)
+    if (firstAuthor && !((authorSignal(firstAuthor, c) ?? 0) > 0)) continue
+    const score = titleSimilarity(preprintTitle, c.displayName)
     if (!best || score > best.score) best = { work: c, score }
   }
-  return best && best.score >= TITLE_MATCH_THRESHOLD ? best : null
+  return best && best.score >= PUBLISHED_TITLE_MIN ? best : null
 }

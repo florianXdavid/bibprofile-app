@@ -111,14 +111,23 @@ VITE_OPENALEX_MAILTO=you@example.com               # optional polite-pool contac
 
 Per entry, after DOI normalisation (`src/lib/doi.ts`):
 
-1. **De-duplicate** — entries sharing a normalised DOI (or, lacking one, the same
-   normalised title **and** year **and** first-author surname) are queried once;
-   duplicates are kept in the table, tagged, and reported as a finding. A shared
-   title alone is not enough: conference/journal versions, books/articles and
-   reprints often share one.
+1. **De-duplicate** — entries sharing a normalised DOI **whose titles also agree**
+   (or, lacking a DOI, the same normalised title **and** year **and** first-author
+   surname) are queried once; duplicates are kept in the table, tagged, and
+   reported as a finding. A shared title alone is not enough: conference/journal
+   versions, books/articles and reprints often share one. A shared DOI alone is not
+   enough either (v1.4.5): a DOI pasted onto the wrong entry is looked up on its
+   own, comes out `suspicious`, and its note names the entry that owns the DOI.
 2. **Has a DOI → free singleton lookup** (`/works/doi:…`, free and unlimited).
    A low title similarity (0.65, or 0.75 when the year isn't confirmed), or a
    match score below 0.7, downgrades it to `suspicious` (shown, never auto-rejected).
+   **v1.4.5 — identifiers outside the `doi` field** (`findAltId` in `doi.ts`): a DOI
+   in `url` / `note` / `howpublished` / `annote` (`doi.org`, `dx.doi.org`, `doi:`),
+   an arXiv id (arxiv.org URL, `arXiv:…`, or `eprint` + `archivePrefix = arXiv` →
+   `10.48550/arXiv.…`), a PubMed / PMC URL or `pmid` / `pmcid` field
+   (`/works/pmid:…`), and an eLife article URL (`10.7554/eLife.…`) are looked up
+   the same way, for free. Such an identifier is a hint: if its record disagrees
+   with the entry, it is ignored (with a note) and the title path runs instead.
 3. **No usable DOI → title resolution** (`resolveByTitle`, v1.4.4), cheapest first.
    Candidates at every step are scored by **`src/lib/matchScore.ts`** (see
    *Match score* below).
@@ -133,9 +142,20 @@ Per entry, after DOI normalisation (`src/lib/doi.ts`):
    - Otherwise, or if Crossref is unavailable, the **billable OpenAlex search**
      (`?search=` on a cleaned title; the query drops site cruft and "RETRACTED:"
      prefixes, folds accents and drops `?`/`*`).
-   - On the hard-titles set, Crossref places 87 of 126 entries, so only 39 need a
-     billable search. The table tooltip and the summary say which path was used.
-4. Genuine misses that aren't scholarly records are reclassified `not-indexable`.
+   - On the hard-titles set (166 entries), free DOI / identifier lookups and Crossref
+     place most entries; 44 need a billable search. The table tooltip and the summary say which path was used.
+4. Genuine misses that aren't scholarly records are reclassified `not-indexable` —
+   including (v1.4.5) a `@misc` / `@online` / `@software` / `@dataset` entry with a
+   URL and no identifier, whoever its author is.
+5. **v1.4.5 — after the run** (`finishRows`): confident rows that landed on the
+   **same OpenAlex work** are duplicates too (a title-path and a DOI-path entry, a
+   PubMed snapshot and the article; "Duplicate of" points to the first); an
+   `uncertain` row on that work only gets a hint. A row cited as a journal or
+   proceedings paper but matched to the **preprint** record is labelled "preprint
+   version". A **cite key used twice** is flagged on both copies (BibTeX uses the
+   first). Every row carries plain-language **notes** (why it is flagged, where its
+   identifier was found, a merged record of another version), shown under ⓘ in the
+   table and in the CSV.
 
 Requests are sequential (~4.5/sec), retried once on a transient failure. After a
 "too many requests" (429), the retry waits as long as the server asks (`Retry-After`
@@ -163,9 +183,20 @@ either side lacks the data:
 
 **Score** = weighted mean of the signals present. Rules:
 - A candidate needs title ≥ 0.7. Retraction or erratum *notices* are never candidates.
+  A title also matches its main title before `: `, ` - ` or (v1.4.5, ≥ 3 words) `. `
+  — OpenAlex keeps only "Gaia Data Release 2" of A&A's "Gaia Data Release 2. Summary
+  of …". A corporate first author (`{Gaia Collaboration}`) is skipped for the first
+  person.
 - Best score ≥ **0.85** with no near-tie → `matched-by-title`, unless the year is
   more than **3** years off (a different edition or reprint, v1.4.4), which caps it at
-  `uncertain`.
+  `uncertain`. v1.4.5 caps it at `uncertain` too (the reasons are in the row's notes)
+  when: neither the first author nor the year confirms the title (web snapshots);
+  the title is a saved "PEER REVIEW - …" page; only an OpenAlex **stub** is left (no
+  DOI and one author where the `.bib` lists several, or the CiNii junk venue — a stub
+  is never preferred over a real record); the title is very short (< 15 characters
+  or < 3 words) without the first author **and** the venue (or, when the venue can't
+  be compared, the year); or the `.bib` cites a DOI OpenAlex doesn't know and the
+  candidate has another one (a dataset mirror, another version).
 - A score from 0.7 up to 0.85, or a different work within **0.05** of the best → `uncertain`.
 - Below 0.7 → `not-found`, and nothing is attached.
 - OpenAlex duplicate records of one work (same title, year, first author, venue
@@ -175,16 +206,26 @@ The table shows the score next to the status and the per-signal breakdown on
 hover. `uncertain` is treated like `suspicious`: counted in the report but
 flagged, and never written to the cleaned `.bib`.
 
-**Regression set:** `test/regression/hard-titles.bib` holds ~100 hard entries.
+**Regression set:** `test/regression/hard-titles.bib` holds 167 hard entries.
 They cover retracted papers, books vs. articles with the same title,
 preprint/proceedings/journal versions, republished classics, non-English titles,
 generic titles and fabricated titles. Each carries its correct OpenAlex record
-(via DOI or ID). `hard-titles.test.ts` replays recorded OpenAlex responses
-**offline** on every `npm test`, through the real duplicate step: a confident match
-must never be the wrong record (currently 0), and recall can't drop below a floor
-(currently 100 of 111). It also checks the retraction report: all 24 known
-retractions flagged, nothing else, and the Wakefield duplicate case. Re-recording is opt-in, goes through the shared
-pool, and only re-fetches changed entries (see `test/regression/record.test.ts`).
+(via DOI or ID). v1.5 sections (v1.4.5, from a real-world audit) add identifiers
+outside the `doi` field, a DOI shared by two works, A&A titles, same-work pairs,
+weak evidence, proceedings with only a preprint, cleaned-`.bib` safety, web
+resources, title display, a repeated cite key and parser edge cases, with their own
+ground-truth fields (`expectstatus`, `expectlookup`, `expectdup`, `expectfill`,
+`expectnosuggest`, …; defined in the file header). `hard-titles.test.ts` replays the
+**whole run** (`runMatching`: dedup, DOI / identifier lookups, title path, same-work
+duplicates) and the cleaned `.bib` from recorded Crossref and OpenAlex responses,
+**offline**, on every `npm test`. A confident match must never be the wrong record
+(currently 0); recall can't drop below a floor (currently 124 of 130 entries with a
+known record); every v1.5 field holds; and the
+invariants G1–G5 hold (escaped values, no junk venue, nothing for `suspicious`
+rows, no shared OpenAlex work without a duplicate link, no `N--N` pages). It also
+checks the retraction report: all 24 known retractions flagged, nothing else, and
+the Wakefield duplicate case. Re-recording is opt-in, goes through the shared pool,
+and only re-fetches changed entries (see `test/regression/record.test.ts`).
 
 ## OpenAlex fields captured
 
@@ -213,9 +254,13 @@ own `n`** (different fields are missing on different works). Baselines
 `if (baseline)`.
 
 Cards: **recency** (median year + IQR, last-5/10-year share, oldest/newest,
-histogram), **shape** (neutral patterns: stale tail, narrow window, gap,
+histogram — v1.4.5: the year **you cite**, i.e. the `.bib` year, and the OpenAlex
+year only when the entry has none and the match is confident; OpenAlex dates some
+records oddly), **shape** (neutral patterns: stale tail, narrow window, gap,
 concentration — gated behind a minimum n), **journal concentration** (top
-venues, preprint servers separated), **self-citation** (name or ORCID, matched
+venues, preprint servers separated; v1.4.5: OpenAlex venue names cleaned —
+`cleanVenue` — and a paper cited as published but matched to its preprint counted
+on its own line, not as a preprint), **self-citation** (name or ORCID, matched
 references shown for review), **open access** (share + status breakdown, unknown
 counted separately), **retractions & corrections** (multi-signal — see below;
 verify, never "remove"), **missing citations** (below), **preprint → published**
@@ -224,7 +269,9 @@ styles).
 
 **Copy summary** produces a one-paragraph plain-text description for a methods
 section. The **Table** tab has **Export CSV** (the current filtered + sorted view,
-UTF-8 with BOM for Excel, with "Duplicate of" and "Error" columns), and the **Cleaned .bib** tab has **View raw** (the cleaned
+UTF-8 with BOM for Excel, with "Duplicate of" and "Error" columns, and since v1.4.5
+match score, matched DOI, OpenAlex title, notes, retracted, preprint version and
+"identified by"), and the **Cleaned .bib** tab has **View raw** (the cleaned
 file shown in-page). The old JSON export was removed in v1.3.
 
 ## Missing citations
@@ -235,10 +282,11 @@ billable calls — and BibProfile runs on a **shared** budget by default):
 - **Co-citation** (safe, ~1 billable call) — re-fetches matched works as free
   singletons to pool `referenced_works`, ranks works cited by ≥ 4 of your
   references but absent from your list, and hydrates the top ~30 titles in one
-  batched call. Finds missing **foundations**, never recent work.
+  batched call. Finds missing **foundations**, never recent work. Each result says
+  "cited by N of your references".
 - **Forward-citation** (gated, N billable calls) — scans works that cite your set
-  (`cites:…`) and ranks those citing ≥ 2 of your references. Catches **recent
-  adjacent work**.
+  (`cites:…`) and ranks those citing ≥ 2 of your references ("cites N of your
+  references"). Catches **adjacent work** of any year (the year is shown).
 
 Floors/cap are single constants in `src/config.ts` (`GAPS_COCITATION_FLOOR` = 4,
 `GAPS_FORWARD_FLOOR` = 2, `GAPS_TOP_CANDIDATES` = 30) — post-fetch quality filters,
@@ -263,12 +311,30 @@ automatically:
 
 Everything else is a per-field **review** item, written only if you click Accept:
 - the other fills of a title match;
-- every fill of a lower-confidence, `uncertain` or `suspicious` match;
+- every fill of a lower-confidence or `uncertain` match;
 - every value that **differs** from OpenAlex.
+
+**v1.4.5 safety rules** (from a real-world audit):
+- Every value written or proposed is **LaTeX-escaped** (`texEscape`: `&` `%` `$`
+  `#` `_` → `\&` …; a bare `&` stops the LaTeX build). DOIs and URLs stay verbatim.
+- A **`suspicious`** entry gets nothing: its DOI points to another work.
+- A journal or DOI you wrote is never "corrected" (a different journal name, a
+  preprint server or a merged record's DOI is not a fix). A year is proposed only
+  when it is 1 off (online-first vs print); a bigger gap is an info note (reprint,
+  digitisation). An arXiv DOI next to a named journal gets a note instead.
+- Venue fills use cleaned names (`cleanVenue`: CVPR's doubled name collapsed,
+  "Alzheimer s" → "Alzheimer's", PubMed / "… eBooks" / junk dropped); a preprint
+  server is never written as a journal.
+- Pages are `N`, never `N--N` (article numbers).
+- If your DOI resolved to a **merged record** with another DOI (often the other
+  version), its fills are review only. A DOI found in `url` / `note` is proposed
+  as `doi = {…}` for review; the `url` is never touched.
+- A **repeated cite key** gets a comment line above its 2nd copy
+  (`% BibProfile: duplicate key — BibTeX will ignore this entry`); nothing is dropped.
 
 DOIs are shown as `doi.org` links so they can be checked in one click. The diff
 header states how many fields were written automatically and on what basis.
-On the hard-titles regression set, all 92 automatic DOIs are the correct record
+On the hard-titles regression set, all 93 automatic DOIs are the correct record
 (asserted). Everything else is passed through untouched. Legend: green = applied,
 blue = review.
 
@@ -279,7 +345,9 @@ plus a `type:!preprint` filter, which is a **billable** search (one per detected
 preprint). It therefore runs only when the user presses the button — never
 automatically, so it can't quietly spend the shared budget. Matches are
 **suggestions only** — a preprint is often cited on purpose, so applying the swap is
-left to the user.
+left to the user. v1.4.5: a published version must have a title ≥ 0.9, the same
+first author, a year no earlier than the preprint's, and not be a dataset or a
+software package (Adam was once offered an R package on CRAN).
 
 ## Retractions & corrections (v1.4.2)
 
@@ -402,8 +470,10 @@ test/                    # vitest unit tests (pure functions; no network except 
 
 ## Testing
 
-`npm test` runs **216 tests** (plus 1 skipped: the opt-in regression recorder). Highlights: the v1.4.1
-match-score signals and the hard-titles regression (offline); parsing/DOI/title-clean/similarity
+`npm test` runs **252 tests** (plus 1 skipped: the opt-in regression recorder). Highlights: the v1.4.1
+match-score signals and the hard-titles regression (offline; v1.4.5: the whole run,
+the v1.5 ground-truth fields and invariants G1–G5); the v1.4.5 identifier extraction,
+shared-DOI, same-work-duplicate and cleaned-`.bib` safety rules; parsing/DOI/title-clean/similarity
 regressions; every report statistic on fixtures (median/IQR year, top-venue
 share, OA %, self-citation matching, shape patterns + min-n floor, retraction
 filter, co-citation counting, preprint detection); the cleaned-export cite-key /

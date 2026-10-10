@@ -43,6 +43,20 @@ export function isPreprintVenue(name: string | null, sourceType: string | null):
   return false
 }
 
+// v1.4.5 (M2) — OpenAlex venue strings as a reader would write them: its doubled
+// "X/Proceedings - X/Proceedings" names collapsed, a lost apostrophe restored
+// ("Alzheimer s Research" -> "Alzheimer's Research"), and non-venues dropped
+// (PubMed as a "source", "… eBooks" publisher buckets, the CiNii junk venue).
+const NON_VENUE = /^(?:pubmed|pubmed central|europe pmc|medical entomology and zoology)$|\beBooks$/i
+export function cleanVenue(v: string | null | undefined): string | null {
+  if (!v || !v.trim()) return null
+  let s = v.trim()
+  const doubled = s.match(/^(.+?)\/Proceedings - /)
+  if (doubled) s = doubled[1].trim()
+  s = s.replace(/\b([A-Z][a-z]+) s (?=[A-Z&])/g, "$1's ")
+  return NON_VENUE.test(s) ? null : s
+}
+
 export function normalizeVenueName(name: string): string {
   return name
     .toLowerCase()
@@ -61,9 +75,17 @@ function groupKey(w: AnalysisWork): string {
 export function computeVenues(cohort: Cohort): VenueStats {
   const { used, n, flagged, excluded } = subset(
     cohort,
-    w => !!(w.work.hostVenue && w.work.hostVenue.trim()),
+    w => !w.preprintVersion && cleanVenue(w.work.hostVenue) != null,
     'no venue',
   )
+  // v1.4.5 (H9): cited as a journal / proceedings paper but matched to its preprint —
+  // not a preprint citation; reported on its own line instead of in either ranking.
+  const pv = cohort.works.filter(w => w.preprintVersion).length
+  if (pv > 0) {
+    excluded['no venue'] -= pv
+    if (excluded['no venue'] <= 0) delete excluded['no venue']
+    excluded['cited as published, only the preprint is indexed'] = pv
+  }
 
   const tallies = new Map<string, VenueTally>()
   for (const w of used) {
@@ -74,7 +96,7 @@ export function computeVenues(cohort: Cohort): VenueStats {
     } else {
       tallies.set(key, {
         key,
-        name: w.work.hostVenue as string,
+        name: cleanVenue(w.work.hostVenue) as string,
         count: 1,
         isPreprint: isPreprintVenue(w.work.hostVenue, w.work.sourceType),
       })

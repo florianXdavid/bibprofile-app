@@ -4,9 +4,13 @@ import { parseBib } from '../../src/lib/parseBib'
 import { buildRows } from '../../src/lib/match'
 import {
   computeCleanedBib,
+  DUP_KEY_COMMENT,
+  pagesOf,
   serializeCleanedBib,
+  texEscape,
   type ResolvedPreprint,
 } from '../../src/lib/stats/cleanBib'
+import { cleanVenue } from '../../src/lib/stats/venues'
 import { insertFields, replaceFieldValue } from '../../src/lib/bibWriter'
 import { mkWork } from './fixtures'
 import type { ResultRow } from '../../src/types'
@@ -117,15 +121,17 @@ describe('additive fills (never overwrite, never rekey)', () => {
     expect(entry.newRaw).not.toContain('1999')
   })
 
-  it('suspicious matches are suggested only, never written', () => {
+  it('suspicious matches get nothing — the DOI points to another work (v1.4.5, C3)', () => {
     const rs = rows()
     const target = rs.find(r => r.citeKey === 'smith2019')!
     target.status = 'suspicious'
-    target.openalex = mkWork({ doi: 'https://doi.org/10.1234/abc', publicationYear: 2019 })
+    target.openalex = mkWork({ doi: 'https://doi.org/10.1234/abc', publicationYear: 2019, biblio: { volume: '134', issue: '5', firstPage: '843', lastPage: '853' } })
     const entry = computeCleanedBib(rs).entries.find(e => e.citeKey === 'smith2019')!
     expect(entry.action).toBe('suggested')
     expect(entry.applied).toEqual([])
-    expect(entry.suggested.length).toBeGreaterThan(0)
+    expect(entry.suggested).toEqual([])
+    expect(entry.mismatches).toEqual([])
+    expect(entry.note).toMatch(/points to another work/)
     expect(entry.newRaw).toBe(entry.originalRaw) // not written
   })
 })
@@ -164,9 +170,9 @@ describe('field mismatches — review-only, per-field accept', () => {
   title = {Deep learning for cats},
   author = {Jones, Amy},
   journal = {Journal of Cats},
-  year = {2019},
+  year = {2020},
   volume = {5},
-  doi = {10.1234/wrong},
+  doi = {10.5555/right},
 }
 `
   function jonesRows(): ResultRow[] {
@@ -175,9 +181,9 @@ describe('field mismatches — review-only, per-field accept', () => {
     t.status = 'matched-by-doi'
     t.openalex = mkWork({
       displayName: 'Deep learning for cats', // same title -> NOT a mismatch
-      publicationYear: 2021, // differs from 2019
-      hostVenue: 'Journal of Felines', // differs from Journal of Cats
-      doi: 'https://doi.org/10.5555/right', // differs from 10.1234/wrong
+      publicationYear: 2021, // differs from 2020 by one year (online-first vs print)
+      hostVenue: 'Journal of Felines', // differs from Journal of Cats — never proposed (v1.4.5)
+      doi: 'https://doi.org/10.5555/right',
       biblio: { volume: '6', issue: null, firstPage: null, lastPage: null }, // differs from 5
     })
     return rs
@@ -185,7 +191,7 @@ describe('field mismatches — review-only, per-field accept', () => {
 
   it('detects differing fields as suggestions and does NOT auto-apply them', () => {
     const e = computeCleanedBib(jonesRows()).entries.find(x => x.citeKey === 'jones2020')!
-    expect(e.mismatches.map(m => m.field).sort()).toEqual(['doi', 'journal', 'volume', 'year'])
+    expect(e.mismatches.map(m => m.field).sort()).toEqual(['volume', 'year'])
     expect(e.applied).toEqual([]) // those fields already exist -> no additive fill
     expect(e.newRaw).toBe(e.originalRaw) // nothing written until accepted
   })
@@ -196,10 +202,9 @@ describe('field mismatches — review-only, per-field accept', () => {
     const accepted = new Set([`${e0.sourceOffset}::year`])
     const e = computeCleanedBib(rs, undefined, accepted).entries.find(x => x.citeKey === 'jones2020')!
     // exactly the original with year swapped — every other byte identical
-    expect(e.newRaw).toBe(e0.originalRaw.replace('year = {2019}', 'year = {2021}'))
-    expect(e.newRaw).toContain('journal = {Journal of Cats}') // declined -> untouched
-    expect(e.newRaw).toContain('doi = {10.1234/wrong}')
-    expect(e.newRaw).toContain('volume = {5}')
+    expect(e.newRaw).toBe(e0.originalRaw.replace('year = {2020}', 'year = {2021}'))
+    expect(e.newRaw).toContain('journal = {Journal of Cats}') // never proposed -> untouched
+    expect(e.newRaw).toContain('volume = {5}') // declined -> untouched
   })
 
   it('cite keys + entry count stay invariant after accepting every correction', () => {
@@ -210,8 +215,7 @@ describe('field mismatches — review-only, per-field accept', () => {
     const out = serializeCleanedBib(SRC, cleaned)
     expect(keysAndCount(out)).toEqual(keysAndCount(SRC))
     expect(out).toContain('year = {2021}')
-    expect(out).toContain('journal = {Journal of Felines}')
-    expect(out).toContain('doi = {10.5555/right}')
+    expect(out).toContain('journal = {Journal of Cats}')
     expect(out).toContain('volume = {6}')
   })
 
@@ -287,5 +291,62 @@ describe('automatic vs review fills (v1.4.3)', () => {
   it('counts state how many fields were written automatically, and on what basis', () => {
     const c = computeCleanedBib(titleRow({})).counts
     expect(c).toMatchObject({ fieldsAdded: 1, autoTitleDois: 1, autoFromDoiMatch: 0, reviewFills: 4, acceptedFills: 0 })
+  })
+})
+
+// v1.4.5 — audit fixes (C1, H5, M2, M5, H3, H4).
+describe('v1.4.5 cleaned .bib safety', () => {
+  const one = (src: string, status: ResultRow['status'], work: Parameters<typeof mkWork>[0], over: Partial<ResultRow> = {}) => {
+    const rs = buildRows(parseBib(src))
+    Object.assign(rs[0], { status, openalex: mkWork(work), ...over })
+    return computeCleanedBib(rs).entries[0]
+  }
+  it('escapes LaTeX specials in every written or proposed value (C1)', () => {
+    expect(texEscape('journal', 'Computing in Science & Engineering')).toBe('Computing in Science \\& Engineering')
+    expect(texEscape('journal', 'A \\& B 50% $x$ #1 a_b')).toBe('A \\& B 50\\% \\$x\\$ \\#1 a\\_b')
+    expect(texEscape('doi', '10.1000/a_b')).toBe('10.1000/a_b') // identifiers are verbatim
+    const e = one('@article{h,\n  title = {Matplotlib},\n  year = {2007},\n  doi = {10.1109/MCSE.2007.55},\n}', 'matched-by-doi',
+      { doi: 'https://doi.org/10.1109/mcse.2007.55', hostVenue: 'Computing in Science & Engineering' })
+    expect(e.newRaw).toContain('journal = {Computing in Science \\& Engineering}')
+  })
+  it('writes an article number as N, never N--N (H5)', () => {
+    expect(pagesOf({ volume: null, issue: null, firstPage: '133', lastPage: '133' })).toBe('133')
+    expect(pagesOf({ volume: null, issue: null, firstPage: 'e18554', lastPage: null })).toBe('e18554')
+    expect(pagesOf({ volume: null, issue: null, firstPage: '10', lastPage: '20' })).toBe('10--20')
+  })
+  it('never proposes another journal or a preprint server; a year only when 1 off (H5, M2)', () => {
+    const src = '@article{c,\n  title = {T},\n  journal = {Physics and Astronomy Reports},\n  year = {1989},\n  doi = {10.48550/arXiv.2504.21075},\n}'
+    const e = one(src, 'matched-by-doi', { doi: 'https://doi.org/10.48550/arxiv.2504.21075', hostVenue: 'arXiv (Cornell University)', publicationYear: 2008, displayName: 'T' })
+    expect(e.mismatches).toEqual([])
+    expect(e.note).toMatch(/arXiv preprint's/)
+    expect(e.note).toMatch(/dates this record 2008/)
+  })
+  it('cleans OpenAlex venue names before filling (M2)', () => {
+    expect(cleanVenue('IEEE Computer Society Conference on Computer Vision and Pattern Recognition/Proceedings - IEEE Computer Society Conference on Computer Vision and Pattern Recognition/Proceedings'))
+      .toBe('IEEE Computer Society Conference on Computer Vision and Pattern Recognition')
+    expect(cleanVenue('Alzheimer s Research & Therapy')).toBe("Alzheimer's Research & Therapy")
+    for (const junk of ['PubMed', 'Springer eBooks', 'Medical Entomology and Zoology']) expect(cleanVenue(junk)).toBeNull()
+    const e = one('@misc{i,\n  title = {T},\n  year = {2017},\n}', 'matched-by-title', { hostVenue: 'arXiv (Cornell University)' })
+    expect([...e.applied, ...e.suggested].map(f => f.field)).not.toContain('journal')
+  })
+  it('a DOI resolved to a merged record of another version: fills are review only (M5)', () => {
+    const e = one('@misc{i,\n  title = {T},\n  doi = {10.48550/arXiv.1611.07004},\n}', 'matched-by-doi',
+      { doi: 'https://doi.org/10.1109/cvpr.2017.632', publicationYear: 2017, displayName: 'T' })
+    expect(e.applied).toEqual([])
+    expect(e.suggested.map(f => f.field)).toContain('year')
+    expect(e.note).toMatch(/merged record 10\.1109\/cvpr\.2017\.632/)
+  })
+  it('a DOI found outside the doi field is proposed, not written (H4)', () => {
+    const e = one('@article{h,\n  title = {T},\n  url = {https://doi.org/10.1038/382420a0},\n}', 'matched-by-doi',
+      { doi: 'https://doi.org/10.1038/382420a0', publicationYear: 1996 }, { idSource: 'url' })
+    expect(e.applied.map(f => f.field)).toEqual(['year'])
+    expect(e.suggested.map(f => f.field)).toEqual(['doi'])
+  })
+  it('marks the second copy of a cite key with a comment, keys and count unchanged (H3)', () => {
+    const src = '@article{d,\n  title = {T},\n}\n\n@article{d,\n  title = {T},\n}\n'
+    const rs = buildRows(parseBib(src))
+    expect(rs.map(r => r.entry?.dupKeyIndex)).toEqual([1, 2])
+    const out = serializeCleanedBib(src, computeCleanedBib(rs))
+    expect(out).toBe('@article{d,\n  title = {T},\n}\n\n' + DUP_KEY_COMMENT + '@article{d,\n  title = {T},\n}\n')
   })
 })

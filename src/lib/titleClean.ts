@@ -106,14 +106,18 @@ export function looksNotIndexable(e: {
   entryType: string
   title: string
   venue: string
-  doi: string | null
+  doi: string | null // or any other free identifier (v1.4.5)
   year: number | null
+  hasUrl?: boolean
 }): boolean {
   if (e.doi) return false // has a DOI -> assume indexable
   if (isUrlLike(e.title)) return true // the title itself is a URL
   if (isUrlLike(e.venue)) return true // venue/journal/howpublished is a bare URL
   const type = (e.entryType || '').toLowerCase()
-  const isMiscish = type === 'misc' || type === 'online' || type === 'electronic' || type === 'www'
+  const isMiscish = ['misc', 'online', 'electronic', 'www', 'software', 'dataset'].includes(type)
   if (isMiscish && e.year == null) return true // @misc/@online with no year and no DOI
+  // v1.4.5 (M4): a web page / software / dataset with a URL but no identifier —
+  // whoever the author is, a miss is "not expected in OpenAlex", not "not found".
+  if (isMiscish && e.hasUrl) return true
   return false
 }

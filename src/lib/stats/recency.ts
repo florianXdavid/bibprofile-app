@@ -6,7 +6,7 @@
 // this is deterministic and unit-testable (the UI passes the current year).
 
 import type { AnalysisWork } from './denominator'
-import { withYear, type Cohort, type Stat } from './denominator'
+import { citedYear, withYear, type Cohort, type Stat } from './denominator'
 
 export interface DatedRef {
   citeKey: string
@@ -92,11 +92,11 @@ export function computeRecency(cohort: Cohort, referenceYear: number): RecencySt
   }
   if (used.length === 0) return base
 
-  const years = used.map(w => w.work.publicationYear as number).sort((a, b) => a - b)
+  const years = used.map(w => citedYear(w) as number).sort((a, b) => a - b)
   const { bins, binSize } = buildBins(years)
 
   const named = (target: number): DatedRef => {
-    const w = used.find(u => u.work.publicationYear === target) as AnalysisWork
+    const w = used.find(u => citedYear(u) === target) as AnalysisWork
     return { citeKey: w.citeKey, title: w.title, year: target }
   }
 

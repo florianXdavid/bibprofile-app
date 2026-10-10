@@ -102,6 +102,14 @@ export function buildDoiUrl(doi: string, cred: Credential = sharedCredential()):
   return buildUrl(`/works/doi:${encoded}`, {}, OPENALEX_SELECT_FIELDS, cred)
 }
 
+// v1.4.5 — free singleton by any external id OpenAlex accepts in the path:
+// "doi:10.x/y", "pmid:123", "pmcid:PMC123".
+export function buildLookupUrl(key: string, cred: Credential = sharedCredential()): string {
+  const m = key.match(/^doi:(.+)$/)
+  if (m) return buildDoiUrl(m[1], cred)
+  return buildUrl(`/works/${encodeURIComponent(key).replace('%3A', ':')}`, {}, OPENALEX_SELECT_FIELDS, cred)
+}
+
 // Free singleton by OpenAlex id. `withRefs` opts into the referenced_works
 // select (gaps path only).
 export function buildWorkByIdUrl(id: string, withRefs = false, cred: Credential = sharedCredential()): string {
@@ -236,8 +244,13 @@ export type DoiLookup =
 
 // FREE singleton lookup by DOI: GET /works/doi:10.xxxx/yyyy
 export async function lookupByDoi(doi: string, cred: Credential = sharedCredential()): Promise<DoiLookup> {
+  return lookupWork(`doi:${doi}`, cred)
+}
+
+// v1.4.5 — FREE singleton lookup by a DOI, PMID or PMCID key (see buildLookupUrl).
+export async function lookupWork(key: string, cred: Credential = sharedCredential()): Promise<DoiLookup> {
   try {
-    const res = await request(buildDoiUrl(doi, cred))
+    const res = await request(buildLookupUrl(key, cred))
     if (res.status === 404) return { kind: 'not-found' }
     if (!res.ok) return { kind: 'error', error: `HTTP ${res.status}` }
     const json = await res.json()

@@ -10,7 +10,7 @@ import type { BibEntry } from '../../src/types'
 const entry = (over: Partial<BibEntry> = {}): BibEntry => ({
   rowId: 'x', sourceOffset: 0, citeKey: 'x', entryType: 'article', title: 'T', titleForSearch: 'T',
   authors: '', year: null, venue: '', doiRaw: null, doi: null, firstAuthor: '', volume: '', pages: '',
-  titleRetracted: false, raw: '', likelyNotIndexable: false, ...over,
+  titleRetracted: false, altId: null, dupKeyIndex: null, raw: '', likelyNotIndexable: false, ...over,
 })
 const xr = (updates: CrossrefResult['updates'], checked = 1): CrossrefResult => ({ updates, checked, failed: 0 })
 

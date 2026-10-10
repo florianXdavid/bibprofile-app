@@ -103,6 +103,7 @@ a { color: var(--accent); }
 .badge.suspicious, .badge.uncertain { background: var(--warn-bg); color: #8a5a00; border-color: #e6c200; }
 .badge.not-indexable { background: #eef1f4; color: #46566b; }
 .dup { color: var(--muted); font-size: 0.75rem; font-style: italic; }
+.note-mark { color: var(--accent); cursor: help; font-size: 0.8rem; }
 
 /* Year tri-state (Fix A3b): unverified marker */
 .year-unverified { color: var(--muted); font-weight: 600; cursor: help; }
@@ -210,6 +211,7 @@ details.card[open] > summary.card-title { margin-bottom: 8px; }
 .diff-list { list-style: none; padding: 0; margin: 0; }
 .diff-list > li { padding: 10px 0; border-top: 1px solid var(--line); }
 .diff-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.diff-note { margin: 4px 0 0; font-size: 0.82rem; }
 .diff-tag { font-size: 0.72rem; padding: 1px 7px; border-radius: 999px; }
 .diff-tag.ok { background: #e7f6ec; color: var(--ok); }
 .diff-tag.warn { background: var(--warn-bg); color: #8a5a00; }

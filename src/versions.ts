@@ -9,9 +9,19 @@ export interface VersionEntry {
 
 export const VERSIONS: VersionEntry[] = [
   {
+    version: 'v1.4',
+    date: '2026-10-10',
+    note: 'Smarter matching (Crossref first, then OpenAlex; an “uncertain” status; DOIs and arXiv / PubMed IDs found in url and note fields), retraction checks via Crossref and Retraction Watch, better duplicate detection, and a safer cleaned .bib (only verified fills written automatically, the rest for review).',
+  },
+  {
     version: 'v1.3',
     date: '2026-08-16',
     note: 'Auto-jump to the Report + collapsible upload zone, shared-pool explainer, CSV export and in-page raw view (JSON export removed), preprint→published moved to the Report tab with title-based resolution, and refreshed SEO/agent metadata.',
+  },
+  {
+    version: 'v1.2',
+    date: '2026-08-14',
+    note: 'Small patch: a maintenance page.',
   },
   {
     version: 'v1.1',

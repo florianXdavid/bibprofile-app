@@ -11,7 +11,7 @@
 // below the floor we surface nothing at all.
 
 import { SHAPE_MIN_N, SHAPE_STALE_MONTHS } from '../../config'
-import { withYear, type Cohort, type Stat } from './denominator'
+import { citedYear, withYear, type Cohort, type Stat } from './denominator'
 import { computeVenues } from './venues'
 
 export type ShapePatternKind = 'stale-tail' | 'narrow-window' | 'gap' | 'concentration'
@@ -53,7 +53,7 @@ export function computeShape(cohort: Cohort, referenceYear: number): ShapeStats 
   if (base.belowFloor) return base
 
   const years = cohort.works
-    .map(w => w.work.publicationYear)
+    .map(w => citedYear(w))
     .filter((y): y is number => typeof y === 'number')
     .sort((a, b) => a - b)
   if (years.length === 0) return base

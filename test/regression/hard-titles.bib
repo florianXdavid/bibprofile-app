@@ -18,6 +18,60 @@
 % Rule checked on every test run: a confident `matched-by-title` must never be
 % the wrong record. Being `uncertain` or `not-found` on a hard entry is allowed
 % and counted (recall), not failed.
+%
+% ======================================================================== v1.5
+% v1.5 adds sections built from an audit of 6 real-world .bib files (587 entries)
+% and a probe run of the cleaned .bib. UNLIKE the sections above, the v1.5
+% sections (marked "v1.5" in their divider) deliberately contain `doi`, `url`,
+% `eprint`, `note`/`howpublished` identifiers, `@misc` resources, an empty entry,
+% a duplicate cite key and a stray closing brace — the bugs they guard against
+% live in those paths. If the harness assumes "title path only", run the v1.5
+% hardcase categories as a separate group. Parser-robustness entries are placed
+% LAST on purpose so a parser regression cannot hide failures elsewhere.
+%
+% Six pre-existing entries received ONE extra v1.5 field each, plus an `auditnote`
+% field explaining why (nothing else changed):
+%   devlin2018arxiv (expectdup), krizhevsky2012nips (expectnotid),
+%   kingma2014 (expectpublishednot), vaswani2017 (expectrecencyyear),
+%   heisenberg1927 (expectnosuggest), einstein1905sr (expecttitle).
+%
+% New ground-truth fields (BibProfile ignores them; the harness reads them):
+%   expectstatus      = {s1 | s2}  row status must be one of these
+%   expectmax         = {uncertain}  must never be a confident match
+%                       (matched-by-doi / matched-by-title)
+%   expectlookup      = {doi:… | arxiv:… | pmid:…}  identifier the tool must extract
+%                       (from url / note / howpublished / eprint / journal) and resolve
+%                       for free — no billable title search for this entry
+%   expectnotid       = {W…}  must never be CONFIDENTLY matched to this record
+%   expectdup         = {key}  must be reported as the same OpenAlex work as `key`
+%                       ("Duplicate of" = key, or key's row points here)
+%   expectnotdup      = {key}  must NOT be collapsed into `key`, even if they share a DOI
+%   expectfill        = {field=value}  cleaned .bib must contain exactly `field = {value}`
+%   expectnosuggest   = {f1,f2 | *}  no fill and no "differs" review item for these fields
+%                       (`*` = no suggestion of any kind for this entry)
+%   expectversion     = {preprint}  match is to a preprint record and must be labelled so
+%   expectrecencyyear = {YYYY}  year the Recency card must use for this reference
+%   expectyear        = {YYYY}  year the parser must read for this entry
+%   expecttitle       = {…}  Title (.bib) column must contain this substring
+%   expecttitlenot    = {…}  Title (.bib) column must NOT contain this substring
+%   expectpublishednot = {doi}  Preprint→published must never suggest this DOI
+%   expecterror       = {empty-entry | duplicate-key}  parse-level error to report
+%   auditnote         = {…}  human note: which audit finding the entry covers
+%                       (IDs refer to bibprofile-patch-issues.md)
+%
+% Global invariants (checked on the whole run, v1.5):
+%   G1  every value written to or proposed for the cleaned .bib escapes LaTeX
+%       specials: & % $ # _  (e.g. `\&`), never a bare `&`
+%   G2  no written/proposed venue matches
+%       /\/Proceedings - |^PubMed$| eBooks$|^Medical Entomology and Zoology$/
+%   G3  an entry with status `suspicious` receives no fills and no differs items
+%   G4  no two CONFIDENT rows share an OpenAlex ID unless one row's
+%       "Duplicate of" points to the other
+%   G5  pages are never written as a degenerate range `N--N`
+%
+% Some expectid values in v1.5 come from DOI resolution in the audit (reliable);
+% the two marked "verify" come from current title-match output and should be
+% confirmed by hand before the fixture is recorded.
 
 % ---------------------------------------------------------------- retracted
 @article{wakefield1998,
@@ -289,7 +343,9 @@
   title = {Adam: A Method for Stochastic Optimization},
   author = {Kingma, Diederik P. and Ba, Jimmy},
   journal = {arXiv preprint arXiv:1412.6980}, year = {2014},
-  expectdoi = {10.48550/arXiv.1412.6980}, hardcase = {preprint-proceedings}
+  expectdoi = {10.48550/arXiv.1412.6980}, hardcase = {preprint-proceedings},
+  expectpublishednot = {10.32614/cran.package.madgrad},
+  auditnote = {v1.5: Adam was offered the MADGRAD CRAN package}
 }
 @article{ioffe2015,
   title = {Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift},
@@ -321,6 +377,8 @@
   author = {Devlin, Jacob and Chang, Ming-Wei and Lee, Kenton and Toutanova, Kristina},
   journal = {arXiv preprint arXiv:1810.04805}, year = {2018},
   expectid = {W2963341956}, hardcase = {preprint-proceedings},
+  expectdup = {devlin2019},
+  auditnote = {v1.5: both resolve to W2963341956},
   note = {OpenAlex resolves the arXiv DOI 10.48550/arXiv.1810.04805 to an unrelated record; the BERT preprint is merged into this single BERT record}
 }
 @inproceedings{ronneberger2015,
@@ -340,7 +398,9 @@
   title = {ImageNet Classification with Deep Convolutional Neural Networks},
   author = {Krizhevsky, Alex and Sutskever, Ilya and Hinton, Geoffrey E.},
   booktitle = {Advances in Neural Information Processing Systems}, volume = {25}, year = {2012}, pages = {1097--1105},
-  expectnot = {10.1145/3065386}, hardcase = {preprint-proceedings}
+  expectnot = {10.1145/3065386}, hardcase = {preprint-proceedings},
+  expectnotid = {W3147600416},
+  auditnote = {v1.5: CiNii stub (no DOI, 1 author, venue 'Medical Entomology and Zoology')}
 }
 @inproceedings{long2015cvpr,
   title = {Fully Convolutional Networks for Semantic Segmentation},
@@ -416,6 +476,8 @@
   author = {Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and Uszkoreit, Jakob},
   booktitle = {Advances in Neural Information Processing Systems}, volume = {30}, year = {2017},
   expectid = {W2626778328}, hardcase = {preprint-proceedings},
+  expectrecencyyear = {2017},
+  auditnote = {v1.5: OpenAlex dates the record 2025},
   note = {the only record of the paper (OpenAlex dates it 2025, typed preprint)}
 }
 @article{mikolov2013,
@@ -603,7 +665,9 @@
   title = {Zur Elektrodynamik bewegter K{\"o}rper},
   author = {Einstein, A.},
   journal = {Annalen der Physik}, year = {1905}, volume = {322}, number = {10}, pages = {891--921},
-  expectdoi = {10.1002/andp.19053221004}, hardcase = {non-english}
+  expectdoi = {10.1002/andp.19053221004}, hardcase = {non-english},
+  expecttitle = {Zur Elektrodynamik bewegter Körper},
+  auditnote = {v1.5: column showed 'Zur elektrodynamik bewegter körper'}
 }
 @article{einstein1905emc,
   title = {Ist die Tr{\"a}gheit eines K{\"o}rpers von seinem Energieinhalt abh{\"a}ngig?},
@@ -634,7 +698,9 @@
   title = {{\"U}ber den anschaulichen Inhalt der quantentheoretischen Kinematik und Mechanik},
   author = {Heisenberg, W.},
   journal = {Zeitschrift f{\"u}r Physik}, year = {1927}, volume = {43}, number = {3}, pages = {172--198},
-  expectdoi = {10.1007/BF01397280}, hardcase = {non-english}
+  expectdoi = {10.1007/BF01397280}, hardcase = {non-english},
+  expectnosuggest = {journal},
+  auditnote = {v1.5: OpenAlex venue is the successor 'The European Physical Journal A'}
 }
 @article{schrodinger1935,
   title = {Die gegenw{\"a}rtige Situation in der Quantenmechanik},
@@ -821,3 +887,363 @@
   journal = {Nature}, year = {2022},
   expect = {none}, hardcase = {negative}
 }
+
+% ======================================================================== v1.5 sections below
+% Every v1.5 entry carries `hardcase` (category) and `auditnote` (why it exists, which
+% audit finding it covers: C1-C3, H1-H9, M1-M7 refer to bibprofile-patch-issues.md).
+
+% ---------------------------------------------------------------- doi-elsewhere (v1.5, H4)
+% The DOI is present, but not in the `doi` field. Must be extracted and resolved for free.
+@article{heald1996,
+  title = {Self-organization of microtubules into bipolar spindles around artificial chromosomes in Xenopus egg extracts},
+  author = {Heald, Rebecca and Tournebize, R{\'e}gis and Blank, Thiemo and Sandaltzopoulos, Raphael and Becker, Peter and Hyman, Anthony and Karsenti, Eric},
+  journal = {Nature}, volume = {382}, number = {6590}, pages = {420--425}, year = {1996},
+  url = {https://doi.org/10.1038/382420a0},
+  expectdoi = {10.1038/382420a0}, expectlookup = {doi:10.1038/382420a0}, expectstatus = {matched-by-doi},
+  hardcase = {doi-elsewhere}, auditnote = {H4: DOI only in url (doi.org); was matched-by-title}
+}
+@article{flory1942,
+  title = {Thermodynamics of high polymer solutions},
+  author = {Flory, Paul J},
+  journal = {Journal of Chemical Physics}, volume = {10}, number = {1}, pages = {51--61}, year = {1942},
+  url = {https://doi.org/10.1063/1.1723621},
+  expectdoi = {10.1063/1.1723621}, expectlookup = {doi:10.1063/1.1723621}, expectstatus = {matched-by-doi},
+  hardcase = {doi-elsewhere}, auditnote = {H4: DOI only in url; was uncertain despite exact title, author and year}
+}
+@article{hawkins2009,
+  title = {Rebuilding cytoskeleton roads: Active-transport-induced polarization of cells},
+  author = {Hawkins, Rhoda J and Benichou, Olivier and Piel, Matthieu and Voituriez, Rapha{\"e}l},
+  journal = {Physical Review E}, volume = {80}, number = {4}, pages = {040903}, year = {2009},
+  url = {http://dx.doi.org/10.1103/PhysRevE.80.040903},
+  expectdoi = {10.1103/PhysRevE.80.040903}, expectlookup = {doi:10.1103/PhysRevE.80.040903}, expectstatus = {matched-by-doi},
+  hardcase = {doi-elsewhere}, auditnote = {H4: DOI only in url, legacy dx.doi.org host over http}
+}
+@article{wang2026neurostorm,
+  title = {Towards a General-Purpose Foundation Model for Functional {MRI} Analysis},
+  author = {Wang, Cheng and Jiang, Yu and Peng, Zhihao and Li, Chenxin and Bang, Chang-Bae and Zhao, Lin and Fu, Wanyi and Lv, Jinglei and Sepulcre, Jorge and Yang, Carl and others},
+  journal = {Nat. Biomed. Eng.}, year = {2026},
+  note = {\url{https://doi.org/10.1038/s41551-026-01666-y}},
+  expectdoi = {10.1038/s41551-026-01666-y}, expectlookup = {doi:10.1038/s41551-026-01666-y}, expectstatus = {matched-by-doi},
+  hardcase = {doi-elsewhere}, auditnote = {H4: DOI only inside note={\url{...}}}
+}
+@misc{feczko2021abcd,
+  title = {Adolescent Brain Cognitive Development ({ABCD}) Community {MRI} Collection and Utilities},
+  author = {Feczko, Eric and Conan, Greg and Marek, Scott and Tervo-Clemmens, Brenden and Fair, Damien A.},
+  howpublished = {bioRxiv 2021.07.09.451638 [Preprint] (2021). \url{https://doi.org/10.1101/2021.07.09.451638}},
+  expectdoi = {10.1101/2021.07.09.451638}, expectlookup = {doi:10.1101/2021.07.09.451638}, expectstatus = {matched-by-doi},
+  expectyear = {2021},
+  hardcase = {doi-elsewhere}, auditnote = {H4 + L1: DOI and year only inside howpublished; no year field}
+}
+
+% ---------------------------------------------------------------- other-identifiers (v1.5, H4)
+% arXiv ids, PubMed URLs and publisher URLs that map to a free lookup.
+@article{kokhlikyan2020captum,
+  title = {Captum: A unified and generic model interpretability library for PyTorch},
+  author = {Kokhlikyan, Narine and Miglani, Vivek and Martin, Miguel and Wang, Edward and Alsallakh, Bilal and Reynolds, Jonathan and Melnikov, Alexander},
+  journal = {arXiv preprint arXiv:2009.07896}, year = {2020},
+  url = {https://arxiv.org/abs/2009.07896},
+  expectlookup = {arxiv:2009.07896}, expectstatus = {matched-by-doi},
+  hardcase = {other-identifiers}, auditnote = {H4: arXiv id in journal and arxiv.org url -> 10.48550/arXiv.2009.07896}
+}
+@misc{abouelenin2025phi4mini,
+  title = {{Phi-4-Mini} Technical Report: Compact Yet Powerful Multimodal Language Models via Mixture-of-{LoRA}s},
+  author = {Abouelenin, Abdelrahman and Ashfaq, Atabak and Atkinson, Adam and Awadalla, Hany and others},
+  howpublished = {arXiv:2503.01743 [cs.CL]}, year = {2025},
+  expectlookup = {arxiv:2503.01743}, expectstatus = {matched-by-doi},
+  hardcase = {other-identifiers}, auditnote = {H4: arXiv id only as 'arXiv:NNNN.NNNNN [cs.CL]' in howpublished}
+}
+@article{bailerjones2021_eprintonly,
+  title = {Estimating Distances from Parallaxes. V. Geometric and Photogeometric Distances to 1.47 Billion Stars in Gaia Early Data Release 3},
+  author = {{Bailer-Jones}, C.~A.~L. and {Rybizki}, J. and {Fouesneau}, M. and {Demleitner}, M. and {Andrae}, R.},
+  journal = {The Astronomical Journal}, year = 2021, volume = {161}, number = {3}, pages = {147},
+  archivePrefix = {arXiv}, eprint = {2012.05220}, primaryClass = {astro-ph.SR},
+  expectlookup = {arxiv:2012.05220}, expectstatus = {matched-by-doi},
+  hardcase = {other-identifiers}, auditnote = {H4: ADS-style eprint + archivePrefix, doi field removed on purpose}
+}
+@article{moses2021,
+  title = {Neuroprosthesis for {Decoding} {Speech} in a {Paralyzed} {Person} with {Anarthria}},
+  author = {Moses, David A. and Metzger, Sean L. and Liu, Jessie R. and Anumanchipalli, Gopala K. and Makin, Joseph G. and Chang, Edward F.},
+  journal = {The New England journal of medicine}, volume = {385}, number = {3}, pages = {217--227}, year = {2021},
+  doi = {10.1056/NEJMoa2027540},
+  expectid = {W3180220247}, expectstatus = {matched-by-doi},
+  hardcase = {other-identifiers}, auditnote = {control for moses2021_pubmed}
+}
+@misc{moses2021_pubmed,
+  title = {Neuroprosthesis for {Decoding} {Speech} in a {Paralyzed} {Person} with {Anarthria} - {PubMed}},
+  url = {https://pubmed.ncbi.nlm.nih.gov/34260835/},
+  expectlookup = {pmid:34260835}, expectid = {W3180220247}, expectdup = {moses2021},
+  hardcase = {other-identifiers}, auditnote = {H4 + H2 + H6: Zotero web snapshot (no author, no year, ' - PubMed' suffix); PMID in url; was matched-by-title and not flagged as duplicate}
+}
+@article{pandarinath2017,
+  title = {High performance communication by people with paralysis using an intracortical brain-computer interface},
+  author = {Pandarinath, Chethan and Nuyujukian, Paul and Blabe, Christine H and Sorice, Brittany L and Saab, Jad and Willett, Francis R and Hochberg, Leigh R and Shenoy, Krishna V and Henderson, Jaimie M},
+  journal = {eLife}, volume = {6}, pages = {e18554}, year = {2017},
+  doi = {10.7554/eLife.18554},
+  expectid = {W2589952473}, expectstatus = {matched-by-doi},
+  hardcase = {other-identifiers}, auditnote = {control for pandarinath2017_snapshot}
+}
+@misc{pandarinath2017_snapshot,
+  title = {High performance communication by people with paralysis using an intracortical brain-computer interface {\textbar} {eLife}},
+  url = {https://elifesciences.org/articles/18554},
+  expectlookup = {doi:10.7554/eLife.18554}, expectid = {W2589952473}, expectdup = {pandarinath2017},
+  hardcase = {other-identifiers}, auditnote = {H4 + H2 + H6: web snapshot with ' | eLife' suffix; eLife article url maps to 10.7554/eLife.18554}
+}
+
+% ---------------------------------------------------------------- shared-doi (v1.5, C2 + C3)
+% Two DIFFERENT works carrying the same DOI (copy-paste error in the user's .bib).
+@article{zimyanin2008,
+  title = {In vivo imaging of oskar mRNA transport reveals the mechanism of posterior localization},
+  author = {Zimyanin, V. L. and Belaya, K. and Pecreaux, J. and Gilchrist, M. J. and Clark, A. and Davis, I. and St Johnston, D.},
+  journal = {Cell}, volume = {134}, number = {5}, pages = {843-53}, year = {2008},
+  doi = {10.1016/j.cell.2008.06.053},
+  expectdoi = {10.1016/j.cell.2008.06.053}, expectid = {W1980793772}, expectstatus = {matched-by-doi},
+  hardcase = {shared-doi}, auditnote = {C2: owner of the DOI}
+}
+@article{goodwin2010,
+  title = {Patronin regulates the microtubule network by protecting microtubule minus ends},
+  author = {Goodwin, Sarah S and Vale, Ronald D},
+  journal = {Cell}, volume = {143}, number = {2}, pages = {263--274}, year = {2010},
+  doi = {https://doi.org/10.1016/j.cell.2008.06.053},
+  expectstatus = {suspicious}, expectnotdup = {zimyanin2008}, expectnosuggest = {*},
+  hardcase = {shared-doi}, auditnote = {C2 + C3: wrong DOI shared with zimyanin2008; alone it is suspicious 0.32, next to its twin it came out matched-by-doi + Duplicate of; must never receive volume/number/pages from W1980793772}
+}
+
+% ---------------------------------------------------------------- aa-subtitle (v1.5, H1)
+% Correct DOIs. OpenAlex stores only the part of the title before the first ". ",
+% e.g. W2798336535 = "Gaia Data Release 2". Must be matched-by-doi, NOT suspicious.
+@article{bensby2014,
+  title = {{Exploring the Milky Way stellar disk. A detailed elemental abundance study of 714 F and G dwarf stars in the solar neighbourhood}},
+  author = {{Bensby}, T. and {Feltzing}, S. and {Oey}, M.~S.},
+  journal = {\aap}, year = 2014, volume = {562}, pages = {A71},
+  doi = {10.1051/0004-6361/201322631},
+  expectid = {W4292953150}, expectstatus = {matched-by-doi},
+  hardcase = {aa-subtitle}, auditnote = {H1: OpenAlex title 'Exploring the Milky Way stellar disk'}
+}
+@article{gaia2018dr2,
+  title = {{Gaia Data Release 2. Summary of the contents and survey properties}},
+  author = {{Gaia Collaboration} and {Brown}, A.~G.~A. and {Vallenari}, A. and {Prusti}, T. and {de Bruijne}, J.~H.~J.},
+  journal = {\aap}, year = 2018, volume = {616}, pages = {A1},
+  doi = {10.1051/0004-6361/201833051},
+  expectid = {W2798336535}, expectstatus = {matched-by-doi},
+  hardcase = {aa-subtitle}, auditnote = {H1: OpenAlex title 'Gaia Data Release 2' AND corporate first author vs OpenAlex first author A. G. A. Brown}
+}
+@article{karl2005,
+  title = {{Rotation velocities of white dwarfs. III. DA stars with convective atmospheres}},
+  author = {{Karl}, C.~A. and {Napiwotzki}, R. and {Heber}, U. and {Dreizler}, S. and {Koester}, D. and {Reid}, I.~N.},
+  journal = {\aap}, year = 2005, volume = {434}, pages = {637-647},
+  doi = {10.1051/0004-6361:20041437},
+  expectid = {W2095569775}, expectstatus = {matched-by-doi},
+  hardcase = {aa-subtitle}, auditnote = {H1: OpenAlex title 'Rotation velocities of white dwarfs'; old-style A&A DOI with a colon}
+}
+@article{nordstrom2004,
+  title = {{The Geneva-Copenhagen survey of the Solar neighbourhood. Ages, metallicities, and kinematic properties of {\ensuremath{\sim}}14 000 F and G dwarfs}},
+  author = {{Nordstr{\"o}m}, B. and {Mayor}, M. and {Andersen}, J. and {Holmberg}, J. and {Pont}, F.},
+  journal = {\aap}, year = 2004, volume = {418}, pages = {989-1019},
+  doi = {10.1051/0004-6361:20035959},
+  expectid = {W4292508430}, expectstatus = {matched-by-doi},
+  hardcase = {aa-subtitle}, auditnote = {H1: series title + subtitle, plus math in title}
+}
+@article{raddi2022,
+  title = {{Kinematic properties of white dwarfs. Galactic orbital parameters and age-velocity dispersion relation}},
+  author = {{Raddi}, Roberto and {Torres}, Santiago and {Rebassa-Mansergas}, Alberto and {Maldonado}, Jes{\'u}s},
+  journal = {\aap}, year = 2022, volume = {658}, pages = {A22},
+  doi = {10.1051/0004-6361/202141837},
+  expectid = {W3213723392}, expectstatus = {matched-by-doi},
+  hardcase = {aa-subtitle}, auditnote = {H1}
+}
+
+% ---------------------------------------------------------------- oa-duplicate (v1.5, H2)
+% Same work reached through two paths (title search vs DOI). See also devlin2018arxiv,
+% moses2021_pubmed and pandarinath2017_snapshot.
+@article{lecun2015_doi,
+  title = {Deep Learning},
+  author = {LeCun, Y. and Bengio, Y. and Hinton, G.},
+  journal = {Nature}, year = {2015},
+  doi = {10.1038/nature14539},
+  expectdoi = {10.1038/nature14539}, expectdup = {lecun2015},
+  hardcase = {oa-duplicate}, auditnote = {H2: lecun2015 (title path) and this entry (DOI path) both resolve to W2919115771; Report counted the work twice}
+}
+
+% ---------------------------------------------------------------- weak-evidence (v1.5, H6 + H8)
+% No identifier and too little evidence: must never be a confident match.
+@misc{metzger2022_pubmed_noauthor,
+  title = {Generalizable spelling using a speech neuroprosthesis in an individual with severe limb and vocal paralysis - {PubMed}},
+  expectmax = {uncertain},
+  hardcase = {weak-evidence}, auditnote = {H6: web-snapshot title, no author, no year, no url}
+}
+@inproceedings{peer_review_page,
+  title = {{PEER} {REVIEW} - {Decoding} of {Intuitive} {Motor} {Imagery} {Paradigm} {Based} on {Frequency}-{Band} {Double}-{Branch} {Network}},
+  expectmax = {uncertain},
+  hardcase = {weak-evidence}, auditnote = {H6: a saved peer-review page, not the paper; was matched-by-title to W7116741089 with no author and no year}
+}
+@misc{somatomotor_title_only,
+  title = {{somatomotor}},
+  author = {Lin, Fa-Hsuan and Foxe von Pechmann, Deirdre and Lankinen, Kaisu and Ahlfors, Seppo},
+  howpublished = {OpenNeuro [Data set]}, year = {2025},
+  expectmax = {uncertain},
+  hardcase = {weak-evidence}, auditnote = {H8: one-word title; real file was matched-by-title to W7166462291 (NEMAR mirror, DOI 10.82901/nemar.on006035.v1.0.0, year 2026)}
+}
+@misc{somatomotor_openneuro,
+  title = {{somatomotor}},
+  author = {Lin, Fa-Hsuan and Foxe von Pechmann, Deirdre and Lankinen, Kaisu and Ahlfors, Seppo},
+  howpublished = {OpenNeuro [Data set]}, year = {2025},
+  url = {https://doi.org/10.18112/openneuro.ds006035.v1.0.0},
+  expectlookup = {doi:10.18112/openneuro.ds006035.v1.0.0}, expectnotid = {W7166462291},
+  hardcase = {weak-evidence}, auditnote = {H4 + H8: the cited DOI is OpenNeuro's; a record with a different DOI (NEMAR mirror) must not be accepted confidently. If OpenAlex has no record for this DOI, not-found or uncertain is fine}
+}
+
+% ---------------------------------------------------------------- proceedings-no-doi (v1.5, H9)
+% Venue is a conference without DOIs; only the arXiv record exists. Must be labelled as
+% "matched to preprint version" and must not count as a preprint citation in the Report.
+@inproceedings{radford2021clip,
+  title = {Learning Transferable Visual Models from Natural Language Supervision},
+  author = {Radford, Alec and Kim, Jong Wook and Hallacy, Chris and Ramesh, Aditya and Goh, Gabriel and Sutskever, Ilya},
+  booktitle = {Proceedings of the 38th International Conference on Machine Learning}, series = {Proceedings of Machine Learning Research},
+  volume = {139}, pages = {8748--8763}, year = {2021}, publisher = {PMLR},
+  url = {https://proceedings.mlr.press/v139/radford21a.html},
+  expectid = {W3135367836}, expectversion = {preprint},
+  hardcase = {proceedings-no-doi}, auditnote = {H9: verify expectid (taken from current output)}
+}
+@inproceedings{song2021ddim,
+  title = {Denoising Diffusion Implicit Models},
+  author = {Song, Jiaming and Meng, Chenlin and Ermon, Stefano},
+  booktitle = {The Ninth International Conference on Learning Representations}, year = {2021},
+  url = {https://openreview.net/forum?id=St1giarCHLP},
+  expectid = {W3092442149}, expectversion = {preprint},
+  hardcase = {proceedings-no-doi}, auditnote = {H9: verify expectid (taken from current output); OpenAlex year 2020 vs cited 2021}
+}
+
+% ---------------------------------------------------------------- cleaned-bib-safety (v1.5, C1 + H5 + M2)
+% What the cleaned .bib writes or proposes. Probe-confirmed behaviour on 2026-10-10 in auditnote.
+@article{hunter2007_nojournal,
+  title = {Matplotlib: A 2D Graphics Environment},
+  author = {Hunter, John D.},
+  year = {2007},
+  doi = {10.1109/MCSE.2007.55},
+  expectfill = {journal=Computing in Science \& Engineering},
+  hardcase = {cleaned-bib-safety}, auditnote = {C1: auto-wrote journal = {Computing in Science & Engineering} with a bare & (LaTeX error)}
+}
+@article{azami2023,
+  title = {Beta to theta power ratio in EEG periodic components as a potential biomarker in mild cognitive impairment and Alzheimer’s dementia},
+  author = {Azami, Hamed and Zrenner, Christoph and Brooks, Harriet and Rajji, Tarek K.},
+  journal = {Alzheimer’s Research \& Therapy}, volume = {15}, number = {1}, year = {2023},
+  doi = {10.1186/s13195-023-01280-z},
+  expectfill = {pages=133}, expectnosuggest = {journal},
+  hardcase = {cleaned-bib-safety}, auditnote = {H5: auto-wrote pages = {133--133} for an article number; OpenAlex venue is 'Alzheimer s Research & Therapy' (apostrophe lost, bare &) and must not replace the user's journal}
+}
+@article{caliskan2025,
+  title = {{Investigating the Colour-Magnitude Relations for White Dwarf Stars in SDSS Photometry}},
+  author = {{{\c{C}}al{\i}{\textcommabelow s}kan}, {\"O}zcan and {G{\"o}kmen}, Sevin{\c{c}}},
+  journal = {Physics and Astronomy Reports}, year = 2025, volume = {3}, pages = {13-20},
+  doi = {10.48550/arXiv.2504.21075},
+  expectnosuggest = {journal},
+  hardcase = {cleaned-bib-safety}, auditnote = {H5: arXiv DOI + real journal; proposed journal: {Physics and Astronomy Reports} -> {arXiv (Cornell University)}}
+}
+@article{elsanhoury2015,
+  title = {{Kinematics and Velocity Ellipsoid of the Solar Neighborhood White Dwarfs}},
+  author = {{Elsanhoury}, W.~H. and {Nouh}, M.~I. and {Abdel-Rahman}, H.~I.},
+  journal = {\rmxaa}, year = 2015, volume = {51}, pages = {199},
+  doi = {10.48550/arXiv.1503.03595},
+  expectnosuggest = {journal},
+  hardcase = {cleaned-bib-safety}, auditnote = {H5: same as caliskan2025 but the journal is an undefined ADS macro}
+}
+@incollection{liebert1989,
+  title = {{The Luminosity Function of White Dwarfs in the Local Disk and Halo}},
+  author = {{Liebert}, James and {Dahn}, Conard C. and {Monet}, David G.},
+  booktitle = {IAU Colloquium 114: White Dwarfs}, year = 1989, volume = {328}, pages = {15},
+  doi = {10.1007/3-540-51031-1_287},
+  expectnosuggest = {year}, expectrecencyyear = {1989},
+  hardcase = {cleaned-bib-safety}, auditnote = {H5 + M1: OpenAlex dates the DOI record 2008 (Springer eBooks); proposed year: {1989} -> {2008}}
+}
+@misc{isola2017_arxivdoi,
+  title = {Image-to-{Image} {Translation} with {Conditional} {Adversarial} {Networks}},
+  author = {Isola, Phillip and Zhu, Jun-Yan and Zhou, Tinghui and Efros, Alexei A.},
+  year = {2018}, publisher = {arXiv},
+  doi = {10.48550/arXiv.1611.07004}, url = {http://arxiv.org/abs/1611.07004},
+  expectid = {W2552465644},
+  hardcase = {cleaned-bib-safety}, auditnote = {M2 + M5: arXiv DOI resolves to the merged CVPR record whose venue is 'IEEE Computer Society Conference on Computer Vision and Pattern Recognition/Proceedings - ...'; G2 forbids writing that name}
+}
+
+% ---------------------------------------------------------------- non-indexable-resources (v1.5, M4)
+% Software, websites, datasets without identifier: not-indexable, not not-found.
+@misc{chatgpt2026,
+  title = {ChatGPT (GPT-5.5)},
+  author = {{OpenAI}},
+  year = {2026}, url = {https://chatgpt.com},
+  expectstatus = {not-indexable},
+  hardcase = {non-indexable-resources}, auditnote = {M4: was not-found}
+}
+@misc{vallat2025antropy,
+  title = {{AntroPy}: Entropy and complexity of (EEG) time-series in Python},
+  author = {Vallat, Rapha\"el},
+  year = {2025},
+  note = {Python library, version 0.1.9. Documentation at \url{https://raphaelvallat.com/antropy/build/html/index.html}},
+  url = {https://raphaelvallat.com/antropy/build/html/index.html},
+  expectstatus = {not-indexable},
+  hardcase = {non-indexable-resources}, auditnote = {M4: software with a person author; was not-found}
+}
+@misc{tuev_official,
+  title = {{TUH EEG Events Corpus (TUEV)}, Version 2.0.1},
+  author = {{Temple University Neural Engineering Data Consortium}},
+  year = {2026}, howpublished = {Temple University Neural Engineering Data Consortium website},
+  url = {https://isip.piconepress.com/projects/nedc/html/tuh_eeg/}, note = {Accessed 22 July 2026},
+  expectstatus = {not-indexable},
+  hardcase = {non-indexable-resources}, auditnote = {M4: dataset website, corporate author; was not-found}
+}
+
+% ---------------------------------------------------------------- title-display (v1.5, M3)
+% Title (.bib) column must be the user's title, de-TeXed, with no case change.
+@article{bovy2013,
+  title = {{A Direct Dynamical Measurement of the Milky Way's Disk Surface Density Profile, Disk Scale Length, and Dark Matter Profile at 4 kpc <\raisebox{-0.5ex}\textasciitilde R <\raisebox{-0.5ex}\textasciitilde 9 kpc}},
+  author = {{Bovy}, Jo and {Rix}, Hans-Walter},
+  journal = {\apj}, year = 2013, volume = {779}, number = {2}, pages = {115},
+  doi = {10.1088/0004-637X/779/2/115},
+  expectstatus = {matched-by-doi}, expecttitlenot = {¡},
+  hardcase = {title-display}, auditnote = {M3: column showed '4 kpc ¡-0.5ex~R ¡-0.5ex~9 kpc' (< became ¡, raisebox argument leaked)}
+}
+@article{akbaba2026b,
+  title = {{Unsupervised Chemo-Dynamical Dissection of the Inner Galactic Halo: Discovery of Five Accreted Substructures with SDSS-V and Gaia}},
+  author = {{Akbaba}, Furkan and {Plevne}, Olcay},
+  journal = {\pasp}, year = 2026, volume = {138}, number = {7}, pages = {074101},
+  doi = {10.1088/1538-3873/ae8477},
+  expectstatus = {matched-by-doi}, expecttitle = {SDSS-V and Gaia},
+  hardcase = {title-display}, auditnote = {M3: whole title brace-protected, column showed 'SDSS-v and gaia'}
+}
+
+% ---------------------------------------------------------------- parser-robustness (v1.5, H3) — keep LAST
+@article{empty_entry,
+}
+% expected for empty_entry: expectstatus = unparseable, expecterror = empty-entry
+% (written as a comment because an empty entry cannot carry fields)
+
+@article{donoghue2020,
+  title = {Parameterizing neural power spectra into periodic and aperiodic components},
+  author = {Donoghue, Thomas and Haller, Maria and Peterson, Erik J. and Varma, Prem and Voytek, Bradley},
+  journal = {Nature Neuroscience}, volume = {23}, number = {12}, pages = {1655--1665}, year = {2020},
+  doi = {10.1038/s41593-020-00744-x},
+  expecterror = {duplicate-key},
+  hardcase = {parser-robustness}, auditnote = {H3: first copy (wrong author first names) — BibTeX keeps this one}
+}
+@article{donoghue2020,
+  title = {Parameterizing neural power spectra into periodic and aperiodic components},
+  author = {Donoghue, Thomas and Haller, Matar and Peterson, Erik J. and Varma, Paroma and Voytek, Bradley},
+  journal = {Nature Neuroscience}, volume = {23}, pages = {1655--1665}, year = {2020},
+  doi = {10.1038/s41593-020-00744-x},
+  expecterror = {duplicate-key},
+  hardcase = {parser-robustness}, auditnote = {H3: second copy with the same key; tool showed 'Duplicate of: donoghue2020parameterizing' (itself)}
+}
+
+@incollection{nayak2025eeg,
+  author       = {Nayak, Chetan S. and Anilkumar, Ancy C.},
+  title        = {EEG Normal Waveforms},
+  booktitle    = {StatPearls [Internet]},
+  publisher    = {StatPearls Publishing},
+  address      = {Treasure Island (FL)},
+  year         = {2025},
+  url          = {https://www.ncbi.nlm.nih.gov/books/NBK539805/},
+}
+
+%  note         = {[Updated 2025 Aug 3]. Available from: \url{https://www.ncbi.nlm.nih.gov/books/NBK539805/}},
+}
+% expected for nayak2025eeg: parses (the stray closing brace above is tolerated today — guard it);
+% hardcase = parser-robustness. No ground-truth fields on purpose (copied verbatim from a user file).

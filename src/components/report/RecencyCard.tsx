@@ -24,7 +24,7 @@ export default function RecencyCard({ cohort, referenceYear, fieldId }: Props) {
     <CardShell
       title="Recency profile"
       basis={r}
-      intro="When the cited work was published."
+      intro="When the cited work was published — the year in your .bib (the OpenAlex year only when your entry has none)."
     >
       {r.medianYear == null ? (
         <p className="muted">No matched works carry a publication year.</p>

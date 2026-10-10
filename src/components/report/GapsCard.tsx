@@ -24,7 +24,9 @@ interface Props {
   onRunForward: () => void
 }
 
-function CandidateList({ candidates, denom, unit }: { candidates: GapCandidate[]; denom: number; unit: string }) {
+// v1.4.5 (M7): co-citation candidates are CITED BY your references; forward-citation
+// candidates CITE them — the wording says which.
+function CandidateList({ candidates, denom, unit, verb }: { candidates: GapCandidate[]; denom: number; unit: string; verb: 'cited by' | 'cites' }) {
   if (candidates.length === 0) return <p className="muted">No candidates cleared the threshold.</p>
   return (
     <ul className="gap-list">
@@ -35,7 +37,7 @@ function CandidateList({ candidates, denom, unit }: { candidates: GapCandidate[]
             {c.work?.publicationYear ? <span className="muted"> ({c.work.publicationYear})</span> : null}
           </span>
           <div className="gap-meta">
-            cited by <strong>{c.count}</strong> of your {denom} {plural(denom, unit)}
+            {verb} <strong>{c.count}</strong> of your {denom} {plural(denom, unit)}
             {c.work?.id && <> · <a href={c.work.id} target="_blank" rel="noreferrer">OpenAlex ↗</a></>}
             <div className="gap-keys">{c.citedByKeys.map(k => <span key={k} className="mono chip">{k}</span>)}</div>
           </div>
@@ -72,17 +74,17 @@ export default function GapsCard({ rows, co, fw, onRunCoCitation, onRunForward }
               Pooled {co.result.matchedWorks} matched {plural(co.result.matchedWorks, 'work')} ·
               {' '}{co.result.billableCalls} billable call (~${co.result.costUsd.toFixed(3)}).
             </p>
-            <CandidateList candidates={co.result.candidates} denom={co.result.matchedWorks} unit="reference" />
+            <CandidateList candidates={co.result.candidates} denom={co.result.matchedWorks} unit="reference" verb="cited by" />
           </>
         )}
       </div>
 
       {/* Forward-citation — gated, cost shown up front */}
       <div className="gap-section">
-        <p className="gap-section-title">Recent adjacent work <span className="muted">— forward-citation, {estimate.calls} billable {plural(estimate.calls, 'call')}</span></p>
+        <p className="gap-section-title">Adjacent work <span className="muted">— forward-citation, {estimate.calls} billable {plural(estimate.calls, 'call')}</span></p>
         <p className="card-note">
-          Recent work that cites the references you already have — useful for catching newer papers
-          adjacent to your list.
+          Papers that cite several of the references you already have (any year; their year is shown) —
+          useful for catching later work adjacent to your list.
         </p>
         {fw.status === 'idle' && (
           <button className="primary" onClick={onRunForward} disabled={busy}>Find adjacent work</button>
@@ -92,7 +94,7 @@ export default function GapsCard({ rows, co, fw, onRunCoCitation, onRunForward }
         {fw.status === 'done' && (
           <>
             <p className="cost">{fw.result.billableCalls} billable {plural(fw.result.billableCalls, 'call')} (~${fw.result.costUsd.toFixed(3)}).</p>
-            <CandidateList candidates={fw.result.candidates} denom={fw.result.seedCount} unit="reference" />
+            <CandidateList candidates={fw.result.candidates} denom={fw.result.seedCount} unit="reference" verb="cites" />
           </>
         )}
       </div>

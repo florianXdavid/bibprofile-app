@@ -862,6 +862,65 @@ Goal: 500+ runs a day without users hitting an empty shared pool.
   author and year go to Crossref).
 - Tests: 206 → 216 (+1 skipped).
 
+## v1.4.5 — edge cases from a real-world audit (Oct 2026; last step of v1.4)
+
+Source: an audit of 6 real `.bib` files (587 entries) plus a probe of the cleaned
+`.bib`; `hard-titles.bib` extended to v1.5 (167 entries, 41 new, 6 with one new field).
+
+- **Cleaned `.bib`:**
+  - C1: every written or proposed value is LaTeX-escaped (`texEscape`); a bare `&`
+    from OpenAlex broke LaTeX builds.
+  - C3: a `suspicious` entry gets no fills and no differs items, only "The DOI points
+    to another work — check the DOI."
+  - H5: never propose another journal (or a preprint server); a year only when 1
+    off, else an info note; pages `N`, never `N--N`.
+  - M2: `cleanVenue` (CVPR's doubled name, lost apostrophes, PubMed / eBooks / CiNii
+    junk); a preprint server is never written as a journal.
+  - M5: a DOI that resolved to a merged record with another DOI → fills are review.
+  - H3: a comment line marks the 2nd copy of a repeated cite key.
+- **Matching:**
+  - C2: a shared DOI merges two entries only if their titles agree; otherwise each
+    is looked up, the wrong one is `suspicious` and named after the DOI's owner.
+  - H4: identifiers outside the `doi` field (DOI in url/note/howpublished, arXiv
+    ids, PMID/PMCID, eLife URLs) are free lookups (`findAltId`, `lookupWork`). A hint
+    only: a disagreeing record is ignored and the title path runs.
+  - H1: titles match OpenAlex's A&A truncation at the first `. ` (≥ 3 words); a
+    corporate first author is skipped.
+  - H2: confident rows on the same OpenAlex work are duplicates (`finishRows`).
+  - H6–H8: no author/year confirmation, a "PEER REVIEW -" page, a stub record
+    (CiNii), a very short title, or a different DOI than an unindexed cited one →
+    at most `uncertain`, with the reasons in the row's notes.
+  - H9: a proceedings/journal citation matched to the preprint record is labelled
+    "preprint version" and kept out of the venue ranking.
+  - M4: `@misc`/`@online`/`@software`/`@dataset` with a URL and no identifier →
+    `not-indexable` on a miss.
+- **Parser:** no sentence-casing (`english: false`); `<`/`>` kept (not `¡`/`¿`);
+  year from "(2021)" in howpublished/note; repeated cite keys numbered (#1, #2) and
+  never "duplicate of itself"; byte-identical copies get their own offsets.
+- **Report / table:** Recency uses the cited year; the forward-citation list says
+  "cites N of your references" and no longer claims "recent"; Preprint → published
+  needs title ≥ 0.9 + same first author and rejects datasets/software (Adam → MADGRAD);
+  table notes (ⓘ) and seven new CSV columns (score, matched DOI, OpenAlex title,
+  notes, retracted, preprint version, identified by).
+- **Skipped (simplicity / cost):** Crossref `container-title` for DOI matches (one
+  extra call per entry); a field-by-field diff of duplicate-key copies; L2/L3.
+- **Harness:** replays the whole `runMatching` and the cleaned `.bib`; reads the
+  v1.5 fields; checks G1–G5; fixture keyed by (cite key, occurrence). The recorder
+  also records each entry's identifier lookup and the Preprint → published search.
+- **Found by the recording:** a field inside a value (`note = {journal=…}`) counted as
+  present; field lookup now requires a preceding comma (`hasField`, `locateField`).
+- **Regression** (incremental recording: 41 billable searches, 44 Crossref calls,
+  172 free OpenAlex lookups):
+  - 0 wrong; 124 confident-correct of 130 with a known record (was 105 of 111);
+    every v1.5 field and G1–G5 hold;
+  - 35 entries identified by a free lookup (14 by an identifier outside the doi
+    field), 87 by Crossref; 44 billable searches for 166 entries;
+  - retractions 24/24, no false alarms; 93 automatic DOIs, all correct.
+  - Floors: `MIN_CORRECT` = 124, `MIN_VIA_CROSSREF` = 87 (unchanged).
+- **About:** v1.4 and the missing v1.2 (maintenance page, 2026-08-14) lines added
+  to the version history; privacy copy mentions arXiv / PubMed IDs.
+- Tests: 216 → 252 (+1 skipped).
+
 > The project-layout and test-count sections below describe the state as of W4.2.
 > For the current layout, see README.md.
 

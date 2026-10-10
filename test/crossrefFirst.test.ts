@@ -10,7 +10,7 @@ const entry = (over: Partial<BibEntry> = {}): BibEntry => ({
   rowId: 'e', sourceOffset: 0, citeKey: 'he2016', entryType: 'inproceedings',
   title: 'Deep residual learning for image recognition', titleForSearch: 'Deep residual learning for image recognition',
   authors: '', year: 2016, venue: 'CVPR', doiRaw: null, doi: null, firstAuthor: 'He', volume: '', pages: '',
-  titleRetracted: false, raw: '', likelyNotIndexable: false, ...over,
+  titleRetracted: false, altId: null, dupKeyIndex: null, raw: '', likelyNotIndexable: false, ...over,
 })
 const cr = crossrefToWork({
   DOI: '10.1109/CVPR.2016.90', title: ['Deep Residual Learning for Image Recognition'], type: 'proceedings-article',

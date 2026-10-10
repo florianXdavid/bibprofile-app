@@ -27,6 +27,7 @@ export interface AnalysisWork {
   title: string // .bib title, for "your oldest reference is …"
   bibYear: number | null
   suspicious: boolean // status was `suspicious` or `uncertain` (included, but flagged)
+  preprintVersion: boolean // v1.4.5 (H9): cited as journal/proceedings, only the preprint is indexed
   work: OpenAlexWork
 }
 
@@ -92,6 +93,7 @@ export function buildCohort(rows: ResultRow[]): Cohort {
           title: r.title,
           bibYear: r.bibYear,
           suspicious: r.status === 'suspicious' || r.status === 'uncertain',
+          preprintVersion: !!r.preprintVersion,
           work: r.openalex,
         })
       } else {
@@ -137,10 +139,19 @@ export function subset(
   }
 }
 
-// Works with a usable publication year — the recency card's denominator, reused
-// by the summary text.
+// v1.4.5 (M1) — the year the author CITES: the .bib year when present and
+// plausible, else the OpenAlex year of a confident match. (OpenAlex dates some
+// records oddly — "Attention Is All You Need" = 2025, a 1989 volume = 2008 — and an
+// uncertain / suspicious match may be another work altogether.)
+export function citedYear(w: AnalysisWork, referenceYear = new Date().getFullYear()): number | null {
+  if (w.bibYear != null && w.bibYear >= 1400 && w.bibYear <= referenceYear + 1) return w.bibYear
+  return w.suspicious ? null : w.work.publicationYear
+}
+
+// Works with a usable (cited) year — the recency card's denominator, reused by the
+// summary text and the shape card.
 export function withYear(cohort: Cohort): { used: AnalysisWork[] } & Stat {
-  return subset(cohort, w => typeof w.work.publicationYear === 'number', 'no publication year')
+  return subset(cohort, w => citedYear(w) != null, 'no year')
 }
 
 // The plain-language "based on …" line every card footer shows.

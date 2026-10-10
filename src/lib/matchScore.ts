@@ -25,6 +25,7 @@ import {
   TITLE_MATCH_THRESHOLD,
 } from '../config'
 import { diceCoefficient, normalizeTitle } from './similarity'
+import { normalizeDoi } from './doi'
 import type { BibEntry, MatchSignals, OpenAlexWork } from '../types'
 
 const SUBTITLE_SCORE = 0.9
@@ -62,7 +63,12 @@ function isNoticeWork(w: OpenAlexWork): boolean {
 }
 
 // Main title = text before the first ':' / '?' / ' - ' (subtitle separator).
+// v1.4.5 (H1): also '. ' — A&A's "Title. Subtitle" / "Series. III. Part" style, which
+// OpenAlex truncates to the part before the first '. '. Only when that part still
+// has >= 3 words (so "Dr. Who …" or "U.S. …" don't count).
 function mainTitle(t: string): string {
+  const head = t.split(/[:?]|\s[-–—]\s|\.\s/)[0]
+  if (head.trim().split(/\s+/).length >= 3) return head
   return t.split(/[:?]|\s[-–—]\s/)[0]
 }
 
@@ -257,6 +263,7 @@ export interface TitleDecision {
   signals: MatchSignals | null
   ambiguous: boolean // a different work scored within MATCH_AMBIGUITY_MARGIN
   twins: OpenAlexWork[] // v1.4.2: other candidates that look like the same work as `work`
+  reasons?: string[] // v1.4.5: why an `uncertain` decision isn't confident (shown in the table)
 }
 
 // v1.4.2 — candidates that look like the SAME work as the chosen one: near-identical
@@ -287,14 +294,36 @@ function sameWork(a: OpenAlexWork, b: OpenAlexWork): boolean {
     && (v == null || v >= 0.5)
 }
 
+// v1.4.5 (H7) — OpenAlex "stub" records (e.g. CiNii imports): no DOI and a single
+// author where the .bib lists several, or a junk venue. Never preferred over a
+// real record; alone, never confident.
+const JUNK_VENUE = /^medical entomology and zoology$/i
+function isStub(e: BibEntry, w: OpenAlexWork): boolean {
+  if (w.doi) return false
+  return JUNK_VENUE.test((w.hostVenue ?? '').trim())
+    || (w.authorships.length <= 1 && (e.authors ?? '').includes(';'))
+}
+
+// v1.4.5 (H8) — too few words to identify a work on its own ("somatomotor").
+export function isShortTitle(title: string): boolean {
+  const t = normalizeTitle(title)
+  return t.length < 15 || t.split(' ').filter(w => w && !FUNCTION_WORDS.has(w)).length < 3
+}
+// v1.4.5 (H6) — a saved peer-review page ("PEER REVIEW - <paper title>"), not the paper.
+const PEER_REVIEW = /^\s*(?:peer\s+review|review\s+for)\b/i
+
 // Pick the best title-search candidate. Deterministic order: score desc, then
 // title signal desc, then OpenAlex's own rank.
-export function chooseTitleMatch(e: BibEntry, candidates: OpenAlexWork[]): TitleDecision {
+// `missingDoi` (v1.4.5, H8): a DOI the .bib cites that OpenAlex doesn't know — a
+// record carrying a DIFFERENT DOI is then another object (a mirror, another version).
+export function chooseTitleMatch(e: BibEntry, candidates: OpenAlexWork[], missingDoi: string | null = null): TitleDecision {
   const bibIsNotice = isNoticeTitle(stripRetractedPrefix(e.title).title)
-  const scored = candidates
+  const gated = candidates
     .map((w, rank) => ({ w, rank, sig: scoreCandidate(e, w) }))
     .filter(c => c.sig.title >= TITLE_MATCH_THRESHOLD && (bibIsNotice || !isNoticeWork(c.w)))
     .sort((x, y) => y.sig.score - x.sig.score || y.sig.title - x.sig.title || x.rank - y.rank)
+  const real = gated.filter(c => !isStub(e, c.w))
+  const scored = real.length ? real : gated
 
   const top = scored[0]
   if (!top || top.sig.score < MATCH_SCORE_FLOOR) {
@@ -306,6 +335,21 @@ export function chooseTitleMatch(e: BibEntry, candidates: OpenAlexWork[]): Title
   const runnerUp = scored.find(c => !dupes.includes(c) && bareId(c.w.id) !== bareId(best.w.id))
   const ambiguous = !!runnerUp && runnerUp.sig.score >= best.sig.score - MATCH_AMBIGUITY_MARGIN
   const yearGap = e.year != null && best.w.publicationYear != null ? Math.abs(e.year - best.w.publicationYear) : 0
-  const confident = best.sig.score >= MATCH_CONFIDENT_THRESHOLD && !ambiguous && yearGap <= MATCH_MAX_YEAR_GAP
-  return { status: confident ? 'matched-by-title' : 'uncertain', work: best.w, signals: best.sig, ambiguous, twins: findTwins(e, best.w, candidates) }
+  const s = best.sig
+  const reasons: string[] = []
+  if (s.score < MATCH_CONFIDENT_THRESHOLD) reasons.push(`weak match (score ${s.score.toFixed(2)})`)
+  if (ambiguous) reasons.push('another record scored almost the same')
+  if (yearGap > MATCH_MAX_YEAR_GAP) reasons.push(`years ${yearGap} apart — another edition or a reprint?`)
+  if (!real.length) reasons.push('only a stub record (no DOI, incomplete authors)')
+  if (!((s.author ?? 0) > 0 || s.year === 1)) reasons.push('no author or year to confirm the title') // H6
+  if (PEER_REVIEW.test(e.title)) reasons.push('the title is a peer-review page, not the paper') // H6
+  // H8: a very short title also needs the first author AND the venue (or, when the
+  // venue can't be compared, the year) — "Mask R-CNN" in TPAMI yes, a one-word
+  // dataset title on another repository no.
+  if (isShortTitle(e.title) && !(s.author === 1 && (s.venue != null ? s.venue >= 0.5 : s.year === 1))) {
+    reasons.push('title too short to match on alone')
+  }
+  if (missingDoi && best.w.doi && normalizeDoi(best.w.doi) !== missingDoi) reasons.push('same title, different DOI') // H8
+  const confident = reasons.length === 0
+  return { status: confident ? 'matched-by-title' : 'uncertain', work: best.w, signals: best.sig, ambiguous, twins: findTwins(e, best.w, candidates), reasons }
 }
