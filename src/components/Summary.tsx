@@ -8,7 +8,7 @@ export default function Summary({ summary, fileName }: { summary: MatchSummary; 
   const notes: string[] = []
   if (summary.suspicious) notes.push(`${summary.suspicious} suspicious (DOI record disagrees)`)
   if (summary.uncertain) notes.push(`${summary.uncertain} uncertain (title match below confidence)`)
-  if (summary.notFound) notes.push(`${summary.notFound} not found`)
+  if (summary.notFound) notes.push(`${summary.notFound} not found in OpenAlex`)
   if (summary.notIndexable) notes.push(`${summary.notIndexable} not indexable`)
   if (summary.errored) notes.push(`${summary.errored} errored`)
   if (summary.unparseable) notes.push(`${summary.unparseable} unparseable`)
@@ -18,19 +18,19 @@ export default function Summary({ summary, fileName }: { summary: MatchSummary; 
       {fileName && <p className="cost" style={{ marginTop: 0 }}>File: <strong>{fileName}</strong></p>}
       <p className="headline">
         Matched <strong>{matched}</strong> of <strong>{parseable}</strong> parseable entries
-        {' '}<span>({summary.matchedByDoi} by DOI, {summary.matchedByTitle} by title).</span>
+        {' '}<span>({summary.matchedByDoi} by identifier{summary.viaOtherId > 0 ? ` — ${summary.matchedByDoi - summary.viaOtherId} DOI, ${summary.viaOtherId} arXiv ID, PMID or a DOI in url/note` : ''}; {summary.matchedByTitle} by title).</span>
         {notes.length > 0 && <span> {notes.join(', ')}.</span>}
       </p>
       {summary.duplicates > 0 && (
         <p className="cost">
           <strong>{summary.duplicates}</strong> duplicate entr{summary.duplicates === 1 ? 'y' : 'ies'} collapsed
-          before querying (kept in the table, tagged “dup of …”).
+          (same DOI, or the same OpenAlex record; kept in the table, tagged “dup of …”).
         </p>
       )}
       <p className="cost">
         {summary.viaCrossref > 0 && <span><strong>{summary.viaCrossref}</strong> found by title through Crossref (free). </span>}
         <span>Title searches used <strong>{summary.searchCalls}</strong> billable OpenAlex search call{summary.searchCalls === 1 ? '' : 's'}
-        (~${summary.searchCostUsd.toFixed(3)} of daily allowance). DOI lookups are free singletons.</span>
+        (~${summary.searchCostUsd.toFixed(3)} of daily allowance). DOI and identifier lookups are free.</span>
       </p>
     </div>
   )

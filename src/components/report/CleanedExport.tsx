@@ -12,7 +12,7 @@ import { addKey, computeCleanedBib, serializeCleanedBib, type FieldChange } from
 import { plural } from './format'
 
 const CONF_LABEL: Record<string, string> = {
-  confident: 'matched by your DOI',
+  confident: 'matched by identifier',
   tentative: 'title match',
   none: 'low-confidence match',
 }

@@ -29,6 +29,7 @@ import { normalizeDoi } from './doi'
 import type { BibEntry, MatchSignals, OpenAlexWork } from '../types'
 
 const SUBTITLE_SCORE = 0.9
+const NEAR_PERFECT = 0.95
 const AUTHOR_LATER = 0.7
 const PARTIAL_TYPE = 0.5
 
@@ -72,9 +73,21 @@ function mainTitle(t: string): string {
   return t.split(/[:?]|\s[-–—]\s/)[0]
 }
 
+// v1.4.6 (F6) — OpenAlex / Crossref hold many pre-1950 German and French titles and
+// names with U+FFFD where an accented letter was ("Die gegen\uFFFDrtige Situation",
+// "Schr\uFFFDdinger"). Such a string is compared as a pattern: each U+FFFD stands for
+// up to two letters.
+const MOJIBAKE = /\uFFFD/
+const HOLE = 'qqhqq' // a letter-only placeholder that survives normalisation
+function wildcardEqual(withHoles: string, other: string, norm: (s: string) => string): boolean {
+  const parts = norm(withHoles.replace(/\uFFFD/g, HOLE)).split(HOLE)
+  return new RegExp(`^${parts.join('[a-z]{0,2}')}$`).test(norm(other))
+}
+
 export function titleSimilarity(a: string, b: string): number {
   const ta = stripRetractedPrefix(a).title
   const tb = stripRetractedPrefix(b).title
+  if (MOJIBAKE.test(ta) !== MOJIBAKE.test(tb) && (MOJIBAKE.test(ta) ? wildcardEqual(ta, tb, normalizeTitle) : wildcardEqual(tb, ta, normalizeTitle))) return 1
   const full = diceCoefficient(ta, tb)
   if (full >= 1) return 1
   const na = normalizeTitle(ta), nb = normalizeTitle(tb)
@@ -91,17 +104,21 @@ export function titleSimilarity(a: string, b: string): number {
 function nameTokens(s: string): string[] {
   return (s ?? '')
     .replace(/([a-z])([A-Z])/g, '$1 $2') // "PedregosaFabian" -> "Pedregosa Fabian"
+    .replace(/\uFFFD/g, HOLE) // v1.4.6 (F6): keep a mojibake hole inside its token
     .normalize('NFKD').replace(/[̀-ͯ]/g, '')
     .toLowerCase().replace(/[^a-z]+/g, ' ').trim().split(' ').filter(Boolean)
 }
+// A name token equals the surname, a U+FFFD hole matching up to two letters.
+const sameName = (token: string, surname: string) =>
+  token === surname || (token.includes(HOLE) && new RegExp(`^${token.split(HOLE).join('[a-z]{0,2}')}$`).test(surname))
 
 export function authorSignal(firstAuthor: string, w: OpenAlexWork): number | null {
   const bib = nameTokens(firstAuthor)
   const names = w.authorships.map(a => nameTokens(a.authorName)).filter(t => t.length > 0)
   if (bib.length === 0 || names.length === 0) return null
   const surname = bib[bib.length - 1] // "van der Maaten" -> "maaten"; "García-López" -> "lopez"
-  if (names[0].includes(surname)) return 1
-  if (names.some(t => t.includes(surname))) return AUTHOR_LATER
+  if (names[0].some(t => sameName(t, surname))) return 1
+  if (names.some(n => n.some(t => sameName(t, surname)))) return AUTHOR_LATER
   return 0
 }
 
@@ -292,6 +309,8 @@ function sameWork(a: OpenAlexWork, b: OpenAlexWork): boolean {
     && first(a) === first(b)
     && oaKind(a.type) === oaKind(b.type)
     && (v == null || v >= 0.5)
+    // v1.4.6: not two PARTS of one paper (same title, different first pages)
+    && !(a.biblio?.firstPage && b.biblio?.firstPage && a.biblio.firstPage !== b.biblio.firstPage)
 }
 
 // v1.4.5 (H7) — OpenAlex "stub" records (e.g. CiNii imports): no DOI and a single
@@ -311,6 +330,44 @@ export function isShortTitle(title: string): boolean {
 }
 // v1.4.5 (H6) — a saved peer-review page ("PEER REVIEW - <paper title>"), not the paper.
 const PEER_REVIEW = /^\s*(?:peer\s+review|review\s+for)\b/i
+
+// v1.4.6 (F1) — tokens that tell otherwise identical titles apart: numbers ("2008",
+// "DR2"), Roman numerals (Part II), and single capital letters ("data set A" / "B").
+// A capital A counts only at the end or after set/part/type/phase/series/group.
+const ROMAN = /\b(?:I{2,3}|IV|VI{0,3}|IX|XI{0,3})\b/g
+const LETTER = /(?:^|[\s(—–-])([B-Z])(?=$|[\s).,:;—–-])/g
+const LETTER_A = /(?:\b(?:set|part|type|phase|series|group|appendix|section)\s+(A)\b|\s(A)\s*$)/gi
+function discriminators(title: string): Set<string> {
+  const out = new Set<string>()
+  for (const tok of normalizeTitle(title).split(' ')) if (/\d/.test(tok)) out.add(tok)
+  for (const m of title.matchAll(ROMAN)) out.add(m[0].toLowerCase())
+  for (const m of title.matchAll(LETTER)) out.add(m[1].toLowerCase())
+  if (title.match(LETTER_A)) out.add('a')
+  return out
+}
+// "'a' vs 'b'" when two titles carry different discriminators (both must have some).
+// When one title is the other plus a subtitle, only the shared part is compared.
+export function discriminatorClash(a: string, b: string): string | null {
+  let ta = stripRetractedPrefix(a).title, tb = stripRetractedPrefix(b).title
+  const na = normalizeTitle(ta), nb = normalizeTitle(tb)
+  if (na !== nb && nb.startsWith(na)) tb = mainTitle(tb)
+  else if (na !== nb && na.startsWith(nb)) ta = mainTitle(ta)
+  const da = discriminators(ta), db = discriminators(tb)
+  if (!da.size || !db.size) return null
+  const onlyA = [...da].filter(x => !db.has(x)), onlyB = [...db].filter(x => !da.has(x))
+  return onlyA.length || onlyB.length ? `'${onlyA.join(' ') || '—'}' vs '${onlyB.join(' ') || '—'}'` : null
+}
+
+// v1.4.6 (F5) — two records that look like ONE work held twice by OpenAlex: same
+// title, same first author, years within 1, and not two parts with different pages.
+function looseSameWork(a: OpenAlexWork, b: OpenAlexWork): boolean {
+  const first = (w: OpenAlexWork) => { const t = nameTokens(w.authorships[0]?.authorName ?? ''); return t[t.length - 1] ?? '' }
+  const pa = a.biblio?.firstPage, pb = b.biblio?.firstPage
+  return normalizeTitle(stripRetractedPrefix(a.displayName).title) === normalizeTitle(stripRetractedPrefix(b.displayName).title)
+    && first(a) === first(b)
+    && (a.publicationYear == null || b.publicationYear == null || Math.abs(a.publicationYear - b.publicationYear) <= 1)
+    && !(pa && pb && pa !== pb)
+}
 
 // Pick the best title-search candidate. Deterministic order: score desc, then
 // title signal desc, then OpenAlex's own rank.
@@ -333,7 +390,11 @@ export function chooseTitleMatch(e: BibEntry, candidates: OpenAlexWork[], missin
   const dupes = scored.filter(c => c.sig.score >= top.sig.score - MATCH_AMBIGUITY_MARGIN && sameWork(c.w, top.w))
   const best = dupes.reduce((x, y) => ((y.w.citedByCount ?? 0) > (x.w.citedByCount ?? 0) ? y : x), top)
   const runnerUp = scored.find(c => !dupes.includes(c) && bareId(c.w.id) !== bareId(best.w.id))
+  // v1.4.6 (F5): a near-perfect best (>= NEAR_PERFECT: title, author, year, venue, type
+  // all agree) is not made ambiguous by a runner-up it strictly beats, nor by a twin
+  // record of the same work (Dumont 2015 was `uncertain` at score 1.0).
   const ambiguous = !!runnerUp && runnerUp.sig.score >= best.sig.score - MATCH_AMBIGUITY_MARGIN
+    && !(best.sig.score >= NEAR_PERFECT && (best.sig.score > runnerUp.sig.score || looseSameWork(best.w, runnerUp.w)))
   const yearGap = e.year != null && best.w.publicationYear != null ? Math.abs(e.year - best.w.publicationYear) : 0
   const s = best.sig
   const reasons: string[] = []
@@ -350,6 +411,8 @@ export function chooseTitleMatch(e: BibEntry, candidates: OpenAlexWork[], missin
     reasons.push('title too short to match on alone')
   }
   if (missingDoi && best.w.doi && normalizeDoi(best.w.doi) !== missingDoi) reasons.push('same title, different DOI') // H8
+  const clash = discriminatorClash(e.title, best.w.displayName)
+  if (clash) reasons.push(`titles differ on ${clash}`) // v1.4.6 (F1)
   const confident = reasons.length === 0
   return { status: confident ? 'matched-by-title' : 'uncertain', work: best.w, signals: best.sig, ambiguous, twins: findTwins(e, best.w, candidates), reasons }
 }

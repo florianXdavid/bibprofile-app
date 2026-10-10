@@ -115,10 +115,10 @@ describe('additive fills (never overwrite, never rekey)', () => {
     const rs = rows()
     const target = rs.find(r => r.citeKey === 'muller2020')! // already has year + journal
     target.status = 'matched-by-doi'
-    target.openalex = mkWork({ publicationYear: 1999, hostVenue: 'Wrong Venue', doi: 'https://doi.org/10.1234/xyz' })
+    target.openalex = mkWork({ publicationYear: 2021, hostVenue: 'Wrong Venue', doi: 'https://doi.org/10.1234/xyz' })
     const entry = computeCleanedBib(rs).entries.find(e => e.citeKey === 'muller2020')!
     expect(entry.applied.map(f => f.field)).toEqual(['doi']) // year & journal already present -> not touched
-    expect(entry.newRaw).not.toContain('1999')
+    expect(entry.newRaw).not.toContain('2021')
   })
 
   it('suspicious matches get nothing — the DOI points to another work (v1.4.5, C3)', () => {
@@ -315,7 +315,7 @@ describe('v1.4.5 cleaned .bib safety', () => {
     expect(pagesOf({ volume: null, issue: null, firstPage: '10', lastPage: '20' })).toBe('10--20')
   })
   it('never proposes another journal or a preprint server; a year only when 1 off (H5, M2)', () => {
-    const src = '@article{c,\n  title = {T},\n  journal = {Physics and Astronomy Reports},\n  year = {1989},\n  doi = {10.48550/arXiv.2504.21075},\n}'
+    const src = '@article{c,\n  title = {Some title},\n  journal = {Physics and Astronomy Reports},\n  year = {1989},\n  doi = {10.48550/arXiv.2504.21075},\n}'
     const e = one(src, 'matched-by-doi', { doi: 'https://doi.org/10.48550/arxiv.2504.21075', hostVenue: 'arXiv (Cornell University)', publicationYear: 2008, displayName: 'T' })
     expect(e.mismatches).toEqual([])
     expect(e.note).toMatch(/arXiv preprint's/)
@@ -326,27 +326,45 @@ describe('v1.4.5 cleaned .bib safety', () => {
       .toBe('IEEE Computer Society Conference on Computer Vision and Pattern Recognition')
     expect(cleanVenue('Alzheimer s Research & Therapy')).toBe("Alzheimer's Research & Therapy")
     for (const junk of ['PubMed', 'Springer eBooks', 'Medical Entomology and Zoology']) expect(cleanVenue(junk)).toBeNull()
-    const e = one('@misc{i,\n  title = {T},\n  year = {2017},\n}', 'matched-by-title', { hostVenue: 'arXiv (Cornell University)' })
+    const e = one('@misc{i,\n  title = {Some title},\n  year = {2017},\n}', 'matched-by-title', { hostVenue: 'arXiv (Cornell University)' })
     expect([...e.applied, ...e.suggested].map(f => f.field)).not.toContain('journal')
   })
   it('a DOI resolved to a merged record of another version: fills are review only (M5)', () => {
-    const e = one('@misc{i,\n  title = {T},\n  doi = {10.48550/arXiv.1611.07004},\n}', 'matched-by-doi',
+    const e = one('@misc{i,\n  title = {Some title},\n  doi = {10.48550/arXiv.1611.07004},\n}', 'matched-by-doi',
       { doi: 'https://doi.org/10.1109/cvpr.2017.632', publicationYear: 2017, displayName: 'T' })
     expect(e.applied).toEqual([])
     expect(e.suggested.map(f => f.field)).toContain('year')
     expect(e.note).toMatch(/merged record 10\.1109\/cvpr\.2017\.632/)
   })
-  it('a DOI found outside the doi field is proposed, not written (H4)', () => {
-    const e = one('@article{h,\n  title = {T},\n  url = {https://doi.org/10.1038/382420a0},\n}', 'matched-by-doi',
+  it('found through an identifier outside the doi field: every fill is review (H4, v1.4.6 F3)', () => {
+    const e = one('@article{h,\n  title = {Some title},\n  url = {https://doi.org/10.1038/382420a0},\n}', 'matched-by-doi',
       { doi: 'https://doi.org/10.1038/382420a0', publicationYear: 1996 }, { idSource: 'url' })
-    expect(e.applied.map(f => f.field)).toEqual(['year'])
-    expect(e.suggested.map(f => f.field)).toEqual(['doi'])
+    expect(e.applied).toEqual([])
+    expect(e.suggested.map(f => f.field).sort()).toEqual(['doi', 'year'])
+  })
+  it('a record dated 2+ years off your year: every fill is review (v1.4.6, F3)', () => {
+    const e = one('@article{v,\n  title = {Attention},\n  year = {2017},\n  doi = {10.1/x},\n}', 'matched-by-doi',
+      { doi: 'https://doi.org/10.1/x', publicationYear: 2025, biblio: { volume: '30', issue: null, firstPage: '5998', lastPage: '6008' } })
+    expect(e.applied).toEqual([])
+    expect(e.suggested.map(f => f.field).sort()).toEqual(['pages', 'volume'])
+  })
+  it('never writes or proposes a placeholder / self-assigned DOI (v1.4.6, F3)', () => {
+    for (const doi of ['https://doi.org/10.5555/1953048.2078195', 'https://doi.org/10.13140/rg.2.1.4647.1122']) {
+      const e = one('@article{p,\n  title = {Scikit-learn},\n  author = {Pedregosa, F.},\n  year = {2011},\n}', 'matched-by-title',
+        { doi, publicationYear: 2011 }, { matchSignals: { title: 1, author: 1, year: 1, venue: null, type: null, biblio: null, score: 1 } })
+      expect([...e.applied, ...e.suggested].map(f => f.field)).not.toContain('doi')
+    }
+  })
+  it('never proposes a title "correction" (v1.4.6, F18)', () => {
+    const e = one('@article{w,\n  title = {Ileal-lymphoid-nodular hyperplasia},\n  year = {1998},\n  doi = {10.1/w},\n}', 'matched-by-doi',
+      { doi: 'https://doi.org/10.1/w', displayName: 'RETRACTED: Ileal-lymphoid-nodular hyperplasia', publicationYear: 1998 })
+    expect(e.mismatches.map(m => m.field)).not.toContain('title')
   })
   it('marks the second copy of a cite key with a comment, keys and count unchanged (H3)', () => {
-    const src = '@article{d,\n  title = {T},\n}\n\n@article{d,\n  title = {T},\n}\n'
+    const src = '@article{d,\n  title = {Some title},\n}\n\n@article{d,\n  title = {Some title},\n}\n'
     const rs = buildRows(parseBib(src))
     expect(rs.map(r => r.entry?.dupKeyIndex)).toEqual([1, 2])
     const out = serializeCleanedBib(src, computeCleanedBib(rs))
-    expect(out).toBe('@article{d,\n  title = {T},\n}\n\n' + DUP_KEY_COMMENT + '@article{d,\n  title = {T},\n}\n')
+    expect(out).toBe('@article{d,\n  title = {Some title},\n}\n\n' + DUP_KEY_COMMENT + '@article{d,\n  title = {Some title},\n}\n')
   })
 })

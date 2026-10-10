@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  authorSignal, biblioSignal, chooseTitleMatch, isNoticeTitle, scoreCandidate,
+  authorSignal, biblioSignal, chooseTitleMatch, discriminatorClash, isNoticeTitle, scoreCandidate,
   stripRetractedPrefix, titleSimilarity, typeSignal, venueSignal, yearSignal,
 } from '../src/lib/matchScore'
 import { parseBib } from '../src/lib/parseBib'
@@ -236,5 +236,33 @@ describe('v1.4.5 confidence rules', () => {
     const d = chooseTitleMatch(e, [w], '10.18112/openneuro.ds006035.v1.0.0')
     expect(d.status).toBe('uncertain')
     expect(d.reasons).toContain('same title, different DOI')
+  })
+})
+
+describe('v1.4.6 matching fixes', () => {
+  it('titles that differ only on a discriminating token are never confident (F1)', () => {
+    expect(discriminatorClash('BCI Competition 2008—Graz data set A', 'BCI Competition 2008 { Graz data set B')).toBe("'a' vs 'b'")
+    expect(discriminatorClash('Gaia Data Release 2', 'Gaia Early Data Release 3')).not.toBeNull()
+    expect(discriminatorClash('Rotation velocities of white dwarfs. III. DA stars', 'Rotation velocities of white dwarfs. II. DA stars')).not.toBeNull()
+    expect(discriminatorClash('A Mathematical Theory of Communication', 'A mathematical theory of communication')).toBeNull()
+    expect(discriminatorClash('Gaia Data Release 2. Summary of 1.7 billion sources', 'Gaia Data Release 2')).toBeNull() // only the shared part counts
+    const e = entry({ title: 'BCI Competition 2008—Graz data set A', titleForSearch: 'BCI Competition 2008—Graz data set A', firstAuthor: 'Brunner', year: 2008 })
+    const b = work({ displayName: 'BCI Competition 2008 { Graz data set B', authorships: au('Clemens Brunner'), publicationYear: 2008 })
+    const d = chooseTitleMatch(e, [b])
+    expect(d.status).toBe('uncertain')
+    expect(d.reasons?.join(' ')).toMatch(/titles differ on 'a' vs 'b'/)
+  })
+  it('a near-perfect match is not made ambiguous by a twin record of the same work (F5)', () => {
+    const t = 'Satellite cells and skeletal muscle regeneration'
+    const e = entry({ title: t, titleForSearch: t, firstAuthor: 'Dumont', year: 2015, venue: 'Comprehensive Physiology', entryType: 'article' })
+    const mk = (over: Partial<OpenAlexWork>) => work({ displayName: t, authorships: au('Nicolas A. Dumont'), publicationYear: 2015, hostVenue: 'Comprehensive Physiology', type: 'article', ...over })
+    expect(chooseTitleMatch(e, [mk({}), mk({ publicationYear: 2014, hostVenue: null })]).status).toBe('matched-by-title')
+    // two PARTS of one paper: the entry's pages pick the right one
+    const parts = [mk({ biblio: { volume: '5', issue: null, firstPage: '10', lastPage: '19' }, citedByCount: 99 }), mk({ biblio: { volume: '5', issue: null, firstPage: '1', lastPage: '9' } })]
+    expect(chooseTitleMatch({ ...e, volume: '5', pages: '1--9' }, parts).work?.biblio?.firstPage).toBe('1')
+  })
+  it('U+FFFD in OpenAlex / Crossref titles and names stands for the lost accented letter (F6)', () => {
+    expect(titleSimilarity('Die gegenwärtige Situation in der Quantenmechanik', 'Die gegen�rtige Situation in der Quantenmechanik')).toBe(1)
+    expect(authorSignal('Schrödinger', work({ authorships: au('E. Schr�dinger') }))).toBe(1)
   })
 })

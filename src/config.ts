@@ -74,6 +74,11 @@ export const MATCH_MAX_YEAR_GAP = 3
 // author and year (±1) are both confirmed (not merely missing), and whose type
 // isn't a different version (preprint vs published). See cleanBib.ts.
 export const AUTO_DOI_TITLE_THRESHOLD = 0.95
+// v1.4.6 — an `uncertain` match counts in the Report (flagged) only if its score is
+// at least this; weaker ones are left out of every card and of the citation-gap seeds
+// (an `uncertain` row capped by a rule — no author/year, a web snapshot — usually
+// scores high and is the right paper).
+export const REPORT_UNCERTAIN_MIN_SCORE = 0.8
 // How many candidates to pull back per title search.
 export const SEARCH_PER_PAGE = 5
 

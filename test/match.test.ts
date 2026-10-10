@@ -147,3 +147,38 @@ describe('runMatching v1.4.5 (shared DOIs, identifiers, same-work duplicates)', 
     expect(d.has('c')).toBe(false)
   })
 })
+
+describe('runMatching v1.4.6 (canonical copy, provenance, preprint label)', () => {
+  const W = (id: string, over: Partial<OpenAlexWork>) => work({ id: `https://openalex.org/${id}`, ...over })
+  const neuro = W('W3180220247', { doi: 'https://doi.org/10.1056/nejmoa2027540', displayName: 'Neuroprosthesis for Decoding Speech in a Paralyzed Person with Anarthria', publicationYear: 2021, authorships: [{ authorName: 'David A. Moses', orcid: null }] })
+  const csh = W('W1', { doi: 'https://doi.org/10.1101/cshperspect.a022038', displayName: 'Mechanical properties of the cytoskeleton', publicationYear: 2017, type: 'preprint', hostVenue: 'Cold Spring Harbor Perspectives in Biology', authorships: [{ authorName: 'Adrian F. Pegoraro', orcid: null }] })
+  const lookups: Record<string, OpenAlexWork> = { 'pmid:34260835': neuro, 'doi:10.1056/nejmoa2027540': neuro, 'doi:10.1101/cshperspect.a022038': csh }
+  const src = {
+    lookup: async (k: string) => (lookups[k] ? { kind: 'ok' as const, work: lookups[k] } : { kind: 'not-found' as const }),
+    crossref: async () => null, openalexByDoi: async () => null,
+    openalexSearch: async () => ({ kind: 'ok' as const, candidates: [] }), pause: async () => {},
+  }
+  const BIB = `@misc{noauthor_neuro, title={Neuroprosthesis for {Decoding} {Speech} in a {Paralyzed} {Person} with {Anarthria} - {PubMed}}, url={https://pubmed.ncbi.nlm.nih.gov/34260835/}}
+@article{moses2021, title={Neuroprosthesis for Decoding Speech in a Paralyzed Person with Anarthria}, author={Moses, David A.}, journal={NEJM}, year={2021}, doi={10.1056/NEJMoa2027540}}
+@article{pegoraro2017, title={Mechanical properties of the cytoskeleton}, author={Pegoraro, Adrian F.}, journal={Cold Spring Harbor Perspect. Biol}, year={2017}, doi={10.1101/cshperspect.a022038}}`
+  const run = async () => {
+    const { runMatching } = await import('../src/lib/match')
+    const { rows } = await runMatching(parseBib(BIB), () => {}, undefined, src)
+    return Object.fromEntries(rows.map(r => [r.citeKey, r]))
+  }
+  it('keeps the most complete entry as the main copy, even when the snapshot comes first (F4)', async () => {
+    const r = await run()
+    expect(r.moses2021.duplicateOf).toBeNull()
+    expect(r.noauthor_neuro.duplicateOf).toBe('moses2021')
+  })
+  it('"Identified by" is each row\'s own identifier (F12)', async () => {
+    const r = await run()
+    expect(r.moses2021.idSource).toBe('doi')
+    expect(r.noauthor_neuro.idSource).toBe('url')
+    expect(r.noauthor_neuro.notes?.join(' ')).toMatch(/identified by the PMID in url/)
+  })
+  it('a journal article OpenAlex types `preprint` (CSH, 10.1101) is not a "preprint version" (F10)', async () => {
+    const r = await run()
+    expect(r.pegoraro2017.preprintVersion).toBeFalsy()
+  })
+})

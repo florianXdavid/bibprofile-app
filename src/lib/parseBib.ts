@@ -106,6 +106,13 @@ function extractVenue(fields: Entry['fields']): string {
   return ''
 }
 
+const PLACEHOLDER_TITLES = new Set(['vol', 'pp', 'pages', 'in', 'et al', 'n a', 'na', 'tbd', 'title', 'untitled', 'none', 'no title'])
+function isPlaceholderTitle(t: string): boolean {
+  if (!t) return false
+  const n = t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+  return n.replace(/ /g, '').length <= 3 || PLACEHOLDER_TITLES.has(n)
+}
+
 function keyFromRaw(raw: string): string | null {
   const m = raw.match(/@\s*[A-Za-z]+\s*\{\s*([^,\s}]+)/)
   return m ? m[1] : null
@@ -177,6 +184,17 @@ export function parseBib(text: string): ParseResult {
       unparseable.push({
         rowId: `ue${i}`, sourceOffset: offset, citeKey: entry.key || null,
         error: 'empty entry — no title, DOI, author, venue, or year to match on',
+        raw: entry.input.slice(0, 2000),
+      })
+      return
+    }
+
+    // v1.4.6 (F8): a placeholder title ("J", "vol") with no identifier can't be
+    // searched — say so, instead of a `not-found` that reads like "doesn't exist".
+    if (!doi && !altId && isPlaceholderTitle(rawTitle)) {
+      unparseable.push({
+        rowId: `ue${i}`, sourceOffset: offset, citeKey: entry.key || null,
+        error: `title missing or truncated ("${rawTitle}") — cannot search`,
         raw: entry.input.slice(0, 2000),
       })
       return

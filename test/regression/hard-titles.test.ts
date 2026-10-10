@@ -34,7 +34,7 @@ const FIX = fileURLToPath(new URL('./hard-titles.fixture.json', import.meta.url)
 // Recall floor: confident-and-correct matches out of the entries with a known
 // correct record. Set from the first recorded run; raise it when matching
 // improves, never lower it to make a change pass.
-const MIN_CORRECT = 124 // 2026-10-10 (v1.4.5, whole run incl. DOI / identifier lookups): 124 of 130 entries with a known correct record
+const MIN_CORRECT = 125 // 2026-10-10 (v1.4.6: Schrödinger 1935 via mojibake-tolerant titles/names): 125 of 130 entries with a known correct record
 // v1.4.4 capacity floor: title matches found through free Crossref (no OpenAlex
 // search spent). Set from the first Crossref recording; raise, never lower.
 const MIN_VIA_CROSSREF = 87 // 2026-10-10: 87 of 126 entries placed by Crossref (39 needed a billable search)

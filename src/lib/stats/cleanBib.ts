@@ -27,7 +27,7 @@
 
 import type { MatchStatus, OpenAlexBiblio, ResultRow } from '../../types'
 import { AUTO_DOI_TITLE_THRESHOLD } from '../../config'
-import { normalizeDoi } from '../doi'
+import { isUsableDoi, normalizeDoi } from '../doi'
 import { insertFields, readField, replaceFieldValue, spliceCleaned, type FieldInsert } from '../bibWriter'
 import { cleanVenue } from './venues'
 
@@ -150,7 +150,8 @@ function fillsFromSource(row: ResultRow, src: FillSource): FieldChange[] {
   const raw = row.raw
   const out: FieldChange[] = []
 
-  if (!e.doi && src.doi && !hasField(raw, 'doi')) out.push({ field: 'doi', value: src.doi })
+  // v1.4.6 (F3): never a placeholder / self-assigned DOI (ACM 10.5555, ResearchGate 10.13140)
+  if (!e.doi && src.doi && isUsableDoi(src.doi) && !hasField(raw, 'doi')) out.push({ field: 'doi', value: src.doi })
   if (e.year == null && src.year && !hasField(raw, 'year')) out.push({ field: 'year', value: String(src.year) })
   const venue = cleanVenue(src.venue)
   if (!e.venue && venue && !PREPRINT_SERVER.test(venue) && !hasField(raw, 'journal') && !hasField(raw, 'journaltitle')) {
@@ -199,7 +200,6 @@ function passthrough(row: ResultRow, action: CleanAction, note: string | null): 
 
 // --- mismatch normalisers: loose enough that formatting / venue-normalisation /
 // LaTeX / dash-style differences don't flag; only substantive disagreements do. ---
-const textNorm = (s: string) => s.replace(/\\[a-zA-Z]+\s*/g, '').replace(/[{}"]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 const yearNorm = (s: string) => (s.match(/\d{4}/) || [''])[0]
 const idNorm = (s: string) => s.replace(/[{}"]/g, '').trim().toLowerCase()
 const pagesNorm = (s: string) => s.replace(/[{}"\s]/g, '').replace(/[–—-]+/g, '-').toLowerCase()
@@ -230,7 +230,8 @@ function computeMismatches(row: ResultRow): FieldMismatch[] {
   if (bibYear != null && w.publicationYear != null && Math.abs(bibYear - w.publicationYear) === 1) {
     push(['year'], String(w.publicationYear), yearNorm)
   }
-  push(['title'], w.displayName, textNorm)
+  // (v1.4.6, F18: no title "corrections" — differences are case, LaTeX or a
+  // "RETRACTED:" prefix, never a fix to text you wrote.)
   push(['volume'], w.biblio?.volume ?? null, idNorm)
   push(['number', 'issue'], w.biblio?.issue ?? null, idNorm)
   push(['pages'], pagesOf(w.biblio), pagesNorm)
@@ -302,12 +303,14 @@ function cleanEntry(row: ResultRow, resolved: Map<string, ResolvedPreprint> | un
   const ownDoi = w?.doi ? normalizeDoi(w.doi) : null
   const merged = row.status === 'matched-by-doi' && !!e?.doi && !!ownDoi && ownDoi !== e.doi
   if (merged) notes.push(`your DOI resolved to the merged record ${ownDoi} (${w?.hostVenue ?? 'no venue'}, ${w?.publicationYear ?? 'no year'}) — review before accepting`)
-  if (row.status === 'matched-by-doi' && !merged) {
-    // Identified by an identifier found OUTSIDE the doi field (url, note, PMID …):
-    // its DOI is proposed, not written (H4); the other fills are automatic.
-    const viaAltId = !!row.idSource && row.idSource !== 'doi'
-    applied = fills.filter(f => !(viaAltId && f.field === 'doi')).map(f => ({ ...f, basis: 'doi-match' as const }))
-    suggested = fills.filter(f => viaAltId && f.field === 'doi')
+  // v1.4.6 (F3): automatic only when YOUR doi field found the record, and the record's
+  // year is within 1 of yours. Found through an arXiv ID / PMID / a DOI in url or note,
+  // or dated 2+ years off (a reprint, a merged record): every fill is review.
+  const viaAltId = !!row.idSource && row.idSource !== 'doi'
+  const yearOff = e?.year != null && w?.publicationYear != null && Math.abs(e.year - w.publicationYear) >= 2
+  if (row.status === 'matched-by-doi' && !merged && !viaAltId && !yearOff) {
+    applied = fills.map(f => ({ ...f, basis: 'doi-match' as const }))
+    suggested = []
   } else if (isHighConfidenceTitleMatch(row) && !row.preprintVersion) {
     applied = fills.filter(f => f.field === 'doi').map(f => ({ ...f, basis: 'title-high-confidence' as const }))
     suggested = fills.filter(f => f.field !== 'doi')

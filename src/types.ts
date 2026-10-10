@@ -43,6 +43,7 @@ export interface AltId {
   key: string // OpenAlex singleton key: "doi:10.x/y" | "pmid:123" | "pmcid:PMC123"
   doi: string | null // the DOI when the identifier is (or maps to) one
   field: string // where it was found: url, note, howpublished, eprint, journal, annote, pmid, pmcid
+  label: string // v1.4.6: what it is — "DOI", "arXiv ID", "PMID", "PMCID", "eLife article URL"
 }
 
 export interface UnparseableEntry {
@@ -166,4 +167,5 @@ export interface MatchSummary {
   searchCalls: number
   searchCostUsd: number
   viaCrossref: number // v1.4.4: title matches found through free Crossref search
+  viaOtherId: number // v1.4.6: of matchedByDoi, found through an identifier OUTSIDE the doi field (arXiv ID, PMID, DOI in url …)
 }

@@ -921,6 +921,44 @@ Source: an audit of 6 real `.bib` files (587 entries) plus a probe of the cleane
   to the version history; privacy copy mentions arXiv / PubMed IDs.
 - Tests: 216 → 252 (+1 skipped).
 
+## v1.4.6 — second real-world audit (Oct 2026; part of v1.4)
+
+A re-audit on 8 files (823 entries) confirmed the v1.4.5 fixes and found 18 issues.
+Five came from v1.4.5 itself (eprint fills labelled "your DOI", provenance copied to
+duplicates, "DOI" wording for arXiv IDs, the preprint label on CSH journals, "by DOI"
+counting arXiv/PMID matches). Fixed, the small ones only:
+
+- **Matching:** titles that differ on a number, Roman numeral or single capital
+  letter are never confident ("data set A" was matched to "data set B"); U+FFFD in
+  OpenAlex/Crossref titles and names matches the lost accented letter (Schrödinger
+  1935 now found); a near-perfect best (≥ 0.95) is not made ambiguous by a runner-up
+  it beats or by a twin record (Dumont 2015 was `uncertain` at 1.0); two parts of one
+  paper with different first pages are no longer collapsed as one record.
+- **Duplicates:** the most complete entry is the main copy (not the first in file);
+  "Identified by" is each row's own; arXiv IDs are named as such in notes; `eprint`
+  before `howpublished`; legacy PubMed and Europe PMC URLs recognised.
+- **Cleaned .bib:** automatic fills only from your `doi` field and a record within a
+  year of yours; never a `10.5555` / `10.13140` DOI (Pedregosa's ACM placeholder had
+  been written automatically since v1.4.3); no title "corrections" (the Wakefield
+  "RETRACTED:" proposal).
+- **Preprint label** only on a preprint-server record (not CSH journals, 10.1101).
+- **Report:** `uncertain` rows count (flagged) only from score 0.8
+  (`REPORT_UNCERTAIN_MIN_SCORE`); weaker ones are left out of every card and the gap
+  seeds, and each card says how many.
+- **Wording:** placeholder titles ("J", "vol") → `unparseable` "title missing or
+  truncated"; `not-found` explained as "not in OpenAlex", not "doesn't exist"; summary
+  "by identifier" with the DOI / other-ID split; CSV "OpenAlex DOI"; cleaned venue
+  names in the table and CSV (also OpenAlex's "X/Y - Z" doubled names).
+- **Left as is (data tail):** title split across fields by citation generators,
+  works missing or corrupt in OpenAlex (LoRA, ICLR 2026), "Nets"/"Networks", Zotero's
+  last-revision year on arXiv items, book editions, LaTeX inside OpenAlex titles;
+  `uncertain` caps from rules (no author/year, peer-review page) stay at score 1.0 by
+  design.
+- **Regression** (no re-recording needed): 0 wrong; 125 of 130 correct (was 124);
+  43 billable searches (was 44); 92 automatic DOIs, all correct (the `10.5555` one is
+  gone); retractions 24/24. `MIN_CORRECT` = 125.
+- Tests: 252 → 263 (+1 skipped).
+
 > The project-layout and test-count sections below describe the state as of W4.2.
 > For the current layout, see README.md.
 

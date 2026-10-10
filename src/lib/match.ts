@@ -41,6 +41,7 @@ import { normalizeDoi } from './doi'
 import { sharedCredential, type Credential } from './credential'
 import { normalizeTitle } from './similarity'
 import { chooseTitleMatch, scoreCandidate, titleSimilarity, type TitleDecision } from './matchScore'
+import { isPreprintVenue } from './stats/venues'
 import type {
   BibEntry,
   MatchStatus,
@@ -78,21 +79,36 @@ export function dedupKey(entry: BibEntry): string {
   return `title:${t}|year:${entry.year ?? ''}|author:${surname}`
 }
 
-// rowId -> its canonical (first) entry. v1.4.5 (C2): entries sharing a DOI are the
-// same work only if their titles agree too — a DOI pasted onto the wrong entry must
-// not hide behind the entry that owns it (each is then looked up on its own).
+// v1.4.6 (F4) — which copy of a duplicated work is kept as the main one: the most
+// complete entry (an identifier, then an author, a year, a venue), file order as the
+// tie-break — never a bare web snapshot ahead of the full entry.
+export function completeness(e: BibEntry | null | undefined): number {
+  if (!e) return 0
+  return (e.doi || e.altId ? 8 : 0) + (e.firstAuthor ? 4 : 0) + (e.year != null ? 2 : 0) + (e.venue ? 1 : 0)
+}
+
+// rowId -> its canonical entry. v1.4.5 (C2): entries sharing a DOI are the same work
+// only if their titles agree too — a DOI pasted onto the wrong entry must not hide
+// behind the entry that owns it (each is then looked up on its own).
 export function duplicateCanon(entries: BibEntry[]): Map<string, BibEntry> {
-  const firstByKey = new Map<string, BibEntry[]>()
-  const dup = new Map<string, BibEntry>()
+  const groupsByKey = new Map<string, BibEntry[][]>()
   const titled = (e: BibEntry) => e.title !== '(no title)'
   for (const e of entries) {
     const k = dedupKey(e)
     if (!k) continue
-    const canons = firstByKey.get(k) ?? []
-    const canon = canons.find(c => !k.startsWith('doi:') || !titled(c) || !titled(e)
+    const groups = groupsByKey.get(k) ?? []
+    const g = groups.find(([c]) => !k.startsWith('doi:') || !titled(c) || !titled(e)
       || titleSimilarity(c.titleForSearch || c.title, e.titleForSearch || e.title) >= TITLE_MATCH_THRESHOLD)
-    if (canon) dup.set(e.rowId, canon)
-    else firstByKey.set(k, [...canons, e])
+    if (g) g.push(e)
+    else groupsByKey.set(k, [...groups, [e]])
+  }
+  const dup = new Map<string, BibEntry>()
+  for (const groups of groupsByKey.values()) {
+    for (const g of groups) {
+      if (g.length < 2) continue
+      const canon = g.reduce((best, e) => (completeness(e) > completeness(best) ? e : best), g[0])
+      for (const e of g) if (e !== canon) dup.set(e.rowId, canon)
+    }
   }
   return dup
 }
@@ -222,23 +238,36 @@ const note = (r: ResultRow, n: string) => { if (!r.notes?.includes(n)) r.notes =
 // Idempotent (Resume / Retry run it again over the merged rows).
 export function finishRows(rows: ResultRow[]): void {
   // H9 — cited as a journal / proceedings paper, but only the preprint is indexed.
+  // v1.4.6 (F10): the record must sit on a preprint SERVER (arXiv, bioRxiv, …) —
+  // OpenAlex also types Cold Spring Harbor journal articles (10.1101) `preprint`.
   for (const r of rows) {
     const e = r.entry
     if (!e || !r.openalex || !isConfident(r)) continue
-    if (r.openalex.type === 'preprint' && e.venue && !PREPRINT_VENUE.test(e.venue)) {
+    if (r.openalex.type === 'preprint' && isPreprintVenue(r.openalex.hostVenue, null) && e.venue && !PREPRINT_VENUE.test(e.venue)) {
       r.preprintVersion = true
       note(r, `matched to the preprint version — your entry cites ${e.venue}`)
     }
   }
-  // H2 — confident rows on the SAME OpenAlex work are one reference: later rows
-  // point to the first. An uncertain row on that work only gets a hint.
-  const firstById = new Map<string, ResultRow>()
+  // H2 — confident rows on the SAME OpenAlex work are one reference. v1.4.6 (F4): the
+  // most complete entry is kept (file order breaks ties); the others — and anything
+  // already pointing to them — point to it. An uncertain row on that work gets a hint.
+  const groups = new Map<string, ResultRow[]>()
   for (const r of rows) {
     if (r.duplicateOf || !r.openalex || !isConfident(r)) continue
-    const id = bare(r.openalex.id)
-    const first = firstById.get(id)
-    if (first) { r.duplicateOf = first.citeKey; note(r, `same OpenAlex work as ${first.citeKey}`) }
-    else firstById.set(id, r)
+    groups.set(bare(r.openalex.id), [...(groups.get(bare(r.openalex.id)) ?? []), r])
+  }
+  const firstById = new Map<string, ResultRow>()
+  for (const [id, g] of groups) {
+    // (an identifier counts only if it actually found the record — an ignored one doesn't)
+    const rank = (r: ResultRow) => completeness(r.entry) - (r.entry && (r.entry.doi || r.entry.altId) && !r.idSource ? 8 : 0)
+    const canon = g.reduce((best, r) => (rank(r) > rank(best) ? r : best), g[0])
+    firstById.set(id, canon)
+    for (const r of g) {
+      if (r === canon) continue
+      for (const o of rows) if (o !== r && o.duplicateOf === r.citeKey) o.duplicateOf = canon.citeKey
+      r.duplicateOf = canon.citeKey
+      note(r, `same OpenAlex work as ${canon.citeKey}`)
+    }
   }
   for (const r of rows) {
     if (r.duplicateOf || r.status !== 'uncertain' || !r.openalex) continue
@@ -341,7 +370,7 @@ export async function runMatching(
           row.yearState = ys
           row.status = status
           row.idSource = idField
-          if (!entry.doi) row.notes = [...(row.notes ?? []), `identified by the ${idKey.replace(/:.*/, '').toUpperCase()} in ${idField}`]
+          if (!entry.doi) row.notes = [...(row.notes ?? []), `identified by the ${entry.altId?.label ?? 'identifier'} in ${idField}`]
           if (status === 'suspicious') row.notes = [...(row.notes ?? []), sig.title < 0.7
             ? `the DOI's record has another title: "${res.work.displayName}"`
             : `the DOI's record disagrees on several details (score ${sig.score.toFixed(2)})`]
@@ -388,7 +417,8 @@ export async function runMatching(
         dr.matchedVia = row.matchedVia
         dr.yearState = row.yearState
         dr.error = row.error
-        dr.idSource = row.idSource
+        // v1.4.6 (F12): its OWN identifier field (it shares the canonical's DOI key).
+        dr.idSource = row.idSource ? (de.doi ? 'doi' : de.altId?.field ?? null) : null
       }
     }
 
@@ -420,6 +450,7 @@ export function summarize(rows: ResultRow[], searchCalls: number): MatchSummary 
     searchCalls,
     searchCostUsd: searchCalls * SEARCH_CALL_COST_USD,
     viaCrossref: rows.filter(r => r.matchedVia === 'crossref' && !r.duplicateOf).length, // v1.4.4
+    viaOtherId: rows.filter(r => r.status === 'matched-by-doi' && r.idSource && r.idSource !== 'doi').length, // v1.4.6
   }
 }
 

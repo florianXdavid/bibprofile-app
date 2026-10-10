@@ -35,6 +35,13 @@ export function normalizeDoi(input: string | null | undefined): string | null {
   return doi
 }
 
+// v1.4.6 — DOI prefixes that never identify a work's real publication: ACM's
+// placeholder 10.5555 (does not resolve) and ResearchGate's self-assigned 10.13140.
+// Never written, proposed or shown as the DOI to cite.
+export function isUsableDoi(doi: string | null | undefined): boolean {
+  return !!doi && !/^(?:https?:\/\/(?:dx\.)?doi\.org\/)?10\.(?:5555|13140)\//i.test(doi.trim())
+}
+
 // --- v1.4.5 (H4): identifiers OUTSIDE the doi field ---------------------------
 // Zotero, Google Scholar, ADS and hand-written entries often carry the DOI in
 // `url` / `note` / `howpublished`, an arXiv id in `eprint` / `journal`, or a
@@ -42,15 +49,17 @@ export function normalizeDoi(input: string | null | undefined): string | null {
 // a billable title search. Read from the VERBATIM source fields (`read`), in
 // priority order: pmid/pmcid fields, then a DOI, an arXiv id, a PubMed / PMC URL,
 // an eLife article URL (searched across ALT_FIELDS for each pattern in turn).
+// v1.4.6: `eprint` is read first (the structured field beats howpublished/journal);
+// `label` names what was found, for the notes ("the arXiv ID in eprint").
 
-const ALT_FIELDS = ['url', 'note', 'howpublished', 'eprint', 'journal', 'annote']
+const ALT_FIELDS = ['eprint', 'url', 'note', 'howpublished', 'journal', 'annote']
 const DOI_IN_TEXT = /(?:doi\.org\/|\bdoi:\s*)(10\.\d{4,9}\/[^\s{}"<>\\]+)/i
 const ARXIV = '([a-z-]+(?:\\.[a-z]{2})?\\/\\d{7}|\\d{4}\\.\\d{4,5})'
 const ARXIV_URL = new RegExp(`arxiv\\.org\\/(?:abs|pdf)\\/${ARXIV}`, 'i')
 const ARXIV_TAG = new RegExp(`\\barxiv:\\s*${ARXIV}`, 'i')
 const ARXIV_BARE = new RegExp(`^\\s*${ARXIV}(?:v\\d+)?\\s*$`, 'i')
 
-export interface FoundId { key: string; doi: string | null; field: string }
+export interface FoundId { key: string; doi: string | null; field: string; label: string }
 
 function cleanDoiMatch(s: string): string | null {
   let d = s.replace(/[.,;]+$/, '')
@@ -61,13 +70,13 @@ function cleanDoiMatch(s: string): string | null {
 
 export function findAltId(read: (field: string) => string | null): FoundId | null {
   const pmid = (read('pmid') ?? '').match(/^\s*(\d+)\s*$/)
-  if (pmid) return { key: `pmid:${pmid[1]}`, doi: null, field: 'pmid' }
+  if (pmid) return { key: `pmid:${pmid[1]}`, doi: null, field: 'pmid', label: 'PMID' }
   const pmcid = (read('pmcid') ?? '').match(/^\s*(PMC\d+)\s*$/i)
-  if (pmcid) return { key: `pmcid:${pmcid[1].toUpperCase()}`, doi: null, field: 'pmcid' }
+  if (pmcid) return { key: `pmcid:${pmcid[1].toUpperCase()}`, doi: null, field: 'pmcid', label: 'PMCID' }
 
   const vals = ALT_FIELDS.map(f => [f, read(f) ?? ''] as const).filter(([, v]) => v)
   const isArxivEprint = /arxiv/i.test(read('archiveprefix') ?? read('eprinttype') ?? '')
-  const asDoi = (doi: string | null, field: string): FoundId | null => (doi ? { key: `doi:${doi}`, doi, field } : null)
+  const asDoi = (doi: string | null, field: string, label = 'DOI'): FoundId | null => (doi ? { key: `doi:${doi}`, doi, field, label } : null)
 
   for (const [f, v] of vals) {
     const m = v.match(DOI_IN_TEXT)
@@ -76,15 +85,16 @@ export function findAltId(read: (field: string) => string | null): FoundId | nul
   }
   for (const [f, v] of vals) {
     const m = v.match(ARXIV_URL) ?? v.match(ARXIV_TAG) ?? (f === 'eprint' && isArxivEprint ? v.match(ARXIV_BARE) : null)
-    if (m) return asDoi(`10.48550/arxiv.${m[1].toLowerCase()}`, f)
+    if (m) return asDoi(`10.48550/arxiv.${m[1].toLowerCase()}`, f, 'arXiv ID')
   }
   for (const [f, v] of vals) {
-    const pm = v.match(/pubmed\.ncbi\.nlm\.nih\.gov\/(\d+)/i)
-    if (pm) return { key: `pmid:${pm[1]}`, doi: null, field: f }
+    // v1.4.6: also the legacy ncbi.nlm.nih.gov/pubmed/N and Europe PMC forms.
+    const pm = v.match(/(?:pubmed\.ncbi\.nlm\.nih\.gov\/|ncbi\.nlm\.nih\.gov\/pubmed\/|europepmc\.org\/(?:abstract\/)?med\/)(\d+)/i)
+    if (pm) return { key: `pmid:${pm[1]}`, doi: null, field: f, label: 'PMID' }
     const pmc = v.match(/\/pmc\/articles\/(PMC\d+)/i)
-    if (pmc) return { key: `pmcid:${pmc[1].toUpperCase()}`, doi: null, field: f }
+    if (pmc) return { key: `pmcid:${pmc[1].toUpperCase()}`, doi: null, field: f, label: 'PMCID' }
     const el = v.match(/elifesciences\.org\/articles\/(\d+)/i)
-    if (el) return asDoi(`10.7554/elife.${el[1]}`, f)
+    if (el) return asDoi(`10.7554/elife.${el[1]}`, f, 'eLife article URL')
   }
   return null
 }

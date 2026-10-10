@@ -51,8 +51,11 @@ const NON_VENUE = /^(?:pubmed|pubmed central|europe pmc|medical entomology and z
 export function cleanVenue(v: string | null | undefined): string | null {
   if (!v || !v.trim()) return null
   let s = v.trim()
-  const doubled = s.match(/^(.+?)\/Proceedings - /)
-  if (doubled) s = doubled[1].trim()
+  // OpenAlex's doubled names: "X/Proceedings - X/Proceedings",
+  // "Conference proceedings/Conference proceedings - IEEE International Conference on …"
+  // -> the part after " - ", minus a trailing "/Proceedings" (v1.4.6: both forms).
+  const doubled = s.match(/^[^/]+\/[^/]*? - (.+)$/)
+  if (doubled) s = doubled[1].replace(/\/\s*proceedings\s*$/i, '').trim()
   s = s.replace(/\b([A-Z][a-z]+) s (?=[A-Z&])/g, "$1's ")
   return NON_VENUE.test(s) ? null : s
 }

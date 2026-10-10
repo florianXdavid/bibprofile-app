@@ -98,3 +98,18 @@ describe('describeBasis + uniqueWorkCount', () => {
     expect(uniqueWorkCount(c)).toBe(1)
   })
 })
+
+describe('uncertain rows in the Report (v1.4.6)', () => {
+  it('counts an uncertain match only from REPORT_UNCERTAIN_MIN_SCORE, and every card says how many were left out', async () => {
+    const { buildCohort, subset } = await import('../../src/lib/stats/denominator')
+    const { mkRow, mkWork } = await import('./fixtures')
+    const rows = [
+      { ...mkRow({ citeKey: 'a', status: 'uncertain', openalex: mkWork({}) }), matchScore: 0.9 },
+      { ...mkRow({ citeKey: 'b', status: 'uncertain', openalex: mkWork({}) }), matchScore: 0.75 },
+    ]
+    const c = buildCohort(rows as any)
+    expect(c.works.map(w => w.citeKey)).toEqual(['a'])
+    expect(c.excluded.lowConfidence).toBe(1)
+    expect(subset(c, () => true).excluded['low-confidence match']).toBe(1)
+  })
+})

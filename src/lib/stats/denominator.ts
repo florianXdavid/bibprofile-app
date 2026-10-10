@@ -8,6 +8,8 @@
 //      canonical entry only. A paper cited four times is one work.
 //   2. `suspicious` (and, v1.4.1, `uncertain`) is INCLUDED, but tracked so a card can say "3 flagged as
 //      uncertain". Excluding it hides data; including it silently is dishonest.
+//      v1.4.6: an `uncertain` match scoring below REPORT_UNCERTAIN_MIN_SCORE (0.8) is
+//      too weak to describe the work — left out, and every card says how many.
 //   3. `not-indexable` is EXCLUDED from statistics and reported separately.
 //   4. Every card reports its OWN n — different fields are missing on different
 //      works, and a single headline denominator would paper over that.
@@ -18,6 +20,7 @@
 // ===========================================================================
 
 import type { MatchStatus, OpenAlexWork, ResultRow } from '../../types'
+import { REPORT_UNCERTAIN_MIN_SCORE } from '../../config'
 
 // A canonical, matched work eligible for statistics. Carries the .bib-side
 // identifiers a card needs to name a specific reference back to the user.
@@ -38,6 +41,7 @@ export interface CohortExclusions {
   errored: number
   unparseable: number
   matchedNoData: number // matched status but null OpenAlex work (defensive; ~never)
+  lowConfidence: number // v1.4.6: `uncertain` below REPORT_UNCERTAIN_MIN_SCORE — left out of every card
 }
 
 export interface Cohort {
@@ -75,6 +79,7 @@ export function buildCohort(rows: ResultRow[]): Cohort {
     errored: 0,
     unparseable: 0,
     matchedNoData: 0,
+    lowConfidence: 0,
   }
 
   let uniqueEntries = 0
@@ -85,7 +90,9 @@ export function buildCohort(rows: ResultRow[]): Cohort {
     }
     uniqueEntries++
 
-    if (MATCHED.has(r.status)) {
+    if (r.status === 'uncertain' && (r.matchScore ?? 0) < REPORT_UNCERTAIN_MIN_SCORE) {
+      excluded.lowConfidence++ // v1.4.6: too weak to describe the work in any card
+    } else if (MATCHED.has(r.status)) {
       if (r.openalex) {
         works.push({
           rowId: r.rowId,
@@ -131,6 +138,7 @@ export function subset(
   const missing = cohort.works.length - used.length
   const excluded: Record<string, number> = {}
   if (missing > 0) excluded[missingReason] = missing
+  if (cohort.excluded.lowConfidence > 0) excluded['low-confidence match'] = cohort.excluded.lowConfidence
   return {
     used,
     n: used.length,

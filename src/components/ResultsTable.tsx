@@ -3,6 +3,7 @@ import type { MatchSignals, MatchStatus, ResultRow } from '../types'
 import type { CrossrefRunState } from '../lib/crossref'
 import { computeRetractions } from '../lib/stats/retractions'
 import { normalizeDoi } from '../lib/doi'
+import { cleanVenue } from '../lib/stats/venues'
 
 type SortDir = 'asc' | 'desc'
 type Primitive = string | number | null
@@ -120,10 +121,11 @@ const columns: Column[] = [
     },
   },
   {
+    // v1.4.6 (F11): cleaned names (CVPR's doubled name, PubMed / eBooks dropped)
     key: 'hostVenue', label: 'Host venue (OA)',
-    get: r => r.openalex?.hostVenue ?? null,
-    cell: r => r.openalex?.hostVenue
-      ? <span className="title-cell" title={r.openalex.hostVenue}>{r.openalex.hostVenue}</span>
+    get: r => cleanVenue(r.openalex?.hostVenue),
+    cell: r => cleanVenue(r.openalex?.hostVenue)
+      ? <span className="title-cell" title={r.openalex!.hostVenue!}>{cleanVenue(r.openalex?.hostVenue)}</span>
       : <span className="muted">—</span>,
   },
   {
@@ -201,7 +203,7 @@ export default function ResultsTable({ rows, crossref }: { rows: ResultRow[]; cr
     const retracted = new Map(computeRetractions(rows, crossref?.status === 'done' ? crossref.result : null)
       .retracted.map(f => [f.rowId, f.signals.join(' + ')]))
     const header = [...columns.map(c => esc(c.label)), 'Duplicate of', 'Error',
-      'Match score', 'Matched DOI', 'OpenAlex title', 'Notes', 'Retracted', 'Preprint version', 'Identified by'].join(',')
+      'Match score', 'OpenAlex DOI', 'OpenAlex title', 'Notes', 'Retracted', 'Preprint version', 'Identified by'].join(',')
     const body = visible.map(r => [
       ...columns.map(c => esc(c.get(r))), esc(dupLabel(r)), esc(r.error),
       esc(r.matchScore), esc(r.openalex?.doi ? normalizeDoi(r.openalex.doi) : null), esc(r.openalex?.displayName ?? null),
@@ -244,11 +246,11 @@ export default function ResultsTable({ rows, crossref }: { rows: ResultRow[]; cr
       <details className="oa-help" style={{ margin: '0 0 12px' }}>
         <summary>What do the statuses mean?</summary>
         <ul>
-          <li><strong>matched-by-doi</strong> — matched via its DOI (authoritative).</li>
+          <li><strong>matched-by-doi</strong> — matched via its DOI, or another identifier the entry carries (an arXiv ID, a PMID, a DOI in <code>url</code> or <code>note</code> — see “Identified by” in the CSV).</li>
           <li><strong>matched-by-title</strong> — no usable DOI; matched by a title search that cleared the similarity bar.</li>
           <li><strong>suspicious</strong> — matched by DOI, but the OpenAlex record disagrees with your entry (title, or several details at once) — shown for you to judge (often a wrong <code>.bib</code> DOI, sometimes a real work with truncated metadata).</li>
           <li><strong>uncertain</strong> — no usable DOI; a title search found a likely candidate, but not confidently (weak overall score, or two different works scored almost the same) — shown for you to judge, never written to the cleaned <code>.bib</code>.</li>
-          <li><strong>not-found</strong> — looked up, but nothing acceptable came back.</li>
+          <li><strong>not-found</strong> — looked up, but OpenAlex has no acceptable record. Not proof that the work doesn't exist: OpenAlex misses some works (recent conference papers, translations, old editions), and some of its records are corrupt.</li>
           <li><strong>not-indexable</strong> — not the kind of record OpenAlex indexes (a dataset, a software library, a URL used as a title).</li>
           <li><strong>error</strong> — a network or server failure after one retry.</li>
           <li><strong>unparseable</strong> — the <code>.bib</code> block couldn't be turned into a usable record.</li>
