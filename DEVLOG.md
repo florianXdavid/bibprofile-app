@@ -826,6 +826,42 @@ Goal: the downloaded `.bib` contains nothing wrong that the user did not approve
   automatically is the known-correct record (92 of 92 on the hard set).
 - Tests: 200 → 206 (+1 skipped).
 
+## v1.4.4 — capacity: Crossref first (Oct 2026; part of v1.4)
+
+Goal: 500+ runs a day without users hitting an empty shared pool.
+
+- **Title resolution** (`resolveByTitle` in `match.ts`, injectable sources) for
+  entries without a usable DOI:
+  1. Crossref `query.bibliographic` (free).
+  2. A confident Crossref match → its OpenAlex record **by DOI** (free), re-scored
+     and accepted only if still confident.
+  3. Otherwise the billable OpenAlex search, as before.
+  - arXiv/CoRR entries skip Crossref (DataCite DOIs).
+  - A Crossref failure never errors a row; it just falls back to step 3.
+- **Crossref public pool (no `mailto`).** Crossref's 21 Jul 2026 limits count the
+  polite pool per email (3 list req/s), so one shared address would cap all users
+  together. The v1.4.2 retraction check dropped its `mailto` too. All Crossref
+  list calls share one ≥ 1.1 s pace.
+- **DBLP was evaluated and skipped.** A browser test showed it sends no CORS
+  headers, so it would need the Worker; the user chose to skip it for now.
+- **Two matching fixes found by the new recording:**
+  - Crossref subtitles are no longer glued onto titles (they hid the Science 1974
+    Tversky record behind a 1973 report).
+  - A year more than 3 years off can never be `matched-by-title`
+    (`MATCH_MAX_YEAR_GAP`; Kuhn 1962 was attached to the 1996 edition).
+  - Blanket "any year/type contradiction" rules were measured and rejected: they
+    demoted correct online-first journal versions and mis-typed books.
+- **Regression** replays the whole pipeline from recorded Crossref, OpenAlex-by-DOI
+  and OpenAlex-search responses:
+  - 0 wrong; 105 confident-correct (was 100); misses 7 → 2;
+  - 87 of 126 placed by Crossref, 39 billable searches (was 126);
+  - retractions 24/24, no false alarms; 97 automatic DOIs, all correct.
+  - Floors: `MIN_CORRECT` = 105, new `MIN_VIA_CROSSREF` = 87.
+- **UI:** the summary says how many references were found through Crossref, and
+  the tooltip shows "found via Crossref". Privacy copy updated (titles, first
+  author and year go to Crossref).
+- Tests: 206 → 216 (+1 skipped).
+
 > The project-layout and test-count sections below describe the state as of W4.2.
 > For the current layout, see README.md.
 

@@ -57,7 +57,7 @@ export default function FileDrop({ onText, disabled }: Props) {
           }}
         />
       </div>
-      <div className="hint">Everything runs in your browser. References are looked up in OpenAlex; their DOIs are also checked against Crossref for retractions.</div>
+      <div className="hint">Everything runs in your browser. References are looked up in Crossref and OpenAlex; DOIs are also checked against Crossref for retractions.</div>
     </div>
   )
 }

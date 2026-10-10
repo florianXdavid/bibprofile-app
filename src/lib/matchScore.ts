@@ -19,6 +19,7 @@
 import {
   MATCH_AMBIGUITY_MARGIN,
   MATCH_CONFIDENT_THRESHOLD,
+  MATCH_MAX_YEAR_GAP,
   MATCH_SCORE_FLOOR,
   MATCH_WEIGHTS,
   TITLE_MATCH_THRESHOLD,
@@ -304,6 +305,7 @@ export function chooseTitleMatch(e: BibEntry, candidates: OpenAlexWork[]): Title
   const best = dupes.reduce((x, y) => ((y.w.citedByCount ?? 0) > (x.w.citedByCount ?? 0) ? y : x), top)
   const runnerUp = scored.find(c => !dupes.includes(c) && bareId(c.w.id) !== bareId(best.w.id))
   const ambiguous = !!runnerUp && runnerUp.sig.score >= best.sig.score - MATCH_AMBIGUITY_MARGIN
-  const confident = best.sig.score >= MATCH_CONFIDENT_THRESHOLD && !ambiguous
+  const yearGap = e.year != null && best.w.publicationYear != null ? Math.abs(e.year - best.w.publicationYear) : 0
+  const confident = best.sig.score >= MATCH_CONFIDENT_THRESHOLD && !ambiguous && yearGap <= MATCH_MAX_YEAR_GAP
   return { status: confident ? 'matched-by-title' : 'uncertain', work: best.w, signals: best.sig, ambiguous, twins: findTwins(e, best.w, candidates) }
 }

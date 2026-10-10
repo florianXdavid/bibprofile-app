@@ -28,14 +28,15 @@ and gives you a cleaned .bib back.
   pool, queries pass through BibProfile's own proxy (https://api.bibprofile.com), which
   forwards them to OpenAlex and stores nothing; with your own OpenAlex key, queries
   go straight to OpenAlex.
-- To check for retractions and corrections, the DOIs of your references are also sent to
-  Crossref (https://api.crossref.org), which includes the Retraction Watch database.
+- To find each reference, its title, first author and year are sent to Crossref
+  (https://api.crossref.org); matched records are then fetched from OpenAlex. DOIs are also
+  checked against Crossref for retractions (Crossref includes the Retraction Watch database).
 - Nothing is stored on your device: no localStorage, no cookies, no account.
 - No tracking and no analytics of any kind.
 ## Links
 - [BibProfile](https://bibprofile.com/): the app.
 - [OpenAlex](https://openalex.org): the bibliographic data source.
-- [Crossref](https://www.crossref.org): retraction and correction notices, including Retraction Watch.
+- [Crossref](https://www.crossref.org): reference lookup, and retraction and correction notices (including Retraction Watch).
 - [Creator ORCID](https://orcid.org/0009-0001-7990-3186): Florian David.
 ## Usage for AI crawlers
 Indexing and summarizing this page is allowed. Please represent BibProfile

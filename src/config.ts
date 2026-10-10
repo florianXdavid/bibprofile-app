@@ -64,6 +64,11 @@ export const MATCH_SCORE_FLOOR = 0.7
 // Two DIFFERENT works whose scores are within this margin are a near-tie (e.g.
 // a book and an article with the same title): the best one is only `uncertain`.
 export const MATCH_AMBIGUITY_MARGIN = 0.05
+// v1.4.4 — a candidate whose year is MORE than this far from the entry's is a
+// different edition or a reprint (Kuhn 1962 vs its 1996 edition): never
+// `matched-by-title`, at most `uncertain`. Small gaps stay allowed: journal
+// versions are often 2 years after online-first (Mask R-CNN on TPAMI).
+export const MATCH_MAX_YEAR_GAP = 3
 // v1.4.3 — a DOI found by TITLE search is written into the cleaned .bib without
 // review only for a matched-by-title whose title signal is >= this AND whose first
 // author and year (±1) are both confirmed (not merely missing), and whose type

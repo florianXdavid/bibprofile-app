@@ -6,7 +6,9 @@
 //   • one BILLABLE title search per .bib entry (the exact query the app sends), and
 //   • FREE DOI singleton lookups to resolve each ground-truth DOI to its OpenAlex ID,
 //   • v1.4.2: FREE Crossref update-record lookups (api.crossref.org, batched) for
-//     every candidate DOI — the retraction / concern / correction notices.
+//     every candidate DOI — the retraction / concern / correction notices,
+//   • v1.4.4: FREE Crossref title searches (public pool, >= 1.1 s apart) and the
+//     OpenAlex record (free singleton) for every Crossref candidate DOI.
 // It writes test/regression/hard-titles.fixture.json; hard-titles.test.ts then
 // replays that fixture OFFLINE on every run.
 //
@@ -25,7 +27,8 @@ import { parseBib } from '../../src/lib/parseBib'
 import { readField } from '../../src/lib/bibWriter'
 import { normalizeDoi } from '../../src/lib/doi'
 import { buildDoiUrl, buildWorksSearchUrl } from '../../src/lib/openalex'
-import { buildCrossrefUrl, CROSSREF_BATCH } from '../../src/lib/crossref'
+import { buildCrossrefSearchUrl, buildCrossrefUrl, CROSSREF_BATCH } from '../../src/lib/crossref'
+import { usesCrossref } from '../../src/lib/match'
 import type { Credential } from '../../src/lib/credential'
 
 const BIB = fileURLToPath(new URL('./hard-titles.bib', import.meta.url))
@@ -101,6 +104,37 @@ describe.skipIf(!process.env.BIBPROFILE_RECORD)('record hard-titles fixture (net
       }
       console.log(`[${searches}] ${e.citeKey}`)
     }
+    // v1.4.4 — Crossref title searches (the app's first search) + the OpenAlex
+    // record for every Crossref candidate DOI. Incremental: unchanged URLs kept.
+    let crossrefSearches = 0
+    for (const e of parsed.entries) {
+      if (!usesCrossref(e)) continue
+      const r: any = entries[e.citeKey]
+      const url = buildCrossrefSearchUrl(e)
+      if (r.crossrefUrl === url && Array.isArray(r.crossrefItems)) continue
+      await sleep(1100) // public pool: 1 list request / s
+      const { json } = await getJson(url)
+      r.crossrefUrl = url
+      r.crossrefItems = Array.isArray(json?.message?.items) ? json.message.items : []
+      crossrefSearches++
+      console.log(`[crossref search ${crossrefSearches}] ${e.citeKey}`)
+    }
+    const prevOa: Record<string, unknown> = (process.env.BIBPROFILE_RECORD !== 'all' && existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')).oaByDoi : null) ?? {}
+    const oaByDoi: Record<string, unknown> = {}
+    let oaLookups = 0
+    for (const r of Object.values(entries) as any[]) {
+      for (const it of r.crossrefItems ?? []) {
+        const d = normalizeDoi(it?.DOI)
+        if (!d || d in oaByDoi) continue
+        if (d in prevOa) { oaByDoi[d] = prevOa[d]; continue }
+        const { status, json } = await getJson(buildDoiUrl(d, cred))
+        oaByDoi[d] = status === 200 && json ? trim(json) : null
+        oaLookups++
+        await sleep(250)
+      }
+    }
+    console.log(`[crossref] ${crossrefSearches} searches, ${oaLookups} OpenAlex-by-DOI lookups (free)`)
+
     // v1.4.2 — Crossref notices for every candidate DOI (and ground-truth DOI).
     // Incremental too: DOIs already checked in the previous fixture are kept.
     const prevFx = process.env.BIBPROFILE_RECORD !== 'all' && existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : null
@@ -111,6 +145,7 @@ describe.skipIf(!process.env.BIBPROFILE_RECORD)('record hard-titles fixture (net
       for (const c of r.candidates) if (c.doi) all.add(normalizeDoi(c.doi) ?? '')
       for (const x of [r.expectDoi, r.expectNot]) if (x?.doi) all.add(x.doi)
     }
+    for (const d of Object.keys(oaByDoi)) all.add(d) // v1.4.4: DOIs reached through Crossref
     all.delete('')
     const todo = [...all].filter(d => !prevChecked.has(d) && !d.includes(','))
     let crossrefCalls = 0
@@ -123,15 +158,15 @@ describe.skipIf(!process.env.BIBPROFILE_RECORD)('record hard-titles fixture (net
         if (it['update-to']) items.push({ DOI: it.DOI, 'update-to': it['update-to'] })
       }
       crossrefCalls++
-      await sleep(300)
+      await sleep(1100) // public pool: 1 list request / s
       console.log(`[crossref] ${Math.min(i + CROSSREF_BATCH, todo.length)}/${todo.length} DOIs`)
     }
     const checked = [...new Set([...prevChecked, ...todo])].filter(d => all.has(d)).sort()
 
     writeFileSync(OUT, JSON.stringify({
       recordedAt: new Date().toISOString(), base: BASE, searchCalls: searches, crossrefCalls, entries,
-      crossref: { checked, items },
+      crossref: { checked, items }, oaByDoi,
     }, null, 1) + '\n')
-    console.log(`Wrote ${OUT} — ${searches} billable searches, ${crossrefCalls} free Crossref calls.`)
+    console.log(`Wrote ${OUT} — ${searches} billable searches, ${crossrefCalls + crossrefSearches} free Crossref calls, ${oaLookups} free OpenAlex lookups.`)
   }, 30 * 60 * 1000)
 })

@@ -95,6 +95,7 @@ export interface ResultRow {
   matchScore: number | null // v1.4.1: composite match score 0..1 (lib/matchScore.ts) — DOI and title matches
   matchSignals?: MatchSignals | null // v1.4.1: the per-signal breakdown behind matchScore (table tooltip)
   twins?: TwinWork[] // v1.4.2: other OpenAlex records that look like the SAME work (retraction check)
+  matchedVia?: 'crossref' | 'openalex-search' // v1.4.4: how a title match was found (free Crossref vs billable search)
   yearState: YearState // agree / disagree / unverified
   duplicateOf: string | null
   error: string | null
@@ -152,4 +153,5 @@ export interface MatchSummary {
   duplicates: number
   searchCalls: number
   searchCostUsd: number
+  viaCrossref: number // v1.4.4: title matches found through free Crossref search
 }

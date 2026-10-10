@@ -7,10 +7,11 @@ before you submit a paper to a journal or conference.
 
 Everything runs in your browser. On the shared pool, queries pass through
 BibProfile's own proxy (`api.bibprofile.com`), which forwards them to OpenAlex and
-stores nothing; with your own key they go straight to OpenAlex. To check for
-retractions and corrections, the DOIs of your references are also sent to Crossref
-(`api.crossref.org`), which includes the Retraction Watch database. Nothing is
-stored, no account, no tracking.
+stores nothing; with your own key they go straight to OpenAlex. To find each
+reference, its title, first author and year are sent to Crossref
+(`api.crossref.org`); matched records are then fetched from OpenAlex. DOIs are also
+checked against Crossref for retractions (Crossref includes the Retraction Watch
+database). Nothing is stored, no account, no tracking.
 
 > Building this project was a **week-by-week** effort. The full history — every
 > feature, fix and scope decision in order — lives in **[DEVLOG.md](./DEVLOG.md)**.
@@ -40,13 +41,14 @@ These are load-bearing — the whole design depends on them.
 
 - **No backend, no database, no auth, no persistence** — no `localStorage`,
   `sessionStorage`, IndexedDB, or cookies. Nothing is stored or sent anywhere
-  except OpenAlex (and, DOIs only, Crossref). (A static test, `test/noPersistence.test.ts`, fails if any
+  except OpenAlex and Crossref. (A static test, `test/noPersistence.test.ts`, fails if any
   source file references a storage API.)
 - **Two fetch modules, a fixed set of hosts.** `src/lib/openalex.ts` reaches the
   shared proxy (`api.bibprofile.com`, which just forwards to OpenAlex) or, for a
   user key, OpenAlex directly (`api.openalex.org`); the proxy stores nothing.
-  `src/lib/crossref.ts` (v1.4.2) reaches `api.crossref.org` for retraction /
-  correction notices — free, key-less, DOIs only. No component calls `fetch`
+  `src/lib/crossref.ts` reaches `api.crossref.org` — free, key-less, public pool —
+  for the first title search (v1.4.4) and for retraction / correction notices
+  (v1.4.2). No component calls `fetch`
   directly — that would bypass the pacing, retry, credential and cost logic. (A new
   host also needs adding to the CSP in `public/_headers`.)
 - **No chart library.** The two charts (year histogram, venue bars) are
@@ -117,11 +119,22 @@ Per entry, after DOI normalisation (`src/lib/doi.ts`):
 2. **Has a DOI → free singleton lookup** (`/works/doi:…`, free and unlimited).
    A low title similarity (0.65, or 0.75 when the year isn't confirmed), or a
    match score below 0.7, downgrades it to `suspicious` (shown, never auto-rejected).
-3. **No usable DOI → billable title search** (`?search=` on a cleaned title; the
-   query drops site cruft and "RETRACTED:" prefixes, folds accents and drops
-   `?`/`*`). The top 5 candidates are each scored by **`src/lib/matchScore.ts`**
-   (v1.4.1) and the best one decides the status: `matched-by-title`, `uncertain`
-   or `not-found` (see *Match score* below).
+3. **No usable DOI → title resolution** (`resolveByTitle`, v1.4.4), cheapest first.
+   Candidates at every step are scored by **`src/lib/matchScore.ts`** (see
+   *Match score* below).
+   - **Crossref search (free):** `query.bibliographic` = title + first author +
+     year, top 5. Public pool, no `mailto`: since 21 Jul 2026 Crossref rate-limits
+     the polite pool per email, so a shared address would cap all users together;
+     without one, each browser has its own 1 search/s. Calls are paced ≥ 1.1 s
+     apart. arXiv/CoRR entries skip this step (their DataCite DOIs aren't in
+     Crossref).
+   - A confident Crossref match → **OpenAlex record by DOI (free)**, re-scored. It
+     is accepted only if still confident.
+   - Otherwise, or if Crossref is unavailable, the **billable OpenAlex search**
+     (`?search=` on a cleaned title; the query drops site cruft and "RETRACTED:"
+     prefixes, folds accents and drops `?`/`*`).
+   - On the hard-titles set, Crossref places 87 of 126 entries, so only 39 need a
+     billable search. The table tooltip and the summary say which path was used.
 4. Genuine misses that aren't scholarly records are reclassified `not-indexable`.
 
 Requests are sequential (~4.5/sec), retried once on a transient failure. After a
@@ -150,7 +163,9 @@ either side lacks the data:
 
 **Score** = weighted mean of the signals present. Rules:
 - A candidate needs title ≥ 0.7. Retraction or erratum *notices* are never candidates.
-- Best score ≥ **0.85** with no near-tie → `matched-by-title`.
+- Best score ≥ **0.85** with no near-tie → `matched-by-title`, unless the year is
+  more than **3** years off (a different edition or reprint, v1.4.4), which caps it at
+  `uncertain`.
 - A score from 0.7 up to 0.85, or a different work within **0.05** of the best → `uncertain`.
 - Below 0.7 → `not-found`, and nothing is attached.
 - OpenAlex duplicate records of one work (same title, year, first author, venue
@@ -387,7 +402,7 @@ test/                    # vitest unit tests (pure functions; no network except 
 
 ## Testing
 
-`npm test` runs **206 tests** (plus 1 skipped: the opt-in regression recorder). Highlights: the v1.4.1
+`npm test` runs **216 tests** (plus 1 skipped: the opt-in regression recorder). Highlights: the v1.4.1
 match-score signals and the hard-titles regression (offline); parsing/DOI/title-clean/similarity
 regressions; every report statistic on fixtures (median/IQR year, top-venue
 share, OA %, self-citation matching, shape patterns + min-n floor, retraction
@@ -410,7 +425,7 @@ don't claim to verify references are real).
 
 ## Credits
 
-Bibliographic data from [OpenAlex](https://openalex.org). Retraction data from
-[Crossref](https://www.crossref.org), including Retraction Watch. Built with React, Vite,
+Bibliographic data from [OpenAlex](https://openalex.org). Reference lookup and
+retraction data from [Crossref](https://www.crossref.org), including Retraction Watch. Built with React, Vite,
 and `@retorquere/bibtex-parser`, with the assistance of Claude (Anthropic's AI).
 Built by Florian David (ORCID: [0009-0001-7990-3186](https://orcid.org/0009-0001-7990-3186)).

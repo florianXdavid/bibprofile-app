@@ -8,7 +8,10 @@
 //   2. Has a DOI -> FREE singleton /works/doi:. The returned title is scored
 //      against the .bib title; a low score becomes `suspicious` (never an
 //      auto-reject). A DOI that resolves to nothing falls through to (3).
-//   3. No usable DOI match -> BILLABLE ?search= on the CLEANED title. The top
+//   3. No usable DOI match -> v1.4.4: FIRST a free Crossref search; a confident
+//      Crossref match is confirmed by fetching its OpenAlex record BY DOI (free) and
+//      re-scoring it. Only when that fails does it fall back to the
+//      BILLABLE OpenAlex ?search= on the CLEANED title (resolveByTitle). The top
 //      SEARCH_PER_PAGE candidates are scored on several signals (title, first
 //      author, year ±1, venue, type, volume/pages — lib/matchScore.ts, v1.4.1):
 //      confident -> `matched-by-title`; weak or a near-tie -> `uncertain`;
@@ -25,10 +28,12 @@ import {
   REQUEST_DELAY_MS,
   SEARCH_CALL_COST_USD,
 } from '../config'
-import { lookupByDoi, OpenAlexBudgetError, searchByTitle } from './openalex'
+import { lookupByDoi, OpenAlexBudgetError, searchByTitle, type TitleSearch } from './openalex'
+import { searchCrossref } from './crossref'
+import { normalizeDoi } from './doi'
 import { sharedCredential, type Credential } from './credential'
 import { normalizeTitle } from './similarity'
-import { chooseTitleMatch, scoreCandidate } from './matchScore'
+import { chooseTitleMatch, scoreCandidate, type TitleDecision } from './matchScore'
 import type {
   BibEntry,
   MatchStatus,
@@ -132,6 +137,56 @@ export function buildRows(parsed: ParseResult): ResultRow[] {
   return rows
 }
 
+// --- v1.4.4: title resolution (Crossref first, OpenAlex search fallback) ----
+
+// Where title candidates come from. Injectable so the regression test replays
+// recorded responses through exactly this logic.
+export interface TitleSources {
+  crossref: (e: BibEntry) => Promise<OpenAlexWork[] | null> // null = unavailable
+  openalexByDoi: (doi: string) => Promise<OpenAlexWork | null> // FREE singleton
+  openalexSearch: (query: string) => Promise<TitleSearch> // BILLABLE
+}
+
+export interface TitleResolution {
+  decision: TitleDecision | null // null with error / empty title
+  via: 'crossref' | 'openalex-search'
+  billable: boolean // an OpenAlex search was spent
+  error: string | null
+}
+
+// arXiv/CoRR records carry DataCite DOIs, which Crossref doesn't index — skip the
+// (rate-limited) Crossref call for them and go straight to the fallback.
+export function usesCrossref(e: BibEntry): boolean {
+  return !/\barxiv\b|\bcorr\b/i.test(e.venue) && !/archiveprefix\s*=\s*[{"']?\s*arxiv/i.test(e.raw)
+}
+
+export async function resolveByTitle(
+  entry: BibEntry,
+  src: TitleSources,
+  onStep: (label: string) => void = () => {},
+): Promise<TitleResolution> {
+  const q = entry.titleForSearch || (entry.title === '(no title)' ? '' : entry.title)
+  if (!q) return { decision: null, via: 'openalex-search', billable: false, error: null }
+
+  if (usesCrossref(entry)) {
+    onStep(`Crossref search (free) — ${entry.citeKey}`)
+    const cands = await src.crossref(entry)
+    const d1 = cands ? chooseTitleMatch(entry, cands) : null
+    const doi = d1?.status === 'matched-by-title' && d1.work?.doi ? normalizeDoi(d1.work.doi) : null
+    if (doi) {
+      const oa = await src.openalexByDoi(doi)
+      // Re-score the OpenAlex record itself; accept only if it is still confident.
+      const d2 = oa ? chooseTitleMatch(entry, [oa]) : null
+      if (d2?.status === 'matched-by-title') return { decision: d2, via: 'crossref', billable: false, error: null }
+    }
+  }
+
+  onStep(`Title search (billable) — ${entry.citeKey}`)
+  const res = await src.openalexSearch(q)
+  if (res.kind === 'error') return { decision: null, via: 'openalex-search', billable: true, error: res.error }
+  return { decision: chooseTitleMatch(entry, res.candidates), via: 'openalex-search', billable: true, error: null }
+}
+
 // --- Orchestration ---------------------------------------------------------
 
 // A run may HALT on shared-pool budget exhaustion (W4.1): already-matched rows
@@ -147,7 +202,14 @@ export async function runMatching(
   parsed: ParseResult,
   onProgress: (p: Progress) => void,
   cred: Credential = sharedCredential(),
+  sourceOverrides: Partial<TitleSources> = {},
 ): Promise<MatchRunResult> {
+  const sources: TitleSources = {
+    crossref: searchCrossref,
+    openalexByDoi: async doi => { const r = await lookupByDoi(doi, cred); return r.kind === 'ok' ? r.work : null },
+    openalexSearch: q => searchByTitle(q, false, cred),
+    ...sourceOverrides,
+  }
   const rows = buildRows(parsed)
   const byRowId = new Map(rows.map(r => [r.rowId, r]))
 
@@ -175,16 +237,12 @@ export async function runMatching(
   const total = canonicalEntries.length
 
   async function attemptTitleSearch(entry: BibEntry, row: ResultRow): Promise<void> {
-    const q = entry.titleForSearch || (entry.title === '(no title)' ? '' : entry.title)
-    if (!q) { row.status = 'not-found'; return }
-    searchCalls++
-    const res = await searchByTitle(q, false, cred)
-    if (res.kind === 'error') {
-      row.status = 'error'
-      row.error = res.error
-      return
-    }
-    const d = chooseTitleMatch(entry, res.candidates) // v1.4.1 multi-signal
+    const r = await resolveByTitle(entry, sources, label => onProgress({ stage: 'title', label, done, total, searchCalls }))
+    if (r.billable) searchCalls++
+    if (r.error) { row.status = 'error'; row.error = r.error; return }
+    const d = r.decision
+    if (!d) { row.status = 'not-found'; return }
+    row.matchedVia = d.work ? r.via : undefined
     row.status = d.status
     if (d.work && d.signals) {
       row.openalex = d.work
@@ -224,7 +282,7 @@ export async function runMatching(
           row.error = res.error
         }
       } else {
-        onProgress({ stage: 'title', label: `Title search (billable) — ${entry.citeKey}`, done, total, searchCalls })
+        onProgress({ stage: 'title', label: `Looking up title — ${entry.citeKey}`, done, total, searchCalls })
         await attemptTitleSearch(entry, row)
       }
     } catch (e) {
@@ -246,6 +304,7 @@ export async function runMatching(
         dr.matchScore = row.matchScore
         dr.matchSignals = row.matchSignals
         dr.twins = row.twins
+        dr.matchedVia = row.matchedVia
         dr.yearState = row.yearState
         dr.error = row.error
       }
@@ -277,6 +336,7 @@ export function summarize(rows: ResultRow[], searchCalls: number): MatchSummary 
     duplicates: rows.filter(r => r.duplicateOf).length,
     searchCalls,
     searchCostUsd: searchCalls * SEARCH_CALL_COST_USD,
+    viaCrossref: rows.filter(r => r.matchedVia === 'crossref' && !r.duplicateOf).length, // v1.4.4
   }
 }
 

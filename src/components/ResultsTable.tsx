@@ -68,7 +68,7 @@ const columns: Column[] = [
         {r.matchScore != null && (
           <span
             className={r.status === 'suspicious' || r.status === 'uncertain' ? 'flag' : 'muted'}
-            title={signalsTitle(r.matchSignals)}
+            title={signalsTitle(r.matchSignals) + (r.matchedVia === 'crossref' ? '\nfound via Crossref, record from OpenAlex by DOI' : '')}
           > {r.matchScore.toFixed(2)}</span>
         )}
       </>

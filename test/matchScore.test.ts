@@ -173,6 +173,13 @@ describe('chooseTitleMatch', () => {
     expect(d.work!.id).toBe(paper.id)
     expect(chooseTitleMatch(e, [notice]).status).toBe('not-found')
   })
+  it('a year more than 3 years off is never confident (Kuhn 1962 vs its 1996 edition)', () => {
+    const ed = work({ displayName: 'The Structure of Scientific Revolutions', authorships: au('Thomas S. Kuhn'), publicationYear: 1996, hostVenue: 'University of Chicago Press', type: 'book' })
+    const e = entry({ entryType: 'book', title: 'The Structure of Scientific Revolutions', firstAuthor: 'Kuhn', year: 1962, venue: 'University of Chicago Press' })
+    expect(chooseTitleMatch(e, [ed]).status).toBe('uncertain')
+    // ...but a 2-year online-first gap is still fine
+    expect(chooseTitleMatch({ ...e, year: 1994 }, [ed]).status).toBe('matched-by-title')
+  })
   it('below the floor nothing is attached', () => {
     const e = entry({ title: 'Deep learning', firstAuthor: 'Zhang', year: 1990, venue: 'Journal of Imaginary Results' })
     const d = chooseTitleMatch(e, [lecun()])

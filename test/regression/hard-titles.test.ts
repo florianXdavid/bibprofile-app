@@ -1,6 +1,8 @@
 // v1.4.1 — title-matching REGRESSION over ~100 hard entries (hard-titles.bib),
-// replayed OFFLINE from recorded OpenAlex responses (hard-titles.fixture.json —
-// see record.test.ts). Runs on every `npm test`; no network.
+// replayed OFFLINE from recorded responses (hard-titles.fixture.json — see
+// record.test.ts). Runs on every `npm test`; no network. v1.4.4: replays the full
+// title pipeline (resolveByTitle): Crossref search -> OpenAlex by DOI -> OpenAlex
+// search fallback.
 //
 // The hard rule: a confident `matched-by-title` is never the wrong record.
 // `uncertain` / `not-found` on a hard entry is allowed; it's counted as recall,
@@ -14,12 +16,12 @@ import { fileURLToPath } from 'node:url'
 import { parseBib } from '../../src/lib/parseBib'
 import { readField } from '../../src/lib/bibWriter'
 import { toOpenAlexWork } from '../../src/lib/openalex'
-import { chooseTitleMatch, findTwins, titleSimilarity } from '../../src/lib/matchScore'
-import { parseCrossrefItems, type CrossrefResult, type CrossrefUpdate } from '../../src/lib/crossref'
+import { findTwins, titleSimilarity, type TitleDecision } from '../../src/lib/matchScore'
+import { buildCrossrefSearchUrl, crossrefToWork, parseCrossrefItems, type CrossrefResult, type CrossrefUpdate } from '../../src/lib/crossref'
 import { computeRetractions } from '../../src/lib/stats/retractions'
 import { computeCleanedBib } from '../../src/lib/stats/cleanBib'
 import type { ResultRow } from '../../src/types'
-import { computeDuplicates } from '../../src/lib/match'
+import { computeDuplicates, resolveByTitle, usesCrossref, type TitleResolution, type TitleSources } from '../../src/lib/match'
 
 const BIB = fileURLToPath(new URL('./hard-titles.bib', import.meta.url))
 const FIX = fileURLToPath(new URL('./hard-titles.fixture.json', import.meta.url))
@@ -27,7 +29,10 @@ const FIX = fileURLToPath(new URL('./hard-titles.fixture.json', import.meta.url)
 // Recall floor: confident-and-correct matches out of the entries with a known
 // correct record. Set from the first recorded run; raise it when matching
 // improves, never lower it to make a change pass.
-const MIN_CORRECT = 100 // 2026-10-09 (v1.4.2, +10 retraction entries): 100 of 111 entries with a known correct record
+const MIN_CORRECT = 105 // 2026-10-10 (v1.4.4, Crossref first): 105 of 111 entries with a known correct record
+// v1.4.4 capacity floor: title matches found through free Crossref (no OpenAlex
+// search spent). Set from the first Crossref recording; raise, never lower.
+const MIN_VIA_CROSSREF = 87 // 2026-10-10: 87 of 126 entries placed by Crossref (39 needed a billable search)
 
 const fixture = existsSync(FIX) ? JSON.parse(readFileSync(FIX, 'utf8')) : null
 const fx: Record<string, any> = fixture?.entries ?? {}
@@ -35,15 +40,25 @@ const bare = (id: string | null | undefined) => (id ?? '').replace(/^https?:\/\/
 
 type Outcome = 'correct' | 'WRONG' | 'uncertain-right' | 'uncertain-other' | 'miss' | 'ok-negative' | 'review'
 
+// v1.4.4 — replay the app's title pipeline from recorded responses.
+const parsed = parseBib(readFileSync(BIB, 'utf8'))
+const oaByDoi: Record<string, any> = fixture?.oaByDoi ?? {}
+const replay = (key: string): TitleSources => ({
+  crossref: async () => (Array.isArray(fx[key]?.crossrefItems) ? fx[key].crossrefItems.map(crossrefToWork) : null),
+  openalexByDoi: async doi => (oaByDoi[doi] ? toOpenAlexWork(oaByDoi[doi]) : null),
+  openalexSearch: async () => ({ kind: 'ok' as const, candidates: (fx[key]?.candidates ?? []).map(toOpenAlexWork) }),
+})
+const NOT_FOUND: TitleDecision = { status: 'not-found', work: null, signals: null, ambiguous: false, twins: [] }
+const resolutions = new Map<string, TitleResolution>()
+if (fixture) for (const e of parsed.entries) resolutions.set(e.citeKey, await resolveByTitle(e, replay(e.citeKey)))
+
 describe.skipIf(!fixture)('title-matching regression (hard-titles.bib, offline)', () => {
-  const parsed = parseBib(readFileSync(BIB, 'utf8'))
 
   // Mirror the app's pipeline: the REAL duplicate step runs first, and a
   // duplicate copies its canonical entry's decision (as runMatching does). The
   // v1.4.1 hotfix bug — distinct works merged by title — lived exactly here.
   const dupOf = computeDuplicates(parsed.entries) // rowId -> canonical cite key
-  const decide = (e: (typeof parsed.entries)[number]) =>
-    chooseTitleMatch(e, (fx[e.citeKey]?.candidates ?? []).map(toOpenAlexWork))
+  const decide = (e: (typeof parsed.entries)[number]) => resolutions.get(e.citeKey)?.decision ?? NOT_FOUND
   const byKey = new Map(parsed.entries.map(e => [e.citeKey, e]))
 
   const results = parsed.entries.map(e => {
@@ -78,6 +93,9 @@ describe.skipIf(!fixture)('title-matching regression (hard-titles.bib, offline)'
     }
     const tally: Record<string, number> = {}
     for (const r of results) tally[r.outcome] = (tally[r.outcome] ?? 0) + 1
+    const via: Record<string, number> = {}
+    for (const r of resolutions.values()) via[`${r.via}${r.billable ? ' (billable)' : ''}`] = (via[`${r.via}${r.billable ? ' (billable)' : ''}`] ?? 0) + 1
+    console.log('via:', via)
     console.log(tally)
   }
 
@@ -145,11 +163,17 @@ describe.skipIf(!fixture)('title-matching regression (hard-titles.bib, offline)'
     expect(parsed.entries.filter(e => dupOf.has(e.rowId)).map(e => `${e.citeKey} -> ${dupOf.get(e.rowId)}`)).toEqual([])
   })
 
+  it(`finds at least ${MIN_VIA_CROSSREF} title matches through free Crossref (capacity floor)`, () => {
+    const n = [...resolutions.values()].filter(r => r.via === 'crossref').length
+    expect(n).toBeGreaterThanOrEqual(MIN_VIA_CROSSREF)
+  })
+
   it('every entry was recorded with the query the app sends today (else re-record)', () => {
     const doi = (d: string | null) => (d ? d.trim().toLowerCase() : null)
     const stale = parsed.entries.filter(e => {
       const r = fx[e.citeKey]
       return r?.query !== (e.titleForSearch || e.title)
+        || (usesCrossref(e) && r?.crossrefUrl !== buildCrossrefSearchUrl(e))
         || (readField(e.raw, 'expectdoi') && doi(r.expectDoi?.doi) !== doi(readField(e.raw, 'expectdoi')))
         || (readField(e.raw, 'expectnot') && doi(r.expectNot?.doi) !== doi(readField(e.raw, 'expectnot')))
     }).map(e => e.citeKey)
