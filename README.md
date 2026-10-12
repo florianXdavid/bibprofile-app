@@ -20,7 +20,7 @@ when clicked. Nothing is stored, no account, no tracking.
 
 > Building this project was a **week-by-week** effort. The full history — every
 > feature, fix and scope decision in order — lives in **[DEVLOG.md](./DEVLOG.md)**.
-> This README describes the tool **as it is now** (current release: **v1.4**, v1.5 in progress;
+> This README describes the tool **as it is now** (current release: **v1.5**;
 > the version history shown in the app lives in `src/versions.ts`).
 
 ## What it does

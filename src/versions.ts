@@ -9,6 +9,11 @@ export interface VersionEntry {
 
 export const VERSIONS: VersionEntry[] = [
   {
+    version: 'v1.5',
+    date: '2026-10-12',
+    note: 'Unverified references get a Google Scholar link, a “Try with an example” button, a report to download or print as PDF for co-authors, and pasting BibTeX instead of uploading a file.',
+  },
+  {
     version: 'v1.4',
     date: '2026-10-10',
     note: 'Smarter matching (Crossref first, then OpenAlex; an “uncertain” status; DOIs and arXiv / PubMed IDs found in url and note fields), retraction checks via Crossref and Retraction Watch, better duplicate detection, and a safer cleaned .bib (only verified fills written automatically, the rest for review).',

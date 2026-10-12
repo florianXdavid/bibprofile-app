@@ -42,7 +42,7 @@ describe('the "Try with an example" snapshot', () => {
   it('builds a self-contained report: no script, no external resource, the footer', () => {
     const html = buildReportHtml({ rows: ex.rows, fileName: 'example.bib', crossref: ex.crossref, preprints: ex.preprints, co: ex.co, fw: ex.fw, date: new Date('2026-10-12'), referenceYear: 2026 })
     expect(html).not.toMatch(/<script|<link|<img|src=/i)
-    expect(html).toContain('Checked with BibProfile — <a href="https://bibprofile.com">bibprofile.com</a> · runs in your browser, nothing stored')
+    expect(html).toContain('Checked with BibProfile — <a class="site" href="https://bibprofile.com">bibprofile.com</a> · runs in your browser, nothing stored')
     expect(html).toContain('kessler2021')
     expect(html).toContain('chaudhary2017')
   })

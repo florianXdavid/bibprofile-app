@@ -139,9 +139,10 @@ code{font:0.85em ui-monospace,Menlo,Consolas,monospace;background:#f2f3f5;paddin
 ul,ol{padding-left:1.4em;margin:.3em 0}li{margin:.15em 0}a{color:#2b6cb0}.todo{font-style:italic}
 footer{margin-top:2.2em;padding-top:.6em;border-top:1px solid #ddd;font-size:0.85em;color:#666}
 /* Print / PDF: smaller type, narrow margins. Links stay plain text (some PDF printers
-   drop them), so every DOI is printed in full and the web-only search links are hidden. */
+   drop them), so every DOI is printed in full and the web-only search links are hidden.
+   The footer's bibprofile.com keeps its link look (clickable in Chrome / Edge "Save as PDF"). */
 @page{size:A4;margin:14mm 14mm 16mm}
-@media print{body{font-size:9.5pt;line-height:1.4;margin:0;max-width:none;padding:0}a{color:inherit;text-decoration:none}.web-only{display:none}h2,h3{break-after:avoid}li{break-inside:avoid}}
+@media print{body{font-size:9.5pt;line-height:1.4;margin:0;max-width:none;padding:0}a{color:inherit;text-decoration:none}a.site{color:#2b6cb0;text-decoration:underline}.web-only{display:none}h2,h3{break-after:avoid}li{break-inside:avoid}}
 </style></head><body>
 <h1>Reference check</h1>
 <p class="muted">${esc(input.fileName)} · ${esc(dateStr)} · ${plural(rows.length, 'entry', 'entries')}</p>
@@ -151,7 +152,7 @@ ${check.join('\n')}
 <h2>Key findings</h2>
 ${findings.filter(Boolean).join('\n') || '<p>Nothing else to report.</p>'}
 <footer>${esc(REPORT_FOOTER.replace('bibprofile.com', '§'))
-    .replace('§', '<a href="https://bibprofile.com">bibprofile.com</a>')}</footer>
+    .replace('§', '<a class="site" href="https://bibprofile.com">bibprofile.com</a>')}</footer>
 </body></html>
 `
 }

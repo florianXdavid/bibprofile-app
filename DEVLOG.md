@@ -937,7 +937,10 @@ Source: an audit of 6 real `.bib` files (587 entries) plus a probe of the cleane
   A4 with narrow margins (the example report: 1–2 pages). Links print as plain text —
   Microsoft Print to PDF drops them — so DOIs are printed in full and the Google
   Scholar links are hidden in print. A cite key used twice reads "key (copy #1) = key
-  (copy #2)"; co-citation candidates without a work record are skipped.
+  (copy #2)"; co-citation candidates without a work record are skipped. The footer's
+  bibprofile.com stays a visible link in print too (clickable in Chrome / Edge "Save
+  as PDF"; Microsoft Print to PDF drops every link).
+- **About:** v1.5 line added to the version history (`versions.ts`).
 - Tests: 271 → 273 (+2 skipped).
 
 ## v1.5.2 — "Try with an example" + a report people forward (Oct 2026; part of v1.5)
