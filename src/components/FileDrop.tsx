@@ -2,10 +2,11 @@ import { useRef, useState } from 'react'
 
 interface Props {
   onText: (text: string, filename: string) => void
+  onExample?: () => void // v1.5.2 — load the bundled example (precomputed, no lookups)
   disabled: boolean
 }
 
-export default function FileDrop({ onText, disabled }: Props) {
+export default function FileDrop({ onText, onExample, disabled }: Props) {
   const [drag, setDrag] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -45,6 +46,12 @@ export default function FileDrop({ onText, disabled }: Props) {
         <button type="button" className="primary" disabled={disabled} onClick={openPicker}>
           Choose .bib file
         </button>
+        {onExample && (
+          <button type="button" disabled={disabled} onClick={onExample}
+            title="A 30-reference example with a retracted paper, a preprint since published, a duplicate, a missing DOI and an invented reference — loads instantly, nothing is looked up">
+            Try with an example
+          </button>
+        )}
         <input
           ref={inputRef}
           type="file"

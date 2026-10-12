@@ -29,3 +29,12 @@ describe('verification card (v1.5.1)', () => {
     expect(scholarUrl(r)).toBe('https://scholar.google.com/scholar?q=' + encodeURIComponent('"Generative Adversarial Nets" Goodfellow'))
   })
 })
+
+describe('co-author message (v1.5.2)', () => {
+  it('states verified / retracted / to double-check, dropping empty parts', async () => {
+    const { coauthorMessage, computeVerification } = await import('../../src/lib/stats/verification')
+    const rows = [mkRow({ rowId: 'a', status: 'matched-by-doi' }), mkRow({ rowId: 'b', status: 'not-found' }), mkRow({ rowId: 'c', status: 'suspicious' })]
+    expect(coauthorMessage(computeVerification(rows, ['a']))).toBe('Reference list checked with BibProfile: 1/3 verified, 1 retracted, 2 to double-check (details in the attached report). bibprofile.com')
+    expect(coauthorMessage(computeVerification([rows[0]], []))).toBe('Reference list checked with BibProfile: 1/1 verified (details in the attached report). bibprofile.com')
+  })
+})

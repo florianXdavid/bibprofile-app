@@ -27,6 +27,10 @@ import { OPENALEX_DIRECT_URL, resolveCredential, type UserCredential } from './l
 import { formatResetClockUtc } from './lib/rateLimit'
 import { fetchCrossrefUpdates, type CrossrefRunState } from './lib/crossref'
 import { retractionDois } from './lib/stats/retractions'
+import { computeRetractions } from './lib/stats/retractions'
+import { coauthorMessage, computeVerification } from './lib/stats/verification'
+import { buildReportHtml } from './lib/reportHtml'
+import { EXAMPLE_FILE_NAME, hydrateExample, type ExampleSnapshot } from './demo/exampleData'
 import type { MatchSummary, Progress as ProgressState, ResultRow } from './types'
 
 type Phase = 'idle' | 'working' | 'done'
@@ -48,6 +52,8 @@ export default function App() {
   const [copied, setCopied] = useState(false)
   const [sourceText, setSourceText] = useState<string>('') // original .bib text (cleaned export)
   const [uploadOpen, setUploadOpen] = useState(true) // v1.3 — collapse the drop zone once results are in
+  const [isExample, setIsExample] = useState(false) // v1.5.2 — the precomputed example is showing
+  const [copiedMsg, setCopiedMsg] = useState(false)
 
   // W3.1 — billable results live HERE, above the Report/Cleaned/Table toggle, so
   // switching tabs (which unmounts the inactive view) never discards them and
@@ -117,7 +123,38 @@ export default function App() {
     void refreshUsageFor(null) // back to the shared pool → refetch and show the pooled bar now
   }
 
+  // v1.5.2 — "Try with an example": the bundled example .bib and the results of one
+  // real run over it (src/demo). No request is made and nothing is spent; every
+  // billable result (preprints, missing citations) is already in the snapshot.
+  async function loadExample() {
+    setNotice('')
+    try {
+      const [bib, snap] = await Promise.all([import('./demo/example.bib?raw'), import('./demo/example-results.json')])
+      const ex = hydrateExample(snap.default as unknown as ExampleSnapshot)
+      crossrefRun.current++ // drop any in-flight check for a previous file
+      setIsExample(true)
+      setCopied(false)
+      setFileName(EXAMPLE_FILE_NAME)
+      setSourceText(bib.default)
+      setWarnings([])
+      setRows(ex.rows)
+      setSummary(ex.summary)
+      setCrossref({ status: 'done', result: ex.crossref })
+      setPreprints(ex.preprints ? { status: 'done', result: ex.preprints } : { status: 'idle' })
+      setGapsCo(ex.co ? { status: 'done', result: ex.co } : { status: 'idle' })
+      setGapsFw(ex.fw ? { status: 'done', result: ex.fw } : { status: 'idle' })
+      setExhausted(null)
+      setProgress({ stage: 'done', label: 'Example loaded (precomputed — no lookups made)', done: ex.summary.total, total: ex.summary.total, searchCalls: 0 })
+      setPhase('done')
+      setView('report')
+      setUploadOpen(false)
+    } catch {
+      setNotice('Could not load the example.')
+    }
+  }
+
   async function run(text: string, name: string) {
+    setIsExample(false)
     setPhase('working')
     setRows([])
     setSummary(null)
@@ -245,6 +282,50 @@ export default function App() {
     }
   }
 
+  // v1.5.2 — the forwardable report and the one-line message for co-authors. Built
+  // locally from what's already in memory; nothing is uploaded.
+  function reportHtml(): string {
+    return buildReportHtml({
+      rows, fileName: fileName || 'references.bib',
+      crossref: crossref.status === 'done' ? crossref.result : null,
+      preprints: preprints.status === 'done' ? preprints.result : null,
+      co: gapsCo.status === 'done' ? gapsCo.result : null,
+      fw: gapsFw.status === 'done' ? gapsFw.result : null,
+      date: new Date(), referenceYear,
+    })
+  }
+  function downloadReport() {
+    const blob = new Blob([reportHtml()], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${(fileName || 'references').replace(/\.[^.]+$/, '')}-reference-check.html`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+  // Print the report alone (the browser's dialog offers "Save as PDF"), from a hidden
+  // same-page frame — no new tab, no request.
+  function printReport() {
+    const frame = document.createElement('iframe')
+    frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'
+    frame.srcdoc = reportHtml()
+    frame.onload = () => {
+      frame.contentWindow?.focus()
+      frame.contentWindow?.print()
+      setTimeout(() => frame.remove(), 60_000)
+    }
+    document.body.appendChild(frame)
+  }
+  const verification = useMemo(() => computeVerification(rows,
+    crossref.status === 'done' ? computeRetractions(rows, crossref.result).retracted.map(f => f.rowId) : null), [rows, crossref])
+  async function copyCoauthorMessage() {
+    try {
+      await navigator.clipboard.writeText(coauthorMessage(verification))
+      setCopiedMsg(true)
+      setTimeout(() => setCopiedMsg(false), 2000)
+    } catch { setNotice('Could not copy to clipboard — select the message and copy it by hand.') }
+  }
+
   // W3.1 — the parent-owned triggers. The presentational cards call these; the
   // results land in parent state and survive tab switches.
   // W4.1 — a budget halt mid-gaps/forward/preprint shows the same exhaustion
@@ -310,7 +391,7 @@ export default function App() {
       </p>
 
       {uploadOpen ? (
-        <FileDrop onText={run} disabled={busy} />
+        <FileDrop onText={run} onExample={loadExample} disabled={busy} />
       ) : (
         <p className="upload-collapsed muted">
           <button type="button" className="key-link" onClick={() => setUploadOpen(true)}>↑ Upload a different .bib file</button>
@@ -352,13 +433,23 @@ export default function App() {
       {phase === 'done' && summary && (
         <>
           {/* v1.5.1 — the headline question first; the match details one click away. */}
+          {isExample && (
+            <p className="card-note example-note">
+              <strong>This is an example</strong> — a 30-reference review on brain–computer interfaces, with a
+              retracted paper, a preprint since published, a duplicate, a missing DOI and one invented
+              reference planted on purpose. Its results were saved from a real run, so nothing was looked up
+              now. Upload your own <code>.bib</code> to check yours.
+            </p>
+          )}
           <VerificationCard rows={rows} crossref={crossref} />
           <details className="summary-details">
             <summary>Matching details</summary>
             <Summary summary={summary} />
           </details>
-          <div className="summary toolbar" style={{ display: 'flex', gap: 12, alignItems: 'center', background: 'none', border: 'none', padding: 0, margin: '-8px 0 4px' }}>
+          <div className="summary toolbar" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', background: 'none', border: 'none', padding: 0, margin: '-8px 0 4px' }}>
             <button className="primary" onClick={copySummary}>{copied ? 'Copied ✓' : 'Copy summary'}</button>
+            <button type="button" onClick={downloadReport} title="A self-contained HTML report to send to your co-authors — made in your browser, nothing uploaded">Download report</button>
+            <button type="button" onClick={printReport} title="Opens the report in your browser's print dialog — choose “Save as PDF”">Print / save as PDF</button>
             {summary.errored > 0 && (
               <button type="button" onClick={handleRetryErrors} disabled={busy}
                 title="Look up only the entries whose request failed; everything else is kept">
@@ -375,6 +466,12 @@ export default function App() {
                 </ul>
               </details>
             )}
+          </div>
+          {/* v1.5.2 — one line to paste into an email or Slack, with the report attached. */}
+          <div className="coauthor-line">
+            <span className="muted">Send to co-authors:</span>{' '}
+            <span className="coauthor-text">{coauthorMessage(verification)}</span>{' '}
+            <button type="button" className="key-link" onClick={copyCoauthorMessage}>{copiedMsg ? 'Copied ✓' : 'Copy'}</button>
           </div>
         </>
       )}

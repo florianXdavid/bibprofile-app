@@ -21,7 +21,7 @@ export const VERSIONS: VersionEntry[] = [
   {
     version: 'v1.2',
     date: '2026-08-14',
-    note: 'Small patch: a maintenance page.',
+    note: 'Added a maintenance page.',
   },
   {
     version: 'v1.1',

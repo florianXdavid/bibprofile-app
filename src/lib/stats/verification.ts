@@ -86,3 +86,12 @@ export function scholarUrl(r: ResultRow): string {
   const q = [title ? `"${title}"` : '', r.entry?.firstAuthor ?? ''].filter(Boolean).join(' ')
   return `https://scholar.google.com/scholar?q=${encodeURIComponent(q)}`
 }
+
+// v1.5.2 — the one line the user pastes into an email / Slack to co-authors.
+export function coauthorMessage(v: Verification): string {
+  const parts = [`${v.verified}/${v.total} verified`]
+  if (v.retracted && v.retracted.length > 0) parts.push(`${v.retracted.length} retracted`)
+  const check = v.couldNotVerify.length + v.wrongDoi.length
+  if (check > 0) parts.push(`${check} to double-check`)
+  return `Reference list checked with BibProfile: ${parts.join(', ')} (details in the attached report). bibprofile.com`
+}

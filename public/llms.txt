@@ -11,6 +11,9 @@ and gives you a cleaned .bib back.
   or a confident title match), listing the references that could not be verified
   (with a Google Scholar search link), DOIs that point to another work, and retracted
   papers. "Could not verify" is not proof of fabrication.
+- Share: download a one-page report (HTML, or PDF via the browser's print dialog)
+  and copy a one-line message for co-authors — generated in the browser, nothing
+  uploaded. "Try with an example" loads a saved run on a 30-reference example.
 - Match & inspect: match each reference against OpenAlex with an honest match rate.
 - Report: recency, journal concentration, self-citation, open access, retractions,
   and duplicates. Every card is descriptive — never a score or judgement.

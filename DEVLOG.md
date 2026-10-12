@@ -921,6 +921,29 @@ Source: an audit of 6 real `.bib` files (587 entries) plus a probe of the cleane
   to the version history; privacy copy mentions arXiv / PubMed IDs.
 - Tests: 216 → 252 (+1 skipped).
 
+## v1.5.2 — "Try with an example" + a report people forward (Oct 2026; part of v1.5)
+
+- **Example** (user's choice: 30 coherent biomedical/neuro references): a short review
+  on BCIs for communication after paralysis, `src/demo/example.bib`. Planted: a
+  retracted paper (Chaudhary et al. 2017, PLoS Biology, retracted 2019), a bioRxiv
+  preprint since published in Nature (Willett 2023), a Zotero PubMed snapshot
+  duplicating Moses 2021, Hochberg 2012 without its DOI, and an invented reference.
+- **Saved results:** `test/demo/record-example.test.ts` (opt-in, shared pool) runs the
+  real pipeline — matching, Crossref notices, Preprint → published, both
+  missing-citation scans — and writes `src/demo/example-results.json`
+  (`exampleData.ts` serialises the Maps). The app lazy-loads both files: instant, no
+  request, nothing spent; billable cards show their saved results. A blue note says
+  it's an example. `test/demo/example.test.ts` guards the snapshot.
+- **Download report** (`reportHtml.ts`, pure): one self-contained HTML file — reference
+  check, key findings, footer "Checked with BibProfile — bibprofile.com · runs in your
+  browser, nothing stored". **Print / save as PDF** prints the same document from a
+  hidden srcdoc frame. No dependency, nothing uploaded.
+- **Send to co-authors** line with Copy (user's wording): "Reference list checked
+  with BibProfile: 41/43 verified, 1 retracted, 1 to double-check (details in the
+  attached report). bibprofile.com" — empty parts dropped (`coauthorMessage`).
+- About, index.html and llms.txt mention sharing and the example.
+- Tests: 267 → 271 (+2 skipped).
+
 ## v1.5.1 — lead with "Is every reference real?" (Oct 2026; part of v1.5)
 
 v1.5 = "timely, instant and shareable". v1.5.1 matches the question researchers now

@@ -24,6 +24,12 @@ export default function About() {
           some real works are missing from OpenAlex.
         </li>
         <li>
+          <strong>Share with co-authors</strong> — download a one-page report (HTML, or PDF through your
+          browser's print dialog) and copy a one-line message to send with it. Both are made in your
+          browser; nothing is uploaded. No <code>.bib</code> at hand? <em>Try with an example</em> shows a
+          saved run on a 30-reference example.
+        </li>
+        <li>
           <strong>Match &amp; inspect</strong> — parses your <code>.bib</code>, matches each reference
           against OpenAlex, and shows an honest match rate with a sortable, filterable table.
         </li>

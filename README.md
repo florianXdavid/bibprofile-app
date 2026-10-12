@@ -36,6 +36,22 @@ when clicked. Nothing is stored, no account, no tracking.
   match summary sits under "Matching details". The table uses plain labels ("matched
   by identifier", "could not verify — check it exists ↗", "unsure match", "DOI points
   to another work", "not checkable"); the CSV keeps the status codes.
+- **Try with an example / share with co-authors** (v1.5.2) — "Try with an example"
+  (next to "Choose .bib file") loads a 30-reference BCI review (`src/demo/example.bib`)
+  with the saved results of one real run (`src/demo/example-results.json`): instant,
+  no request, nothing spent. It plants a retracted paper (Chaudhary 2017, PLoS Biol),
+  a bioRxiv preprint since published, a PubMed-snapshot duplicate, a missing DOI and
+  an invented reference. Re-record with `BIBPROFILE_RECORD_EXAMPLE=1 npx vitest run
+  record-example` (shared pool, a few billable calls); `test/demo/example.test.ts`
+  guards that the snapshot matches the .bib and shows exactly those findings. After any
+  run, **Download report** saves a self-contained HTML report (no script, no external
+  resource; `src/lib/reportHtml.ts`) — the reference check, then duplicates, preprints,
+  the profile, missing citations if run, and what the cleaned .bib can add — with the
+  footer "Checked with BibProfile — bibprofile.com · runs in your browser, nothing
+  stored"; **Print / save as PDF** sends the same report to the browser's print dialog
+  from a hidden frame. A "Send to co-authors" line ("Reference list checked with
+  BibProfile: 41/43 verified, 1 retracted, 1 to double-check (details in the attached
+  report). bibprofile.com") has a Copy button. All of it is generated locally.
 - **Match & inspect** — parses your `.bib`, matches each reference against
   OpenAlex, and shows an honest match rate with a sortable, filterable table.
 - **Report** — analysis cards: recency profile, journal concentration,
@@ -508,7 +524,7 @@ test/                    # vitest unit tests (pure functions; no network except 
 
 ## Testing
 
-`npm test` runs **267 tests** (plus 1 skipped: the opt-in regression recorder). Highlights: the v1.4.1
+`npm test` runs **271 tests** (plus 2 skipped: the opt-in recorders). Highlights: the v1.4.1
 match-score signals and the hard-titles regression (offline; v1.4.5: the whole run,
 the v1.5 ground-truth fields and invariants G1–G5); the v1.4.5 identifier extraction,
 shared-DOI, same-work-duplicate and cleaned-`.bib` safety rules; parsing/DOI/title-clean/similarity
