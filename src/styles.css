@@ -314,3 +314,7 @@ details.card[open] > summary.card-title { margin-bottom: 8px; }
 .paste-box .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .pool-footer { margin-top: 36px; padding-top: 14px; border-top: 1px solid var(--line); }
 .exhausted-banner .keyctl { margin-top: 8px; }
+
+/* v1.6.1 — links to the static guide pages, under the pool footer */
+.guides-nav { margin-top: 14px; font-size: 0.8rem; line-height: 1.7; }
+.guides-nav a { color: var(--accent); }

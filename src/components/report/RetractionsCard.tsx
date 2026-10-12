@@ -59,6 +59,7 @@ export default function RetractionsCard({ rows, crossref }: { rows: ResultRow[];
 
   return (
     <CardShell
+      id="retractions"
       title="Retractions & corrections"
       intro="Retraction flags from OpenAlex (on any of its records for the work) and title prefixes, plus retraction, expression-of-concern and correction notices from Crossref, which includes Retraction Watch."
     >

@@ -34,7 +34,7 @@ export default function VerificationCard({ rows, crossref }: { rows: ResultRow[]
 
   const all = v.verified === v.total && v.total > 0
   return (
-    <section className="verify-card" aria-label="Reference check">
+    <section id="verify" className="verify-card" aria-label="Reference check">
       <p className="verify-headline">
         {all
           ? <>All <strong>{v.total}</strong> references verified to exist ✓</>

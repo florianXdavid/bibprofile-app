@@ -494,6 +494,20 @@ shows a reload fallback instead of a blank page.
   crawlers), `og-image.jpg`.
 - `public/maintenance.html` — self-contained maintenance page. Maintenance mode is
   switched on/off by a Cloudflare **Redirect Rule** in the dashboard (not in this repo).
+- **Guide pages (v1.6.1)** — one page per task people search for, as plain static HTML
+  (no React, no script, no build step; Cloudflare Pages serves `/<slug>/index.html`):
+  `/check-hallucinated-references/`, `/find-retracted-papers/`,
+  `/add-missing-dois-bibtex/`, `/preprint-published-version/`. Each has its own title,
+  description, canonical URL and `FAQPage` JSON-LD matching the visible FAQ, the
+  problem, how to do it with BibProfile, its limits, how to do it by hand, and a
+  **"See it on an example"** button: `/?example=<references|retractions|dois|preprints>`
+  loads the bundled example on the matching tab and card (`EXAMPLE_FOCUS` in
+  `src/guides.ts`; the parameter is read once and removed from the address bar). Shared
+  stylesheet `public/guides.css`. `src/guides.ts` is the list the app links from (a
+  "Guides:" line under the pool footer); the pages are also in `sitemap.xml`,
+  `llms.txt` and the static fallback in `index.html`. `test/guides.test.ts` keeps all
+  of this consistent. To add a guide: write the page, add it to `GUIDES`, the sitemap,
+  `llms.txt` and `index.html`; the test says what's missing.
 
 Production builds strip `console.*` and `debugger` (`vite.config.ts`).
 
@@ -501,7 +515,8 @@ Production builds strip `console.*` and `debugger` (`vite.config.ts`).
 
 ```
 index.html               # SEO meta + JSON-LD + no-JS fallback + notranslate
-public/                  # _headers, robots.txt, sitemap.xml, llms.txt, og-image.jpg, maintenance.html
+public/                  # _headers, robots.txt, sitemap.xml, llms.txt, og-image.jpg, maintenance.html,
+                         #   guides.css + one folder per guide page (v1.6.1)
 src/
   main.tsx               # React root, wrapped in ErrorBoundary
   config.ts              # base URL, key, pacing, thresholds, cost, select fields, gap floors/cap, input guards

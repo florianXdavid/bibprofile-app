@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- v1.6.1 guide page: static HTML, no script. Keep it accurate; the FAQ JSON-LD
+         must match the visible FAQ (test/guides.test.ts checks it). -->
+    <title>Check a .bib for hallucinated or fabricated references | BibProfile</title>
+    <meta name="description" content="Check every reference in a BibTeX file against OpenAlex and Crossref: see how many could be verified to exist, which to check by hand, and which DOIs point to another paper. Free, in your browser, no account." />
+    <link rel="canonical" href="https://bibprofile.com/check-hallucinated-references/" />
+    <meta name="robots" content="index, follow, max-snippet:-1" />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://bibprofile.com/check-hallucinated-references/" />
+    <meta property="og:title" content="Check a .bib for hallucinated or fabricated references | BibProfile" />
+    <meta property="og:description" content="Check every reference in a BibTeX file against OpenAlex and Crossref: see how many could be verified to exist, which to check by hand, and which DOIs point to another paper. Free, in your browser, no account." />
+    <meta property="og:image" content="https://bibprofile.com/og-image.jpg" />
+    <meta property="og:site_name" content="BibProfile" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="/guides.css" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "url": "https://bibprofile.com/check-hallucinated-references/",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Can BibProfile prove that a reference was made up?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No, and it never says so. It tells you which references it could verify to exist; the others need a check by hand, and most of them usually turn out to be real works that the databases miss."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What does “DOI points to another work” mean?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The DOI in your entry is valid but belongs to a different paper than the one your entry describes. Fix the DOI, or the entry, before you submit."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is my .bib file uploaded anywhere?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. The file is read in your browser and is never uploaded. To look a reference up, only its DOI, or its title, first author and year, is sent to Crossref and OpenAlex (through BibProfile’s own proxy, which stores nothing). There’s no account, no cookie and no tracking."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is it free?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, and there’s no account. Lookups by DOI are free; a title search on OpenAlex uses one credit from a free daily pool provided by OpenAlex and shared by everyone using BibProfile, so you never pay anything. If the pool runs out on a busy day, you can add your own free OpenAlex key or come back after the reset."
+      }
+    }
+  ]
+}
+    </script>
+  </head>
+  <body>
+    <header class="site"><div class="site-in"><a class="brand" href="/">BibProfile</a><span class="tagline">Check your references before the reviewers do</span></div></header>
+    <main>
+    <h1>Check a BibTeX file for hallucinated references</h1>
+    <p class="lead">Reference lists drafted or tidied with AI tools can contain references that don’t exist: a plausible title, real-sounding authors, sometimes a real DOI that leads to a different paper. Editors and reviewers now look for them, and one invented reference is enough to raise doubts about a whole manuscript.</p>
+    <p>BibProfile looks up every entry in your <code>.bib</code> and tells you how many it could verify to exist, and which ones to check by hand.</p>
+    <p class="cta"><a class="btn primary" href="/?example=references">See it on an example</a> <a class="btn" href="/">Check your own .bib</a></p>
+    <p class="muted">The example is a 30-reference review on brain–computer interfaces with one invented reference planted on purpose.</p>
+
+    <h2>How to do it with BibProfile</h2>
+    <ol>
+      <li>Open <a href="/">bibprofile.com</a> and drop your <code>.bib</code> file, or paste its entries (from Overleaf: open the <code>.bib</code>, select all, copy). Nothing to install, no account.</li>
+      <li>Each reference is looked up: by its DOI, arXiv ID or PubMed ID when it has one, otherwise by its title, first author and year in Crossref and OpenAlex, which together index hundreds of millions of works.</li>
+      <li>Read the “Is every reference real?” card at the top: “X of Y references verified to exist”, then the references that could not be verified (each with a Google Scholar search link) and the DOIs that point to another work.</li>
+    </ol>
+
+    <h2>What “could not be verified” means</h2>
+    <ul>
+      <li><strong>It is not proof that a reference is fake.</strong> Some real works are missing from OpenAlex and Crossref: books and book chapters, theses, reports, older or non-English work, and papers published in the last few weeks. Each unverified reference needs a look by hand, which the Google Scholar link makes quick.</li>
+      <li><strong>A DOI that points to another work</strong> is a stronger signal: the DOI exists but belongs to a different paper. It is typical of a reference assembled by an AI tool, and also of a plain copy-paste slip.</li>
+      <li><strong>“Verified” means the work exists</strong>, with the title and authors you wrote. It doesn’t mean the paper says what you cite it for.</li>
+      <li>Web pages, software and datasets are counted as “not checkable”, not as problems.</li>
+    </ul>
+
+    <h2>Doing it by hand</h2>
+    <ul>
+      <li>If the entry has a DOI, open <code>https://doi.org/</code> followed by the DOI and check that the title and authors match your entry.</li>
+      <li>Search the exact title, in quotes, on Google Scholar.</li>
+      <li>Check that the authors, year and journal match: invented references often pair a real author with the wrong journal or year.</li>
+    </ul>
+    <p class="muted">This works, but takes a few minutes per reference — which is why it rarely gets done for a 60-reference list.</p>
+
+    <h2>FAQ</h2>
+    <h3>Can BibProfile prove that a reference was made up?</h3>
+    <p>No, and it never says so. It tells you which references it could verify to exist; the others need a check by hand, and most of them usually turn out to be real works that the databases miss.</p>
+    <h3>What does “DOI points to another work” mean?</h3>
+    <p>The DOI in your entry is valid but belongs to a different paper than the one your entry describes. Fix the DOI, or the entry, before you submit.</p>
+    <h3>Is my .bib file uploaded anywhere?</h3>
+    <p>No. The file is read in your browser and is never uploaded. To look a reference up, only its DOI, or its title, first author and year, is sent to Crossref and OpenAlex (through BibProfile’s own proxy, which stores nothing). There’s no account, no cookie and no tracking.</p>
+    <h3>Is it free?</h3>
+    <p>Yes, and there’s no account. Lookups by DOI are free; a title search on OpenAlex uses one credit from a free daily pool provided by OpenAlex and shared by everyone using BibProfile, so you never pay anything. If the pool runs out on a busy day, you can add your own free OpenAlex key or come back after the reset.</p>
+
+    <p class="cta"><a class="btn primary" href="/?example=references">See it on an example</a> <a class="btn" href="/">Check your own .bib</a></p>
+    </main>
+    <footer>
+      <p>More guides:</p>
+      <ul>
+        <li><a href="/find-retracted-papers/">Find retracted papers in your bibliography</a></li>
+        <li><a href="/add-missing-dois-bibtex/">Add missing DOIs to a BibTeX file</a></li>
+        <li><a href="/preprint-published-version/">Replace preprints with their published versions</a></li>
+      </ul>
+      <p>BibProfile is free and runs in your browser: no account, nothing stored, no tracking. <a href="/">bibprofile.com</a></p>
+    </footer>
+  </body>
+</html>

@@ -41,6 +41,11 @@ and gives you a cleaned .bib back.
   checked against Crossref for retractions (Crossref includes the Retraction Watch database).
 - Nothing is stored on your device: no localStorage, no cookies, no account.
 - No tracking and no analytics of any kind.
+## Guides (one page per task)
+- [Check a BibTeX file for hallucinated references](https://bibprofile.com/check-hallucinated-references/): which references could be verified to exist, which to check by hand, and DOIs that point to another work.
+- [Find retracted papers in your bibliography](https://bibprofile.com/find-retracted-papers/): retractions, expressions of concern and corrections, via OpenAlex and Crossref (incl. Retraction Watch).
+- [Add missing DOIs to a BibTeX file](https://bibprofile.com/add-missing-dois-bibtex/): verified DOIs added automatically, the rest proposed for review; cite keys never change.
+- [Replace preprints with their published versions](https://bibprofile.com/preprint-published-version/): detect arXiv, bioRxiv, medRxiv, SSRN preprints and look up their published versions.
 ## Links
 - [BibProfile](https://bibprofile.com/): the app.
 - [OpenAlex](https://openalex.org): the bibliographic data source.

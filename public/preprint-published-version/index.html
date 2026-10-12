@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- v1.6.1 guide page: static HTML, no script. Keep it accurate; the FAQ JSON-LD
+         must match the visible FAQ (test/guides.test.ts checks it). -->
+    <title>Replace arXiv and bioRxiv preprints with their published versions | BibProfile</title>
+    <meta name="description" content="Detect arXiv, bioRxiv, medRxiv and SSRN preprints in a BibTeX file and look up their published journal or conference versions. Free, in your browser, no account." />
+    <link rel="canonical" href="https://bibprofile.com/preprint-published-version/" />
+    <meta name="robots" content="index, follow, max-snippet:-1" />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://bibprofile.com/preprint-published-version/" />
+    <meta property="og:title" content="Replace arXiv and bioRxiv preprints with their published versions | BibProfile" />
+    <meta property="og:description" content="Detect arXiv, bioRxiv, medRxiv and SSRN preprints in a BibTeX file and look up their published journal or conference versions. Free, in your browser, no account." />
+    <meta property="og:image" content="https://bibprofile.com/og-image.jpg" />
+    <meta property="og:site_name" content="BibProfile" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="/guides.css" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "url": "https://bibprofile.com/preprint-published-version/",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Why doesn’t BibProfile replace the preprints automatically?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Because citing the preprint is sometimes the right choice, and the published version may differ from what you read. BibProfile shows the match; you decide."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Which preprint servers does it detect?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "arXiv, bioRxiv, medRxiv, SSRN, ChemRxiv, Research Square, PsyArXiv, OSF Preprints, TechRxiv and a few others, recognised from the entry’s DOI or from the server named in the entry (journal, URL or note)."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is my .bib file uploaded anywhere?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. The file is read in your browser and is never uploaded. To look a reference up, only its DOI, or its title, first author and year, is sent to Crossref and OpenAlex (through BibProfile’s own proxy, which stores nothing). There’s no account, no cookie and no tracking."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is it free?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, and there’s no account. Lookups by DOI are free; a title search on OpenAlex uses one credit from a free daily pool provided by OpenAlex and shared by everyone using BibProfile, so you never pay anything. If the pool runs out on a busy day, you can add your own free OpenAlex key or come back after the reset."
+      }
+    }
+  ]
+}
+    </script>
+  </head>
+  <body>
+    <header class="site"><div class="site-in"><a class="brand" href="/">BibProfile</a><span class="tagline">Check your references before the reviewers do</span></div></header>
+    <main>
+    <h1>Replace preprints with their published versions</h1>
+    <p class="lead">A preprint you cited a year ago may since have been published in a journal or at a conference, often revised. Journals and reviewers generally prefer the published version, but nothing tells you when a preprint gets published.</p>
+    <p>BibProfile finds the preprints in your <code>.bib</code> and looks up their published versions.</p>
+    <p class="cta"><a class="btn primary" href="/?example=preprints">See it on an example</a> <a class="btn" href="/">Check your own .bib</a></p>
+    <p class="muted">In the example, a 2023 bioRxiv preprint is matched to its published version in Nature.</p>
+
+    <h2>How to do it with BibProfile</h2>
+    <ol>
+      <li>Open <a href="/">bibprofile.com</a> and drop your <code>.bib</code> file, or paste its entries (from Overleaf: open the <code>.bib</code>, select all, copy). Nothing to install, no account.</li>
+      <li>Open the “Preprint → published” card in the Report: it lists the entries that are preprints (arXiv, bioRxiv, medRxiv, SSRN and other servers). Detecting them is free.</li>
+      <li>Press “Check preprints”: each preprint is looked up for a published version (one credit each, from the free shared pool). The matches are listed with their journal or conference, year and DOI.</li>
+    </ol>
+
+    <h2>Suggestions, not automatic swaps</h2>
+    <ul>
+      <li><strong>Nothing is replaced for you.</strong> A preprint is often cited on purpose (a specific version, or results that changed on publication), so you update the entries you choose.</li>
+      <li><strong>A published version must really be the same work:</strong> a near-identical title, the same first author, a year no earlier than the preprint’s, and not a dataset or a software package.</li>
+      <li>A paper whose title changed a lot on publication may not be found; Google Scholar’s “All versions” link is the fallback.</li>
+    </ul>
+
+    <h2>Doing it by hand</h2>
+    <ul>
+      <li>On arXiv, the abstract page shows a “Journal reference” and a related DOI when the authors added them (many don’t).</li>
+      <li>On bioRxiv and medRxiv, the preprint page says “Now published in …” with the journal and DOI.</li>
+      <li>On Google Scholar, “All N versions” under a result groups the preprint with its published versions.</li>
+    </ul>
+    <p class="muted">Each check takes a minute; the hard part is remembering to do it for every preprint in the list.</p>
+
+    <h2>FAQ</h2>
+    <h3>Why doesn’t BibProfile replace the preprints automatically?</h3>
+    <p>Because citing the preprint is sometimes the right choice, and the published version may differ from what you read. BibProfile shows the match; you decide.</p>
+    <h3>Which preprint servers does it detect?</h3>
+    <p>arXiv, bioRxiv, medRxiv, SSRN, ChemRxiv, Research Square, PsyArXiv, OSF Preprints, TechRxiv and a few others, recognised from the entry’s DOI or from the server named in the entry (journal, URL or note).</p>
+    <h3>Is my .bib file uploaded anywhere?</h3>
+    <p>No. The file is read in your browser and is never uploaded. To look a reference up, only its DOI, or its title, first author and year, is sent to Crossref and OpenAlex (through BibProfile’s own proxy, which stores nothing). There’s no account, no cookie and no tracking.</p>
+    <h3>Is it free?</h3>
+    <p>Yes, and there’s no account. Lookups by DOI are free; a title search on OpenAlex uses one credit from a free daily pool provided by OpenAlex and shared by everyone using BibProfile, so you never pay anything. If the pool runs out on a busy day, you can add your own free OpenAlex key or come back after the reset.</p>
+
+    <p class="cta"><a class="btn primary" href="/?example=preprints">See it on an example</a> <a class="btn" href="/">Check your own .bib</a></p>
+    </main>
+    <footer>
+      <p>More guides:</p>
+      <ul>
+        <li><a href="/check-hallucinated-references/">Check a BibTeX file for hallucinated references</a></li>
+        <li><a href="/find-retracted-papers/">Find retracted papers in your bibliography</a></li>
+        <li><a href="/add-missing-dois-bibtex/">Add missing DOIs to a BibTeX file</a></li>
+      </ul>
+      <p>BibProfile is free and runs in your browser: no account, nothing stored, no tracking. <a href="/">bibprofile.com</a></p>
+    </footer>
+  </body>
+</html>

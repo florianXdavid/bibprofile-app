@@ -23,7 +23,7 @@ export default function PreprintsCard({ rows, preprints, onResolve }: Props) {
     : []
 
   return (
-    <details className="card" open>
+    <details id="preprints" className="card" open>
       <summary className="card-title">Preprint → published</summary>
       <p className="card-intro">
         Preprints in your list (arXiv, bioRxiv, medRxiv, SSRN, …) and their published versions.

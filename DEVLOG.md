@@ -921,6 +921,36 @@ Source: an audit of 6 real `.bib` files (587 entries) plus a probe of the cleane
   to the version history; privacy copy mentions arXiv / PubMed IDs.
 - Tests: 216 → 252 (+1 skipped).
 
+## v1.6.1 — one page per problem researchers search for (Oct 2026; part of v1.6)
+
+v1.6 = "be findable when someone searches for the problem". People search for their
+problem ("find retracted papers in my bibliography"), not for a tool. Discussed first
+(user's choices): 4 pages to start (self-citation and duplicates later, if Search
+Console shows impressions), no screenshots, an example deep-link instead.
+
+- **4 static pages** (`public/<slug>/index.html`, shared `public/guides.css`): no
+  React, no script, no prerender plugin, no dependency — Cloudflare Pages serves them
+  as they are, so crawlers get the real content. Hallucinated references, retracted
+  papers, missing DOIs, preprint → published. Each: the problem, how to do it with
+  BibProfile, honest limits ("could not be verified" is not proof of fabrication;
+  nothing is replaced automatically), how to do it by hand (doi.org, Google Scholar,
+  Zotero, retractiondatabase.org, arXiv's journal reference, bioRxiv's "Now published
+  in"), a FAQ. Written to be useful on its own, not a funnel (doorway-page risk).
+- **"See it on an example"**: `/?example=<focus>` loads the bundled example and opens
+  the matching tab and card (`EXAMPLE_FOCUS`, `src/guides.ts`); read once, then removed
+  from the address bar with `history.replaceState`. Anchors: `#verify`,
+  `#retractions` (CardShell `id`), `#preprints`, `#cleaned`.
+- **Links in:** a "Guides:" line under the pool footer, a Guides list in index.html's
+  static fallback, `sitemap.xml` (lastmod refreshed), `llms.txt`.
+- **JSON-LD:** `FAQPage` only, kept equal to the visible FAQ by the test (Google no
+  longer shows HowTo rich results, and FAQ ones only for gov/health sites — the
+  markup is for other engines; the visible text is what counts).
+- `test/guides.test.ts`: each page exists, has its own title/description/canonical,
+  one h1, no executable script, JSON-LD = visible FAQ, an example link to a known
+  focus, only internal links that exist, and is listed in the sitemap, llms.txt and
+  index.html.
+- Tests: 275 → 304 (+2 skipped).
+
 ## v1.5.4 — credits instead of dollars (Oct 2026; part of v1.5)
 
 The pool meter read "$0.22 of today's $1.00 budget", which makes a first-time

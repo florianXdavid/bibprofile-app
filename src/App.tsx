@@ -31,6 +31,7 @@ import { computeRetractions } from './lib/stats/retractions'
 import { coauthorMessage, computeVerification } from './lib/stats/verification'
 import { buildReportHtml } from './lib/reportHtml'
 import { EXAMPLE_FILE_NAME, hydrateExample, type ExampleSnapshot } from './demo/exampleData'
+import { EXAMPLE_FOCUS, GUIDES, isExampleFocus } from './guides'
 import type { MatchSummary, Progress as ProgressState, ResultRow } from './types'
 
 type Phase = 'idle' | 'working' | 'done'
@@ -104,6 +105,25 @@ export default function App() {
   // whenever the shared-via-Worker path is active. One-shot on mount; never a timer.
   useEffect(() => { void refreshUsageFor(null) }, [])
 
+  // v1.6.1 — a guide page's "See it on an example" link: /?example=<focus> loads the
+  // example on the matching tab and card. Read once; the parameter is then removed from
+  // the address bar (nothing is stored). Any other value just loads the example.
+  const [scrollTo, setScrollTo] = useState<string | null>(null)
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('example')
+    if (q === null) return
+    window.history.replaceState(null, '', window.location.pathname + window.location.hash)
+    void loadExample(q)
+  }, [])
+  useEffect(() => {
+    if (!scrollTo) return
+    const id = requestAnimationFrame(() => {
+      document.getElementById(scrollTo)?.scrollIntoView({ block: 'start' })
+      setScrollTo(null)
+    })
+    return () => cancelAnimationFrame(id)
+  }, [scrollTo])
+
   // Surface an OpenAlex auth rejection. With a user key we say so and offer Clear
   // (never silently fall back to the shared key); on the shared path it's ours.
   function reportAuthError() {
@@ -126,7 +146,7 @@ export default function App() {
   // v1.5.2 — "Try with an example": the bundled example .bib and the results of one
   // real run over it (src/demo). No request is made and nothing is spent; every
   // billable result (preprints, missing citations) is already in the snapshot.
-  async function loadExample() {
+  async function loadExample(focus: string | null = null) {
     setNotice('')
     try {
       const [bib, snap] = await Promise.all([import('./demo/example.bib?raw'), import('./demo/example-results.json')])
@@ -146,7 +166,9 @@ export default function App() {
       setExhausted(null)
       setProgress({ stage: 'done', label: 'Example loaded (precomputed — no lookups made)', done: ex.summary.total, total: ex.summary.total, searchCalls: 0 })
       setPhase('done')
-      setView('report')
+      const f = isExampleFocus(focus) ? EXAMPLE_FOCUS[focus] : null
+      setView(f?.view ?? 'report')
+      setScrollTo(f?.anchor ?? null)
       setUploadOpen(false)
     } catch {
       setNotice('Could not load the example.')
@@ -391,7 +413,7 @@ export default function App() {
       </p>
 
       {uploadOpen ? (
-        <FileDrop onText={run} onExample={loadExample} disabled={busy} />
+        <FileDrop onText={run} onExample={() => void loadExample()} disabled={busy} />
       ) : (
         <p className="upload-collapsed muted">
           <button type="button" className="key-link" onClick={() => setUploadOpen(true)}>↑ Check another .bib (upload or paste)</button>
@@ -521,6 +543,13 @@ export default function App() {
           <KeyControl active={!!userKey} error={keyError} onSet={applyUserKey} onClear={clearUserKey} />
         )}
       </section>
+      {/* v1.6.1 — the guide pages (static HTML in public/), so they aren't orphans. */}
+      <nav className="guides-nav" aria-label="Guides">
+        <span className="muted">Guides:</span>{' '}
+        {GUIDES.map((g, i) => (
+          <span key={g.slug}>{i > 0 && ' · '}<a href={`/${g.slug}/`}>{g.label}</a></span>
+        ))}
+      </nav>
     </div>
   )
 }

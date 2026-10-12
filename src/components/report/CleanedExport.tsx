@@ -63,7 +63,7 @@ export default function CleanedExport({ rows, sourceText, fileName }: Props) {
   }
 
   return (
-    <div className="cleaned">
+    <div id="cleaned" className="cleaned">
       <div className="card-note warn" style={{ marginTop: 4 }}>
         <strong>Suggested fixes — review before use.</strong> This adds missing fields from OpenAlex;
         it never changes cite keys, drops entries, or edits text you already wrote. Only verified fills

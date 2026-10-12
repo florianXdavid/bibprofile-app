@@ -1,0 +1,29 @@
+/* v1.6.1 — shared stylesheet for the static guide pages (public/<slug>/index.html).
+   Same palette and system font as the app (src/styles.css); no script, no web font. */
+:root { --fg: #1a1a1a; --muted: #666; --line: #ddd; --bg-alt: #f6f7f8; --accent: #2b6cb0; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--fg); line-height: 1.55; background: #fff; }
+.site { border-bottom: 1px solid var(--line); }
+.site-in, main, footer { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+.site-in { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding-top: 14px; padding-bottom: 12px; }
+.brand { font-weight: 700; font-size: 1.1rem; color: var(--fg); text-decoration: none; }
+.tagline { color: var(--muted); font-size: 0.9rem; }
+main { padding-top: 22px; padding-bottom: 24px; }
+h1 { font-size: 1.65rem; line-height: 1.25; margin: 0 0 12px; }
+h2 { font-size: 1.15rem; margin: 30px 0 8px; }
+h3 { font-size: 1rem; margin: 18px 0 4px; }
+p, li { font-size: 1rem; }
+.lead { font-size: 1.08rem; }
+ol, ul { padding-left: 1.3em; }
+li { margin: 4px 0; }
+a { color: var(--accent); }
+code { font: 0.9em ui-monospace, Menlo, Consolas, monospace; background: var(--bg-alt); padding: 0 4px; border-radius: 4px; }
+.cta { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+.btn { display: inline-block; padding: 9px 16px; border: 1px solid var(--line); border-radius: 6px; color: var(--fg); text-decoration: none; background: #fff; }
+.btn:hover { background: var(--bg-alt); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { background: #245a93; }
+.note { background: var(--bg-alt); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 4px; }
+.muted { color: var(--muted); }
+footer { border-top: 1px solid var(--line); padding-top: 14px; padding-bottom: 40px; font-size: 0.9rem; color: var(--muted); }
+footer ul { padding-left: 1.1em; }

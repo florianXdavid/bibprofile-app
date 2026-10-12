@@ -12,6 +12,7 @@ interface Props {
   basis?: Stat // renders the standard denominator footer
   collapsible?: boolean
   defaultOpen?: boolean
+  id?: string // v1.6.1 — anchor for a guide page's example deep-link
   children: ReactNode
 }
 
@@ -25,17 +26,17 @@ function Body({ intro, basis, children }: Pick<Props, 'intro' | 'basis' | 'child
   )
 }
 
-export default function CardShell({ title, intro, basis, collapsible, defaultOpen = false, children }: Props) {
+export default function CardShell({ title, intro, basis, collapsible, defaultOpen = false, id, children }: Props) {
   if (collapsible) {
     return (
-      <details className="card" open={defaultOpen}>
+      <details id={id} className="card" open={defaultOpen}>
         <summary className="card-title">{title}</summary>
         <Body intro={intro} basis={basis}>{children}</Body>
       </details>
     )
   }
   return (
-    <section className="card">
+    <section id={id} className="card">
       <h3 className="card-title">{title}</h3>
       <Body intro={intro} basis={basis}>{children}</Body>
     </section>
