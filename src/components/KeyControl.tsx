@@ -52,7 +52,7 @@ export default function KeyControl({ active, error, onSet, onClear }: Props) {
   return (
     <div className="keyctl">
       {!open ? (
-        <button type="button" className="primary" onClick={() => setOpen(true)}>
+        <button type="button" onClick={() => setOpen(true)}>
           Use your own free OpenAlex key
         </button>
       ) : (

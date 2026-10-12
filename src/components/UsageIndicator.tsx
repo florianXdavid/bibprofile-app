@@ -37,7 +37,7 @@ export default function UsageIndicator({ state, onRetry }: { state: UsageState; 
     return (
       <p className="usage shared muted">
         Using the shared pool — its usage appears here after your first lookup.
-        Or use your own key (above) for your own budget. <PoolHelp />
+        Or use your own key (below) for your own budget. <PoolHelp />
       </p>
     )
   }

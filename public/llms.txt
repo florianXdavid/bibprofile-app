@@ -3,7 +3,7 @@
 > retracted papers and outdated preprints in a BibTeX file, and get a cleaned .bib.
 > In your browser, no account.
 BibProfile (https://bibprofile.com/) is a free, client-side web app for researchers,
-academics, and PhD students preparing manuscripts. You upload a BibTeX (.bib) file;
+academics, and PhD students preparing manuscripts. You upload a BibTeX (.bib) file or paste its entries;
 it matches each reference against OpenAlex, describes the shape of your bibliography,
 and gives you a cleaned .bib back.
 ## What it does

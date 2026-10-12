@@ -6,9 +6,28 @@ interface Props {
   disabled: boolean
 }
 
+// v1.5.3 — does pasted text look like BibTeX at all (at least one "@type{" or "@type(")?
+// The parser does the real work; this only catches a pasted reference list, a DOI or
+// prose before anything runs.
+export function looksLikeBibtex(text: string): boolean {
+  return /@\s*[A-Za-z]+\s*[{(]/.test(text)
+}
+
 export default function FileDrop({ onText, onExample, disabled }: Props) {
   const [drag, setDrag] = useState(false)
+  const [pasted, setPasted] = useState('')
+  const [pasteError, setPasteError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // v1.5.3 — pasted BibTeX (e.g. copied from Overleaf's .bib) takes the same path as a file.
+  function checkPasted() {
+    if (!looksLikeBibtex(pasted)) {
+      setPasteError('That doesn’t look like BibTeX. Paste the entries themselves — each starts with @article{, @book{, @inproceedings{ …')
+      return
+    }
+    setPasteError('')
+    onText(pasted, 'pasted.bib')
+  }
 
   // The ONE file-handling path — drag-drop and the picker both funnel here, so
   // the size guard downstream in App.run() has a single home (W3.2 Item 4).
@@ -29,6 +48,7 @@ export default function FileDrop({ onText, onExample, disabled }: Props) {
   }
 
   return (
+    <div className="intake">
     <div
       className={`dropzone${drag ? ' drag' : ''}`}
       onDragOver={e => { e.preventDefault(); if (!disabled) setDrag(true) }}
@@ -65,6 +85,20 @@ export default function FileDrop({ onText, onExample, disabled }: Props) {
         />
       </div>
       <div className="hint">Everything runs in your browser. References are looked up in Crossref and OpenAlex; DOIs are also checked against Crossref for retractions.</div>
+    </div>
+    <div className="paste-box">
+      <label htmlFor="bib-paste">…or paste BibTeX <span className="hint">(e.g. from Overleaf: open your .bib, select all, copy)</span></label>
+      <textarea
+        id="bib-paste" value={pasted} spellCheck={false} disabled={disabled}
+        placeholder={'@article{key,\n  title = {…},\n  author = {…},\n  year = {2024},\n}'}
+        onChange={e => { setPasted(e.target.value); if (pasteError) setPasteError('') }}
+      />
+      {pasteError && <p className="err-text" role="alert" style={{ margin: 0 }}>{pasteError}</p>}
+      <div className="actions">
+        <button type="button" className="primary" disabled={disabled || !pasted.trim()} onClick={checkPasted}>Check pasted BibTeX</button>
+        {pasted && <button type="button" className="key-link" onClick={() => { setPasted(''); setPasteError('') }}>Clear</button>}
+      </div>
+    </div>
     </div>
   )
 }

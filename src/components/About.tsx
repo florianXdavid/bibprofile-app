@@ -8,8 +8,8 @@ export default function About() {
     <div className="about">
       <h2>BibProfile</h2>
       <p>
-        <strong>Check your references before the reviewers do.</strong> Upload your BibTeX reference
-        list to see how many references could be verified to exist, which ones to check by hand, and
+        <strong>Check your references before the reviewers do.</strong> Upload or paste your BibTeX
+        reference list to see how many references could be verified to exist, which ones to check by hand, and
         which papers were retracted. Then see the shape of your bibliography — its recency, venues,
         open-access mix and duplicates — the citations you may have missed, and get a cleaned copy
         back. Run it right before you submit a paper to a journal or conference.

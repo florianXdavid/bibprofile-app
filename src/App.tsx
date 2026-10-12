@@ -194,7 +194,7 @@ export default function App() {
     }
 
     if (parsed.entries.length === 0 && parsed.unparseable.length === 0) {
-      setNotice('No BibTeX entries found in that file.')
+      setNotice(name === 'pasted.bib' ? 'No BibTeX entries found in the pasted text.' : 'No BibTeX entries found in that file.')
       setPhase('idle')
       return
     }
@@ -394,20 +394,18 @@ export default function App() {
         <FileDrop onText={run} onExample={loadExample} disabled={busy} />
       ) : (
         <p className="upload-collapsed muted">
-          <button type="button" className="key-link" onClick={() => setUploadOpen(true)}>↑ Upload a different .bib file</button>
+          <button type="button" className="key-link" onClick={() => setUploadOpen(true)}>↑ Check another .bib (upload or paste)</button>
           {fileName && <> · current file: <strong>{fileName}</strong></>}
         </p>
       )}
-
-      <KeyControl active={!!userKey} error={keyError} onSet={applyUserKey} onClear={clearUserKey} />
-      <UsageIndicator state={usage} onRetry={() => void refreshUsageFor(userKey)} />
 
       {exhausted && (
         <div className="card-note warn exhausted-banner">
           {exhausted.kind === 'shared' ? (
             <>
               The shared daily pool is used up (resets {formatResetClockUtc(exhausted.resetsAt) || 'tomorrow'}).
-              Enter your own free OpenAlex key above to finish now — your already-matched references are kept.
+              Enter your own free OpenAlex key here to finish now — your already-matched references are kept.
+              {!userKey && <KeyControl active={false} error={keyError} onSet={applyUserKey} onClear={clearUserKey} />}
               {userKey && rows.some(r => r.status === 'pending') && (
                 <>
                   {' '}
@@ -513,6 +511,16 @@ export default function App() {
         )
         : tabPlaceholder('Your cleaned .bib'))}
       {view === 'table' && (hasResults ? <ResultsTable rows={rows} crossref={crossref} /> : tabPlaceholder('The match table'))}
+
+      {/* v1.5.3 — the pool meter and the own-key option live at the bottom: at the top they
+          read as warnings to a first-time visitor. When the shared pool runs out, the key
+          field also appears in the banner above, where it's needed. */}
+      <section className="pool-footer" aria-label="Shared pool and your own OpenAlex key">
+        <UsageIndicator state={usage} onRetry={() => void refreshUsageFor(userKey)} />
+        {!(exhausted?.kind === 'shared' && !userKey) && (
+          <KeyControl active={!!userKey} error={keyError} onSet={applyUserKey} onClear={clearUserKey} />
+        )}
+      </section>
     </div>
   )
 }

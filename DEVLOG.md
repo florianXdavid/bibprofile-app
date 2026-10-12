@@ -921,6 +921,25 @@ Source: an audit of 6 real `.bib` files (587 entries) plus a probe of the cleane
   to the version history; privacy copy mentions arXiv / PubMed IDs.
 - Tests: 216 → 252 (+1 skipped).
 
+## v1.5.3 — paste BibTeX, a calmer first screen, report fixes (Oct 2026; part of v1.5)
+
+- **Paste BibTeX** (Overleaf users have no file): a text area beside the drop zone,
+  "Check pasted BibTeX" sends it through the same `onText` → `parseBib` path as a
+  file (name `pasted.bib`). Text with no `@type{` / `@type(` entry is refused with a
+  message (`looksLikeBibtex`, `test/fileDrop.test.ts`).
+- **First screen:** the pool meter and "Use your own free OpenAlex key" moved to a
+  footer below the tabs (they read as warnings to a first-time visitor); the key
+  button is no longer primary-styled. When the shared pool runs out, the key field
+  appears inside the exhaustion banner.
+- **Report fixes (v1.5.2 feedback):** every section is always listed; a section that
+  needs a button says "Not run yet — press “Find missing foundations” in BibProfile’s
+  Report tab, then download the report again" (`runFirst`). Print uses 9.5 pt type on
+  A4 with narrow margins (the example report: 1–2 pages). Links print as plain text —
+  Microsoft Print to PDF drops them — so DOIs are printed in full and the Google
+  Scholar links are hidden in print. A cite key used twice reads "key (copy #1) = key
+  (copy #2)"; co-citation candidates without a work record are skipped.
+- Tests: 271 → 273 (+2 skipped).
+
 ## v1.5.2 — "Try with an example" + a report people forward (Oct 2026; part of v1.5)
 
 - **Example** (user's choice: 30 coherent biomedical/neuro references): a short review

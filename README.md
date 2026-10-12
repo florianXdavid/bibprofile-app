@@ -52,6 +52,13 @@ when clicked. Nothing is stored, no account, no tracking.
   from a hidden frame. A "Send to co-authors" line ("Reference list checked with
   BibProfile: 41/43 verified, 1 retracted, 1 to double-check (details in the attached
   report). bibprofile.com") has a Copy button. All of it is generated locally.
+  v1.5.3: the report always lists every section — one that needs a button says which
+  to press ("Not run yet — press “Find adjacent work” …"); print uses small type on A4,
+  and links print as plain text (DOIs in full, Scholar links hidden) because some PDF
+  printers drop links.
+- **Paste BibTeX** (v1.5.3) — beside the drop zone, for Overleaf users: paste the
+  entries and press "Check pasted BibTeX"; same parser as a file. Text without any
+  `@type{…` entry gets a clear message instead of a run.
 - **Match & inspect** — parses your `.bib`, matches each reference against
   OpenAlex, and shows an honest match rate with a sortable, filterable table.
 - **Report** — analysis cards: recency profile, journal concentration,
@@ -122,7 +129,9 @@ decides the active credential; the fetch layer consumes it):
 The **shared, no-account pool is the default** so anyone can just upload a `.bib`.
 If it runs dry, a user can paste their **own free OpenAlex key**
 (`openalex.org/settings/api`) to run on their own budget. That key is held in
-memory only and is never persisted or sent anywhere but OpenAlex.
+memory only and is never persisted or sent anywhere but OpenAlex. Since v1.5.3 the
+pool meter and the key control sit in a footer below the tabs; when the pool runs
+out, the key field appears in the exhaustion banner.
 
 The user-key path deliberately uses a **separate** constant (`OPENALEX_DIRECT_URL`)
 from the shared `OPENALEX_BASE_URL`: now that the shared path routes through the
