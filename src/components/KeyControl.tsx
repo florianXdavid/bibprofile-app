@@ -59,7 +59,7 @@ export default function KeyControl({ active, error, onSet, onClear }: Props) {
         <form className="key-form" onSubmit={submit}>
           <p className="key-why">
             BibProfile runs on a shared OpenAlex pool. If it’s busy, or you have a lot to process, use
-            your own free key to run on your own budget. Get one at{' '}
+            your own free key to get your own daily credits. Get one at{' '}
             <a href="https://openalex.org/settings/api" target="_blank" rel="noreferrer">openalex.org/settings/api</a>,
             then paste it below.
           </p>

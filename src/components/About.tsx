@@ -71,10 +71,12 @@ export default function About() {
       <p>
         BibProfile uses a shared pool of OpenAlex credits, so you can just upload a <code>.bib</code>
         and go — no account, no key needed. That pool is limited, though, and can run dry on a busy
-        day. If that happens, come back tomorrow — or use your own OpenAlex key, for free: get one at{' '}
+        day. It’s free for you either way: lookups by DOI or another identifier cost nothing, and a
+        title search on OpenAlex uses 1 credit. If the pool runs out, come back tomorrow — or use your
+        own OpenAlex key, for free: get one at{' '}
         <a href="https://openalex.org/settings/api" target="_blank" rel="noreferrer">openalex.org/settings/api</a>
-        {' '}and click the <strong>“Use your own OpenAlex key”</strong> button to run on your own
-        budget. Your key stays in your browser, is never stored, and is cleared when you reload.
+        {' '}and click <strong>“Use your own free OpenAlex key”</strong> at the bottom of the page to get
+        your own daily credits. Your key stays in your browser, is never stored, and is cleared when you reload.
       </p>
 
       <h3>Credits</h3>

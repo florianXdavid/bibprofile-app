@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import {
+  credits,
   formatResetClockUtc,
   formatResetIn,
   parseRateLimit,
+  toCredits,
   usagePercent,
   usd,
 } from '../src/lib/rateLimit'
@@ -59,5 +61,19 @@ describe('formatting helpers', () => {
     expect(formatResetIn('2026-01-01T18:30:00Z', now)).toBe('in 6h 30m')
     expect(formatResetIn(null, now)).toBe('')
     expect(formatResetClockUtc(null)).toBe('')
+  })
+})
+
+// v1.5.4 — the UI shows credits, never dollars.
+describe('credits (v1.5.4)', () => {
+  it('converts the USD payload to credits (1 credit = one billable call)', () => {
+    expect(toCredits(1)).toBe(1000)
+    expect(toCredits(0.22)).toBe(220)
+    expect(toCredits(0.0004)).toBe(0)
+  })
+  it('formats with a thousands separator and singular/plural', () => {
+    expect(credits(1)).toBe('1 credit')
+    expect(credits(780)).toBe('780 credits')
+    expect(credits(1000)).toBe('1,000 credits')
   })
 })

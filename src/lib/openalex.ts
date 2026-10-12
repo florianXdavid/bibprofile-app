@@ -38,7 +38,7 @@ export class OpenAlexAuthError extends Error {
 export class OpenAlexBudgetError extends Error {
   resetsAt: string | null
   constructor(resetsAt: string | null = null) {
-    super('OpenAlex daily budget exhausted')
+    super('OpenAlex daily credits used up')
     this.name = 'OpenAlexBudgetError'
     this.resetsAt = resetsAt
   }

@@ -403,7 +403,7 @@ export default function App() {
         <div className="card-note warn exhausted-banner">
           {exhausted.kind === 'shared' ? (
             <>
-              The shared daily pool is used up (resets {formatResetClockUtc(exhausted.resetsAt) || 'tomorrow'}).
+              Today’s free shared credits are used up (they reset {formatResetClockUtc(exhausted.resetsAt) ? `at ${formatResetClockUtc(exhausted.resetsAt)}` : 'tomorrow'}).
               Enter your own free OpenAlex key here to finish now — your already-matched references are kept.
               {!userKey && <KeyControl active={false} error={keyError} onSet={applyUserKey} onClear={clearUserKey} />}
               {userKey && rows.some(r => r.status === 'pending') && (
@@ -417,8 +417,8 @@ export default function App() {
             </>
           ) : (
             <>
-              Your OpenAlex key’s daily budget is used up (resets {formatResetClockUtc(exhausted.resetsAt) || 'tomorrow'}).
-              It refreshes then, or add a prepaid balance on OpenAlex.
+              Your OpenAlex key’s credits for today are used up (they reset {formatResetClockUtc(exhausted.resetsAt) ? `at ${formatResetClockUtc(exhausted.resetsAt)}` : 'tomorrow'}).
+              Wait for the reset, or add a prepaid balance on OpenAlex.
             </>
           )}
         </div>

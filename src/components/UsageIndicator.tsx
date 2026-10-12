@@ -2,21 +2,24 @@
 // props; App owns the fetch (it owns the active credential + run lifecycle) and
 // triggers it on key-activation and after each run — never on a timer.
 //
-// Wording is descriptive, never scarcity theatre: "you've used 18% of today's
-// budget", not "⚠ only 82% left!".
+// Wording is descriptive, never scarcity theatre: "780 of 1,000 left", not
+// "⚠ only 22% left!". Counted in credits (v1.5.4), never in dollars.
 
 import type { RateLimitUsage } from '../lib/rateLimit'
-import { formatResetIn, usagePercent, usd } from '../lib/rateLimit'
+import { credits, formatResetIn, toCredits, usagePercent } from '../lib/rateLimit'
 
-// 1b (v1.3) — collapsed "?" explainer for the shared pool. Native <details>, no
-// state and no dependency; expands one sentence inline.
-function PoolHelp() {
+// v1.5.4 — "What are credits?" explainer (was a bare "?", v1.3). Native <details>,
+// no state and no dependency. Credits, never dollars: the first question a visitor
+// must not have to ask is "am I paying for this?".
+function PoolHelp({ total }: { total?: number }) {
   return (
     <details className="pool-help">
-      <summary title="What is the shared pool?">?</summary>
+      <summary>What are credits?</summary>
       <span className="pool-help-text">
-        This is a free daily budget shared by everyone using BibProfile. If it runs low, add your own
-        free OpenAlex key to use your own budget.
+        BibProfile is free — you never pay anything. Lookups by DOI or another identifier are free, and
+        so are title searches through Crossref; a title search on OpenAlex uses 1 credit. Everyone shares{' '}
+        {total ? `a free pool of ${credits(total)} a day` : 'a free daily pool of credits provided by OpenAlex'}. If it runs
+        out, use your own free OpenAlex key (just below) or wait for the reset.
       </span>
     </details>
   )
@@ -33,17 +36,18 @@ export default function UsageIndicator({ state, onRetry }: { state: UsageState; 
     // Deferral line — shown before the first lookup, or when the shared path is
     // running direct-to-OpenAlex (local/rollback) where we can't read pooled usage.
     // The live shared bar (below) is a POOLED number across everyone, so it's worded
-    // "the shared pool has used …", never "your" usage.
+    // "free shared credits today", never "your" usage.
     return (
-      <p className="usage shared muted">
-        Using the shared pool — its usage appears here after your first lookup.
-        Or use your own key (below) for your own budget. <PoolHelp />
-      </p>
+      // A <div>, not a <p>: <details> may not sit inside a paragraph.
+      <div className="usage shared muted">
+        Using the free shared pool — today’s credits appear here after your first lookup.{' '}
+        <PoolHelp />
+      </div>
     )
   }
 
   if (state.status === 'loading') {
-    return <p className="usage muted">Checking your OpenAlex usage…</p>
+    return <p className="usage muted">Checking today’s credits…</p>
   }
 
   if (state.status === 'unavailable') {
@@ -56,29 +60,27 @@ export default function UsageIndicator({ state, onRetry }: { state: UsageState; 
   }
 
   const u = state.usage
-  const pct = usagePercent(u)
+  const leftPct = 100 - usagePercent(u)
+  const total = toCredits(u.budgetUsd)
+  const left = Math.min(total, toCredits(u.remainingUsd))
   const reset = formatResetIn(u.resetsAt)
   const shared = state.scope === 'shared'
-  const label = shared
-    ? `${pct}% of the shared daily OpenAlex budget used`
-    : `${pct}% of your daily OpenAlex budget used`
+  const label = `${left.toLocaleString('en-US')} of ${credits(total)} left today`
   return (
     <div className="usage ok">
+      {/* The bar shows what's LEFT (v1.5.4), not what's used. */}
       <div className="usage-bar" role="img" aria-label={label}>
-        <span className={pct >= 90 ? 'over' : ''} style={{ width: `${pct}%` }} />
+        <span className={leftPct <= 10 ? 'over' : ''} style={{ width: `${leftPct}%` }} />
       </div>
-      <p className="usage-text">
-        {shared ? (
-          <>The shared pool has used {usd(u.usedUsd)} of today’s {usd(u.budgetUsd)} budget ({pct}%).</>
-        ) : (
-          <>You’ve used {usd(u.usedUsd)} of your {usd(u.budgetUsd)} daily budget ({pct}%).</>
-        )}
-        {reset && <> Resets {reset}.</>}{' '}
+      <div className="usage-text">
+        {shared ? 'Free shared credits today' : 'Your OpenAlex key’s credits today'}:
+        {' '}<strong>{left.toLocaleString('en-US')}</strong> of {total.toLocaleString('en-US')} left
+        {reset && <> · resets {reset}</>}.{' '}
         <button type="button" className="key-link" onClick={onRetry}>Refresh</button>
-        {shared && <> <PoolHelp /></>}
-      </p>
+        {shared && <> · <PoolHelp total={total} /></>}
+      </div>
       {u.prepaidUsd != null && u.prepaidUsd > 0 && (
-        <p className="usage-prepaid muted">Plus a prepaid balance of {usd(u.prepaidUsd)}.</p>
+        <p className="usage-prepaid muted">Plus {credits(toCredits(u.prepaidUsd))} prepaid.</p>
       )}
     </div>
   )

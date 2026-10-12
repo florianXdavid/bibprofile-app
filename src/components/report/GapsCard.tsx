@@ -58,7 +58,7 @@ export default function GapsCard({ rows, co, fw, onRunCoCitation, onRunForward }
     >
       {/* Co-citation — the safe default */}
       <div className="gap-section">
-        <p className="gap-section-title">Missing foundations <span className="muted">— co-citation, ~1 billable call</span></p>
+        <p className="gap-section-title">Missing foundations <span className="muted">— co-citation, ~1 credit</span></p>
         <p className="card-note">
           Co-citation only finds work your references <em>could already</em> cite, so it surfaces
           missing <strong>foundations</strong>, never recent work.
@@ -72,7 +72,7 @@ export default function GapsCard({ rows, co, fw, onRunCoCitation, onRunForward }
           <>
             <p className="cost">
               Pooled {co.result.matchedWorks} matched {plural(co.result.matchedWorks, 'work')} ·
-              {' '}{co.result.billableCalls} billable call (~${co.result.costUsd.toFixed(3)}).
+              {' '}used {co.result.billableCalls} {plural(co.result.billableCalls, 'credit')}.
             </p>
             <CandidateList candidates={co.result.candidates} denom={co.result.matchedWorks} unit="reference" verb="cited by" />
           </>
@@ -81,7 +81,7 @@ export default function GapsCard({ rows, co, fw, onRunCoCitation, onRunForward }
 
       {/* Forward-citation — gated, cost shown up front */}
       <div className="gap-section">
-        <p className="gap-section-title">Adjacent work <span className="muted">— forward-citation, {estimate.calls} billable {plural(estimate.calls, 'call')}</span></p>
+        <p className="gap-section-title">Adjacent work <span className="muted">— forward-citation, {estimate.calls} {plural(estimate.calls, 'credit')}</span></p>
         <p className="card-note">
           Papers that cite several of the references you already have (any year; their year is shown) —
           useful for catching later work adjacent to your list.
@@ -93,7 +93,7 @@ export default function GapsCard({ rows, co, fw, onRunCoCitation, onRunForward }
         {fw.status === 'error' && <p className="err-text">Couldn’t complete: {fw.error}</p>}
         {fw.status === 'done' && (
           <>
-            <p className="cost">{fw.result.billableCalls} billable {plural(fw.result.billableCalls, 'call')} (~${fw.result.costUsd.toFixed(3)}).</p>
+            <p className="cost">Used {fw.result.billableCalls} {plural(fw.result.billableCalls, 'credit')}.</p>
             <CandidateList candidates={fw.result.candidates} denom={fw.result.seedCount} unit="reference" verb="cites" />
           </>
         )}

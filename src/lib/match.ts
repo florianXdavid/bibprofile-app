@@ -222,7 +222,7 @@ export async function resolveByTitle(
     }
   }
 
-  onStep(`Title search (billable) — ${entry.citeKey}`)
+  onStep(`Title search (1 credit) — ${entry.citeKey}`)
   const res = await src.openalexSearch(q)
   if (res.kind === 'error') return { decision: null, via: 'openalex-search', billable: true, error: res.error }
   return { decision: chooseTitleMatch(entry, res.candidates, missingDoi), via: 'openalex-search', billable: true, error: null }

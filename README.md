@@ -128,7 +128,7 @@ decides the active credential; the fetch layer consumes it):
 
 The **shared, no-account pool is the default** so anyone can just upload a `.bib`.
 If it runs dry, a user can paste their **own free OpenAlex key**
-(`openalex.org/settings/api`) to run on their own budget. That key is held in
+(`openalex.org/settings/api`) to get their own daily credits. That key is held in
 memory only and is never persisted or sent anywhere but OpenAlex. Since v1.5.3 the
 pool meter and the key control sit in a footer below the tabs; when the pool runs
 out, the key field appears in the exhaustion banner.
@@ -442,10 +442,18 @@ A compact bar shows live budget usage read from `/rate-limit`
 from the payload, never a hard-coded price). It is read once on page load, when a
 key is set or cleared, and after each run — never on a timer.
 
-- **User key:** read directly from OpenAlex — *"You've used $x of your $y daily budget"*.
+**Credits, never dollars (v1.5.4).** The UI counts **credits** so no visitor wonders
+"am I paying?": 1 credit = one billable OpenAlex call (`SEARCH_CALL_COST_USD` =
+$0.001), so the shared $1.00/day shows as 1,000 credits (`toCredits` / `credits` in
+`rateLimit.ts`; the payload stays in USD). The bar shows what's **left** (red at ≤ 10 %).
+Matching details, the Report cards and the exhaustion banner speak in credits too.
+
+- **User key:** read directly from OpenAlex — *"Your OpenAlex key's credits today:
+  950 of 1,000 left"*.
 - **Shared pool:** read through the Worker, which serves `/rate-limit` with the key
-  stripped — worded as a **pooled** figure (*"The shared pool has used …"*), with a
-  small "?" explainer.
+  stripped — worded as a **pooled** figure (*"Free shared credits today: 780 of 1,000
+  left · resets in 12h 9m"*), with a "What are credits?" explainer ("BibProfile is
+  free — you never pay anything …").
 
 **Safety invariant:** the browser never reads the shared key's usage from OpenAlex
 **directly** — if the shared path points straight at `api.openalex.org` (local dev

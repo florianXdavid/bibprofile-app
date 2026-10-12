@@ -223,7 +223,7 @@ details.card[open] > summary.card-title { margin-bottom: 8px; }
 .diff-fields .oa { color: var(--accent); font-weight: 600; }
 /* v1.3 — UX quick wins */
 .pool-help { display: inline-block; }
-.pool-help > summary { cursor: pointer; color: var(--accent); font-weight: 600; list-style: none; }
+.pool-help > summary { cursor: pointer; color: var(--accent); text-decoration: underline; list-style: none; }
 .pool-help > summary::-webkit-details-marker { display: none; }
 .pool-help-text { display: block; margin-top: 4px; color: var(--muted); font-size: 0.82rem; max-width: 520px; }
 .upload-collapsed { margin: 6px 0 4px; font-size: 0.9rem; }
@@ -264,11 +264,11 @@ details.card[open] > summary.card-title { margin-bottom: 8px; }
 .key-error { margin: 6px 0 0; }
 
 /* W4.1 — usage indicator + exhaustion banner */
-.usage { margin: 6px 0 4px; font-size: 0.82rem; max-width: 560px; }
+.usage { margin: 6px 0 4px; font-size: 0.82rem; max-width: 680px; }
 .usage.shared { margin-top: 8px; }
 .usage-bar { height: 8px; background: var(--bg-alt); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
 .usage-bar > span { display: block; height: 100%; background: var(--ok); transition: width 0.3s, background 0.3s; }
-.usage-bar > span.over { background: var(--bad); } /* >= 90% used */
+.usage-bar > span.over { background: var(--bad); } /* <= 10% left */
 .usage-text { margin: 5px 0 0; color: var(--fg); }
 .usage-prepaid { margin: 2px 0 0; font-size: 0.78rem; }
 .exhausted-banner { margin: 12px 0 4px; max-width: 720px; }

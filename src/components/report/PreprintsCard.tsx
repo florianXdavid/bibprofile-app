@@ -27,9 +27,8 @@ export default function PreprintsCard({ rows, preprints, onResolve }: Props) {
       <summary className="card-title">Preprint → published</summary>
       <p className="card-intro">
         Preprints in your list (arXiv, bioRxiv, medRxiv, SSRN, …) and their published versions.
-        Detecting them is free; looking up a published version is a <strong>billable title search</strong>
-        {' '}(one per preprint), so it runs only when you press the button — it never spends the shared
-        budget on its own. Matches are suggestions only; a preprint is often cited on purpose.
+        Detecting them is free; looking up a published version uses <strong>1 credit per preprint</strong>,
+        so it runs only when you press the button — it never spends credits on its own. Matches are suggestions only; a preprint is often cited on purpose.
       </p>
 
       {estimate.calls === 0 ? (
@@ -38,11 +37,10 @@ export default function PreprintsCard({ rows, preprints, onResolve }: Props) {
         <>
           <p className="card-note">
             {estimate.calls} {plural(estimate.calls, 'entry', 'entries')} look like preprints — checking for
-            published versions makes <strong>{estimate.calls}</strong> billable{' '}
-            {plural(estimate.calls, 'search', 'searches')} (~${estimate.usd.toFixed(3)}).
+            published versions uses <strong>{estimate.calls}</strong> {plural(estimate.calls, 'credit')}.
           </p>
           {preprints.status === 'idle' && (
-            <button onClick={onResolve}>Check preprints (~${estimate.usd.toFixed(3)})</button>
+            <button onClick={onResolve}>Check preprints ({estimate.calls} {plural(estimate.calls, 'credit')})</button>
           )}
           {preprints.status === 'running' && (
             <p className="muted">{preprints.progress.label} ({preprints.progress.done}/{preprints.progress.total})…</p>
@@ -52,8 +50,7 @@ export default function PreprintsCard({ rows, preprints, onResolve }: Props) {
             <>
               <p className="cost">
                 Found published versions for <strong>{preprints.result.resolvedCount}</strong> of {estimate.calls}
-                {' '}· {preprints.result.billableCalls} billable{' '}
-                {plural(preprints.result.billableCalls, 'search', 'searches')} (~${preprints.result.costUsd.toFixed(3)}).
+                {' '}· used {preprints.result.billableCalls} {plural(preprints.result.billableCalls, 'credit')}.
               </p>
               {resolvedList.length > 0 && (
                 <ul className="gap-list">

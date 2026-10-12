@@ -29,8 +29,8 @@ export default function Summary({ summary, fileName }: { summary: MatchSummary; 
       )}
       <p className="cost">
         {summary.viaCrossref > 0 && <span><strong>{summary.viaCrossref}</strong> found by title through Crossref (free). </span>}
-        <span>Title searches used <strong>{summary.searchCalls}</strong> billable OpenAlex search call{summary.searchCalls === 1 ? '' : 's'}
-        (~${summary.searchCostUsd.toFixed(3)} of daily allowance). DOI and identifier lookups are free.</span>
+        <span>Title searches on OpenAlex used <strong>{summary.searchCalls}</strong> credit{summary.searchCalls === 1 ? '' : 's'};
+        DOI and identifier lookups are free.</span>
       </p>
     </div>
   )

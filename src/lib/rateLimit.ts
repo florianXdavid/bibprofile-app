@@ -8,6 +8,8 @@
 // honest bar. Do NOT hard-code a "$1/day" figure or a midnight/local-time reset
 // assumption — read both from the payload.
 
+import { SEARCH_CALL_COST_USD } from '../config'
+
 export interface RateLimitUsage {
   usedUsd: number
   budgetUsd: number
@@ -87,6 +89,18 @@ export function usagePercent(u: RateLimitUsage): number {
 
 export function usd(n: number): string {
   return `$${n.toFixed(2)}`
+}
+
+// v1.5.4 — the UI counts CREDITS, never dollars, so nobody wonders "am I paying?".
+// 1 credit = one billable OpenAlex call (SEARCH_CALL_COST_USD), so the shared $1.00
+// daily pool shows as 1,000 credits. Display only; the payload stays in USD.
+export function toCredits(usdAmount: number): number {
+  return Math.round(usdAmount / SEARCH_CALL_COST_USD)
+}
+
+// "1 credit", "780 credits", "1,000 credits".
+export function credits(n: number): string {
+  return `${n.toLocaleString('en-US')} ${n === 1 ? 'credit' : 'credits'}`
 }
 
 // "in 6h", "in 6h 30m", "in 45m", "soon", or '' if unknown — for the live bar.

@@ -921,6 +921,28 @@ Source: an audit of 6 real `.bib` files (587 entries) plus a probe of the cleane
   to the version history; privacy copy mentions arXiv / PubMed IDs.
 - Tests: 216 → 252 (+1 skipped).
 
+## v1.5.4 — credits instead of dollars (Oct 2026; part of v1.5)
+
+The pool meter read "$0.22 of today's $1.00 budget", which makes a first-time
+visitor ask "am I paying for this?". The UI now counts **credits** (user's choice):
+1 credit = one billable OpenAlex call ($0.001), so the shared pool is 1,000 credits a
+day; the `/rate-limit` payload stays in USD and is converted for display only
+(`toCredits`, `credits`).
+
+- **Pool meter:** "Free shared credits today: 780 of 1,000 left · resets in 12h 9m";
+  the bar shows what's left (red at ≤ 10 %). The "?" became **"What are credits?"**:
+  "BibProfile is free — you never pay anything. Lookups by DOI or another identifier
+  are free, and so are title searches through Crossref; a title search on OpenAlex
+  uses 1 credit. Everyone shares a free pool of 1,000 credits a day …". Own key: "Your
+  OpenAlex key's credits today: …".
+- **Everywhere else:** Matching details ("Title searches on OpenAlex used 4 credits"),
+  Missing foundations / Adjacent work / Preprint → published ("~1 credit", "Check
+  preprints (3 credits)", "used 1 credit"), the progress label, the exhaustion banner
+  ("Today's free shared credits are used up …"), the own-key form and About. No dollar
+  amount is left in the UI.
+- The meter's text is a `<div>`, not a `<p>`: a `<details>` may not sit in a paragraph.
+- Tests: 273 → 275 (+2 skipped).
+
 ## v1.5.3 — paste BibTeX, a calmer first screen, report fixes (Oct 2026; part of v1.5)
 
 - **Paste BibTeX** (Overleaf users have no file): a text area beside the drop zone,
