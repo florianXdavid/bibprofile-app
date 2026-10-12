@@ -2,6 +2,7 @@
 // (About · Report · Cleaned .bib · Table), so it no longer needs a close button.
 
 import { VERSIONS } from '../versions'
+import { SOURCE_CODE_URL } from '../config'
 
 export default function About() {
   return (
@@ -104,6 +105,12 @@ export default function About() {
 
       <p className="about-contact muted">
         Questions or feedback? <a href="mailto:contact@bibprofile.com">contact@bibprofile.com</a>
+      </p>
+      <p className="about-contact muted">
+        BibProfile is open source under the{' '}
+        <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noreferrer">AGPL-3.0</a> licence, so
+        anyone can check what it does with your file:{' '}
+        <a href={SOURCE_CODE_URL} target="_blank" rel="noreferrer">source code on GitHub</a>.
       </p>
     </div>
   )

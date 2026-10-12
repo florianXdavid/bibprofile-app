@@ -64,7 +64,7 @@
       <table class="compare">
         <thead><tr><th scope="col">Tool</th><th scope="col">Form</th><th scope="col">Reads</th><th scope="col">Sources checked</th><th scope="col">Retractions</th><th scope="col">Output</th><th scope="col">Your file</th><th scope="col">Price</th></tr></thead>
         <tbody>
-          <tr class="us"><th scope="row"><a href="/">BibProfile</a></th><td>Web app, in your browser</td><td>.bib file or pasted BibTeX</td><td>Crossref, OpenAlex (by DOI, arXiv ID or PubMed ID, else by title)</td><td>Yes: OpenAlex flags + Crossref notices, incl. Retraction Watch</td><td>Cleaned .bib: verified fields added automatically, the rest for review; cite keys never change</td><td>Stays in your browser; only DOIs or title/author/year are looked up</td><td>Free, no account</td></tr>
+          <tr class="us"><th scope="row"><a href="/">BibProfile</a></th><td>Web app, in your browser</td><td>.bib file or pasted BibTeX</td><td>Crossref, OpenAlex (by DOI, arXiv ID or PubMed ID, else by title)</td><td>Yes: OpenAlex flags + Crossref notices, incl. Retraction Watch</td><td>Cleaned .bib: verified fields added automatically, the rest for review; cite keys never change</td><td>Stays in your browser; only DOIs or title/author/year are looked up</td><td>Free, no account; open source (AGPL-3.0)</td></tr>
           <tr><th scope="row"><a href="https://accuracite.com">AccuraCite</a></th><td>Web app + API</td><td>BibTeX, RIS, plain text; PDF (Pro)</td><td>OpenAlex, Crossref, Semantic Scholar, PubMed, DBLP, arXiv</td><td>Yes</td><td>Report</td><td>Uploaded to the service (PDFs discarded after the job, per its page)</td><td>Free tier (50 credits/month); paid from $9.99/month</td></tr>
           <tr><th scope="row"><a href="https://acurio.ch/en">Acurio</a></th><td>Web app</td><td>Word, PDF, LaTeX; pasted reference list</td><td>Crossref, OpenAlex, DataCite, arXiv, DOAJ</td><td>Yes</td><td>Report; annotated Word file on paid plans</td><td>Uploaded; hosted in Germany (EU)</td><td>Free quick check, no account; paid credit packs from CHF 19</td></tr>
           <tr><th scope="row"><a href="https://pypi.org/project/citegate/">citegate</a></th><td>Python CLI, GitHub Action, pre-commit</td><td>.bib</td><td>Crossref, OpenAlex, DBLP</td><td>Yes: OpenAlex + Crossref, incl. Retraction Watch</td><td>Report and JSON; suggests DOIs, doesn’t edit the file</td><td>Runs on your machine</td><td>Free, open source (MIT)</td></tr>
@@ -101,7 +101,7 @@
 
     <h2>What BibProfile doesn’t do</h2>
     <ul>
-      <li>No command-line or CI mode, and its source code isn’t public.</li>
+      <li>No command-line or CI mode: it’s a web app (its <a href="https://github.com/florianXdavid/bibprofile-app">source code</a> is public, under the AGPL-3.0).</li>
       <li>It checks Crossref and OpenAlex only — not DBLP, Semantic Scholar or PubMed directly.</li>
       <li>It doesn’t check whether a source supports what you cite it for, and doesn’t read Word or PDF files.</li>
       <li>Up to 300 entries (1 MB) per file, and title searches draw on a free daily pool that can run out on a busy day (your own free OpenAlex key lifts that).</li>
@@ -125,7 +125,7 @@
         <li><a href="/add-missing-dois-bibtex/">Add missing DOIs to a BibTeX file</a></li>
         <li><a href="/preprint-published-version/">Replace preprints with their published versions</a></li>
       </ul>
-      <p>BibProfile is free and runs in your browser: no account, nothing stored, no tracking. <a href="/">bibprofile.com</a></p>
+      <p>BibProfile is free and runs in your browser: no account, nothing stored, no tracking. Open source (AGPL-3.0): <a href="https://github.com/florianXdavid/bibprofile-app">source code</a>. <a href="/">bibprofile.com</a></p>
     </footer>
   </body>
 </html>

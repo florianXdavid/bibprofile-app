@@ -32,6 +32,7 @@ import { coauthorMessage, computeVerification } from './lib/stats/verification'
 import { buildReportHtml } from './lib/reportHtml'
 import { EXAMPLE_FILE_NAME, hydrateExample, type ExampleSnapshot } from './demo/exampleData'
 import { EXAMPLE_FOCUS, GUIDES, isExampleFocus } from './guides'
+import { SOURCE_CODE_URL } from './config'
 import type { MatchSummary, Progress as ProgressState, ResultRow } from './types'
 
 type Phase = 'idle' | 'working' | 'done'
@@ -549,6 +550,9 @@ export default function App() {
         {GUIDES.map((g, i) => (
           <span key={g.slug}>{i > 0 && ' · '}<a href={`/${g.slug}/`}>{g.label}</a></span>
         ))}
+        {/* v1.6.2 — AGPL §13: offer the source to the site's users. */}
+        <br /><span className="muted">Open source (AGPL-3.0):</span>{' '}
+        <a href={SOURCE_CODE_URL} target="_blank" rel="noreferrer">source code</a>
       </nav>
     </div>
   )

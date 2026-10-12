@@ -921,6 +921,27 @@ Source: an audit of 6 real `.bib` files (587 entries) plus a probe of the cleane
   to the version history; privacy copy mentions arXiv / PubMed IDs.
 - Tests: 216 → 252 (+1 skipped).
 
+## v1.6.2 (follow-up) — open source: AGPL-3.0, public mirror (Oct 2026)
+
+- **Audit before publishing** (full history, 35 commits): no secret ever committed —
+  the local OpenAlex key appears nowhere; only placeholders and fake test keys; no
+  Cloudflare IDs, no private keys. The proxy (`bibprofile-worker`, which holds the
+  shared key) is a separate repository and stays private; publishing the app reveals
+  nothing about it that the deployed bundle didn't already show.
+- **User's choices:** AGPL-3.0; no personal e-mail anywhere; keep the history if
+  possible; a public **mirror** (`bibprofile-app`) so Cloudflare keeps deploying from
+  the private `bibprofile` unchanged. History cleaned with `git filter-repo`: author
+  e-mail → GitHub no-reply; `PREDEPLOY-READINESS.md` (an early deploy checklist, in the
+  first two commits) removed from every commit. Tested on a throwaway clone: 35
+  commits kept, 0 occurrences of the old e-mail, same files at HEAD.
+- `LICENSE` (AGPL-3.0, SPDX text), `package.json` `"license": "AGPL-3.0-only"`,
+  `SECURITY.md`; `SOURCE_CODE_URL` in `src/config.ts`, linked from About and the app's
+  bottom line (AGPL §13), the static pages' footers, index.html (+ JSON-LD `license`)
+  and llms.txt. Comparison page: BibProfile is "open source (AGPL-3.0)"; "What
+  BibProfile doesn't do" no longer says the code isn't public.
+- `test/openSource.test.ts`: licence present, same source link everywhere, no personal
+  e-mail address in any file. Tests: 312 → 316 (+2 skipped).
+
 ## v1.6.2 — an honest comparison page + answers for AI assistants (Oct 2026; part of v1.6)
 
 - **Comparison page** `/compare-reference-checkers/` (static, no script): BibProfile,

@@ -1,6 +1,7 @@
 {
   "name": "bibprofile",
   "private": true,
+  "license": "AGPL-3.0-only",
   "version": "0.1.0",
   "type": "module",
   "description": "Browser-only tool that profiles a BibTeX reference list against OpenAlex. Step 1: parse, match, display.",

@@ -66,7 +66,8 @@ and OpenAlex. Built by Florian David.
 - Free. DOI lookups are free; an OpenAlex title search uses one credit from a free
   daily pool provided by OpenAlex and shared by all users. If it runs out, a user can
   add their own free OpenAlex key, which stays in memory and goes only to OpenAlex.
-- Limits: up to 300 entries and 1 MB per file. Not open source; no CLI or CI mode.
+- Open source under the AGPL-3.0: https://github.com/florianXdavid/bibprofile-app (anyone can verify what it does with a file).
+- Limits: up to 300 entries and 1 MB per file; no CLI or CI mode.
 
 ## Pages
 - [BibProfile](https://bibprofile.com/): the app.
@@ -75,6 +76,7 @@ and OpenAlex. Built by Florian David.
 - [Add missing DOIs to a BibTeX file](https://bibprofile.com/add-missing-dois-bibtex/)
 - [Replace preprints with their published versions](https://bibprofile.com/preprint-published-version/)
 - [Reference checkers compared](https://bibprofile.com/compare-reference-checkers/): BibProfile, AccuraCite, Acurio, citegate, bibaudit, ghostcite, CiteScan, betterbib.
+- [Source code (AGPL-3.0)](https://github.com/florianXdavid/bibprofile-app)
 - [Creator ORCID](https://orcid.org/0009-0001-7990-3186): Florian David.
 - Contact: contact@bibprofile.com
 

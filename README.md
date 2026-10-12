@@ -595,6 +595,28 @@ Crossref) · paginated forward-citation ·
 full reference *validation* (we check retraction and suggest fixes; we
 don't claim to verify references are real).
 
+## Open source & the public mirror (v1.6.2)
+
+BibProfile is open source under the **GNU AGPL-3.0** (`LICENSE`): anyone may read,
+reuse and modify it, but a modified copy run as a website must publish its own source.
+The app offers the source to its users (AGPL §13) from the About tab and the bottom
+line, using `SOURCE_CODE_URL` (`src/config.ts`); `test/openSource.test.ts` checks every
+page uses the same link, and that **no personal e-mail address** sits in any file.
+Security reports: `SECURITY.md` (contact@bibprofile.com).
+
+**Two repositories, one history.**
+- `github.com/florianXdavid/bibprofile` — **private**; Cloudflare Pages deploys from it.
+- `github.com/florianXdavid/bibprofile-app` — **public** mirror (`SOURCE_CODE_URL`).
+
+Both carry the same history, cleaned once with `git filter-repo` (author e-mail
+replaced by the GitHub no-reply address; an early deploy checklist removed). The local
+`origin` has two push URLs, so one `git push` updates both. The public copy had to be a
+*new* repository: GitHub's activity log can expose commits from before a force-push.
+`bibprofile-worker` (the proxy holding the shared key) stays private.
+
+Commits must use the no-reply address (`git config user.email`); GitHub's "Block
+command line pushes that expose my email" refuses anything else.
+
 ## Credits
 
 Bibliographic data from [OpenAlex](https://openalex.org). Reference lookup and

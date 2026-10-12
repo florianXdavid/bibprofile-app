@@ -174,3 +174,10 @@ export const DOI_SUSPICIOUS_THRESHOLD = 0.65
 // require a higher title similarity before trusting the match. Missing data is
 // never treated as agreement.
 export const DOI_SUSPICIOUS_THRESHOLD_ON_YEAR_MISMATCH = 0.75
+
+// v1.6.2 — BibProfile is open source (AGPL-3.0). The public repository is a mirror of
+// the private one that Cloudflare Pages deploys from (same history, pushed together).
+// AGPL §13: users of the website must be offered the source, so the app links here
+// (About tab + the bottom line). Change it in ONE place; test/openSource.test.ts checks
+// the static pages, index.html and llms.txt use the same URL.
+export const SOURCE_CODE_URL = 'https://github.com/florianXdavid/bibprofile-app'
