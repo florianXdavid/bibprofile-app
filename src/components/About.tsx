@@ -8,14 +8,21 @@ export default function About() {
     <div className="about">
       <h2>BibProfile</h2>
       <p>
-        Upload your BibTeX reference list and see the shape of your bibliography — its recency,
-        venues, open-access mix, duplicates, retractions and possible gaps — then get a cleaned copy
-        back. It's handy to run right before you submit a paper to a journal or conference, as a
-        final sanity-check and tidy-up of your reference list.
+        <strong>Check your references before the reviewers do.</strong> Upload your BibTeX reference
+        list to see how many references could be verified to exist, which ones to check by hand, and
+        which papers were retracted. Then see the shape of your bibliography — its recency, venues,
+        open-access mix and duplicates — the citations you may have missed, and get a cleaned copy
+        back. Run it right before you submit a paper to a journal or conference.
       </p>
 
       <h3>What it does</h3>
       <ul className="about-list">
+        <li>
+          <strong>Is every reference real?</strong> — “X of Y references verified to exist”, with the
+          references that could not be verified (each with a Google Scholar search link), DOIs that
+          point to another work, and retracted papers. “Could not verify” isn’t proof of fabrication:
+          some real works are missing from OpenAlex.
+        </li>
         <li>
           <strong>Match &amp; inspect</strong> — parses your <code>.bib</code>, matches each reference
           against OpenAlex, and shows an honest match rate with a sortable, filterable table.
@@ -49,7 +56,8 @@ export default function About() {
         your own key, queries go straight to OpenAlex and your key never touches our proxy. To find each
         reference, its title, first author and year are sent to Crossref (<code>api.crossref.org</code>);
         matched records are then fetched from OpenAlex. DOIs are also checked against Crossref for
-        retractions (Crossref includes the Retraction Watch database). Nothing is stored, there's no
+        retractions (Crossref includes the Retraction Watch database). A “search Google Scholar” link
+        sends that reference's title to Google only when you click it. Nothing is stored, there's no
         account, and there's no tracking.
       </p>
 

@@ -1,9 +1,13 @@
 # BibProfile
 
-Browser-only tool that profiles a BibTeX reference list against
-[OpenAlex](https://openalex.org): **upload your `.bib`, see the shape of your
-bibliography, and get a cleaned copy back.** Handy as a final sanity-check right
-before you submit a paper to a journal or conference.
+**Check your references before the reviewers do.** Find unmatched references,
+retracted papers and outdated preprints, and get a cleaned `.bib`. In your browser,
+no account.
+
+BibProfile checks a BibTeX reference list against [OpenAlex](https://openalex.org)
+and Crossref: how many references it could verify to exist, which ones to check by
+hand, which are retracted — then the shape of your bibliography, the citations you
+may have missed, and a cleaned copy back. Run it right before you submit a paper.
 
 Everything runs in your browser. On the shared pool, queries pass through
 BibProfile's own proxy (`api.bibprofile.com`), which forwards them to OpenAlex and
@@ -11,15 +15,27 @@ stores nothing; with your own key they go straight to OpenAlex. To find each
 reference, its title, first author and year are sent to Crossref
 (`api.crossref.org`); matched records are then fetched from OpenAlex. DOIs are also
 checked against Crossref for retractions (Crossref includes the Retraction Watch
-database). Nothing is stored, no account, no tracking.
+database). A "search Google Scholar" link sends a reference's title to Google only
+when clicked. Nothing is stored, no account, no tracking.
 
 > Building this project was a **week-by-week** effort. The full history — every
 > feature, fix and scope decision in order — lives in **[DEVLOG.md](./DEVLOG.md)**.
-> This README describes the tool **as it is now** (current release: **v1.3**;
+> This README describes the tool **as it is now** (current release: **v1.4**, v1.5 in progress;
 > the version history shown in the app lives in `src/versions.ts`).
 
 ## What it does
 
+- **Is every reference real?** (v1.5.1) — a card above the tabs: "X of Y references
+  verified to exist", then the references that **could not be verified** (`not-found`
+  or `uncertain`, each with a Google Scholar search link), **DOIs that point to another
+  work** (`suspicious`), **retracted** papers (once the Crossref check is done), and
+  grey notes for what isn't checkable (web pages, software, datasets), failed lookups
+  and unreadable entries. Every unique, parseable reference is in exactly one bucket,
+  so the numbers add up (`src/lib/stats/verification.ts`). "Could not verify" is never
+  worded as "fabricated": some real works are missing from OpenAlex. The previous
+  match summary sits under "Matching details". The table uses plain labels ("matched
+  by identifier", "could not verify — check it exists ↗", "unsure match", "DOI points
+  to another work", "not checkable"); the CSV keeps the status codes.
 - **Match & inspect** — parses your `.bib`, matches each reference against
   OpenAlex, and shows an honest match rate with a sortable, filterable table.
 - **Report** — analysis cards: recency profile, journal concentration,
@@ -492,7 +508,7 @@ test/                    # vitest unit tests (pure functions; no network except 
 
 ## Testing
 
-`npm test` runs **263 tests** (plus 1 skipped: the opt-in regression recorder). Highlights: the v1.4.1
+`npm test` runs **267 tests** (plus 1 skipped: the opt-in regression recorder). Highlights: the v1.4.1
 match-score signals and the hard-titles regression (offline; v1.4.5: the whole run,
 the v1.5 ground-truth fields and invariants G1–G5); the v1.4.5 identifier extraction,
 shared-DOI, same-work-duplicate and cleaned-`.bib` safety rules; parsing/DOI/title-clean/similarity

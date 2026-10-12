@@ -8,23 +8,23 @@
          short and technical, so opting out is an acceptable trade-off. -->
     <meta name="google" content="notranslate" />
 
-    <title>BibProfile — Profile &amp; clean your BibTeX against OpenAlex</title>
-    <meta name="description" content="Browser-only tool that profiles your BibTeX reference list against OpenAlex: match rate, recency, self-citation, retractions, missing citations, cleaned .bib." />
+    <title>BibProfile — Check your references before the reviewers do</title>
+    <meta name="description" content="Find unmatched references, retracted papers and outdated preprints in your BibTeX (.bib) file, and get a cleaned .bib. Checked against OpenAlex and Crossref, in your browser, no account." />
     <link rel="canonical" href="https://bibprofile.com/" />
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://bibprofile.com/" />
-    <meta property="og:title" content="BibProfile — Profile &amp; clean your BibTeX against OpenAlex" />
-    <meta property="og:description" content="Profile a .bib reference list against OpenAlex — match rate, recency, self-citation, retractions, missing citations — and get a cleaned .bib back. Runs in your browser; nothing stored." />
+    <meta property="og:title" content="BibProfile — Check your references before the reviewers do" />
+    <meta property="og:description" content="Find unmatched references, retracted papers and outdated preprints in your BibTeX (.bib) file, and get a cleaned .bib. Checked against OpenAlex and Crossref, in your browser, no account." />
     <meta property="og:image" content="https://bibprofile.com/og-image.jpg" />
     <meta property="og:site_name" content="BibProfile" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="BibProfile — Profile &amp; clean your BibTeX against OpenAlex" />
-    <meta name="twitter:description" content="Profile a .bib reference list against OpenAlex — match rate, recency, self-citation, retractions, missing citations — and get a cleaned .bib back. Runs in your browser; nothing stored." />
+    <meta name="twitter:title" content="BibProfile — Check your references before the reviewers do" />
+    <meta name="twitter:description" content="Find unmatched references, retracted papers and outdated preprints in your BibTeX (.bib) file, and get a cleaned .bib. Checked against OpenAlex and Crossref, in your browser, no account." />
     <meta name="twitter:image" content="https://bibprofile.com/og-image.jpg" />
 
     <script type="application/ld+json">
@@ -37,7 +37,7 @@
       "url": "https://bibprofile.com/",
       "applicationCategory": "ReferenceApplication",
       "operatingSystem": "Web",
-      "description": "A free, browser-only tool that profiles a BibTeX reference list against OpenAlex and returns a cleaned .bib file. A final sanity-check before submitting a paper.",
+      "description": "A free, browser-only tool that checks a BibTeX reference list before submission: it flags references it could not verify, retracted papers and outdated preprints, profiles the bibliography and returns a cleaned .bib file.",
       "offers": {
         "@type": "Offer",
         "price": "0",
@@ -78,16 +78,21 @@
       <!-- Static fallback for crawlers / no-JS clients. React (createRoot) replaces
            this on mount. Keep it accurate; it is what Google indexes and LLMs read. -->
       <main>
-        <h1>BibProfile — profile and clean your BibTeX bibliography</h1>
+        <h1>Check your references before the reviewers do</h1>
         <p>
-          BibProfile is a free, browser-only tool that profiles a BibTeX (<code>.bib</code>)
-          reference list against <a href="https://openalex.org">OpenAlex</a>. You upload your
-          <code>.bib</code>, it matches each reference against OpenAlex, shows the shape of your
-          bibliography, and gives you back a cleaned copy — a final sanity-check before you submit a
-          paper to a journal or conference. It's built for researchers, academics, and PhD students
-          preparing manuscripts.
+          Find unmatched references, retracted papers and outdated preprints, and get a cleaned
+          <code>.bib</code>. In your browser, no account.
+        </p>
+        <p>
+          BibProfile is a free, browser-only tool for researchers, academics and PhD students
+          preparing manuscripts. You upload your BibTeX (<code>.bib</code>) file; it checks each
+          reference against <a href="https://openalex.org">OpenAlex</a> and Crossref and tells you how
+          many it could verify, which ones to check by hand, and which are retracted. It also shows
+          the shape of your bibliography, the citations you may have missed, and gives you back a
+          cleaned copy.
         </p>
         <ul>
+          <li><strong>Is every reference real?</strong> — "X of Y references verified to exist", with the references that could not be verified, DOIs that point to another work, and retracted papers. Each unverified reference links to a Google Scholar search.</li>
           <li><strong>Match &amp; inspect</strong> — match each reference against OpenAlex, with an honest match rate and a sortable, filterable table.</li>
           <li><strong>Report</strong> — recency, journal concentration, self-citation, open access, retractions, and duplicates — descriptive, never a score.</li>
           <li><strong>Missing citations</strong> — foundational works your references point to but you didn't cite, and recent work that cites your set.</li>

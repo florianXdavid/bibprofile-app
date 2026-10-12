@@ -1,11 +1,16 @@
 # BibProfile
-> Browser-only tool that profiles a BibTeX reference list against OpenAlex, then
-> returns a cleaned .bib. A final sanity-check before submitting a paper.
+> Check your references before the reviewers do: find unmatched references,
+> retracted papers and outdated preprints in a BibTeX file, and get a cleaned .bib.
+> In your browser, no account.
 BibProfile (https://bibprofile.com/) is a free, client-side web app for researchers,
 academics, and PhD students preparing manuscripts. You upload a BibTeX (.bib) file;
 it matches each reference against OpenAlex, describes the shape of your bibliography,
 and gives you a cleaned .bib back.
 ## What it does
+- Verify: "X of Y references verified to exist" (OpenAlex, by DOI / other identifier
+  or a confident title match), listing the references that could not be verified
+  (with a Google Scholar search link), DOIs that point to another work, and retracted
+  papers. "Could not verify" is not proof of fabrication.
 - Match & inspect: match each reference against OpenAlex with an honest match rate.
 - Report: recency, journal concentration, self-citation, open access, retractions,
   and duplicates. Every card is descriptive — never a score or judgement.

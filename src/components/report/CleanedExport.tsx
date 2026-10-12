@@ -10,6 +10,7 @@ import { useMemo, useState } from 'react'
 import type { ResultRow } from '../../types'
 import { addKey, computeCleanedBib, serializeCleanedBib, type FieldChange } from '../../lib/stats/cleanBib'
 import { plural } from './format'
+import { STATUS_LABEL } from '../../lib/stats/verification'
 
 const CONF_LABEL: Record<string, string> = {
   confident: 'matched by identifier',
@@ -113,7 +114,7 @@ export default function CleanedExport({ rows, sourceText, fileName }: Props) {
             <li key={e.citeKey + e.sourceOffset} className={`diff-${e.action}`}>
               <div className="diff-head">
                 <span className="mono chip">{e.citeKey}</span>
-                <span className={`badge ${e.status}`}>{e.status}</span>
+                <span className={`badge ${e.status}`}>{STATUS_LABEL[e.status]}</span>
                 {e.applied.length > 0
                   ? <span className="diff-tag ok">applied · {CONF_LABEL[e.confidence]}</span>
                   : e.action === 'applied' && e.suggested.length + e.mismatches.length === 0

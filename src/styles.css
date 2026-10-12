@@ -104,6 +104,7 @@ a { color: var(--accent); }
 .badge.not-indexable { background: #eef1f4; color: #46566b; }
 .dup { color: var(--muted); font-size: 0.75rem; font-style: italic; }
 .note-mark { color: var(--accent); cursor: help; font-size: 0.8rem; }
+.check-link { font-size: 0.8rem; white-space: nowrap; }
 
 /* Year tri-state (Fix A3b): unverified marker */
 .year-unverified { color: var(--muted); font-weight: 600; cursor: help; }
@@ -284,3 +285,17 @@ details.card[open] > summary.card-title { margin-bottom: 8px; }
 .about-list { margin: 0 0 10px; padding-left: 20px; }
 .about-list li { margin: 6px 0; line-height: 1.5; }
 .about > .primary { margin-top: 10px; }
+
+/* v1.5.1 — the "verified to exist" card above the tabs */
+.verify-card { background: var(--bg-alt); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 20px 0 10px; }
+.verify-headline { font-size: 1.15rem; margin: 0 0 8px; }
+.verify-lines { list-style: none; padding: 0; margin: 0; font-size: 0.92rem; }
+.verify-lines > li { padding: 3px 0; }
+.verify-lines summary { cursor: pointer; }
+.verify-bad > details > summary { color: #8a3b00; }
+.verify-refs { margin: 6px 0 4px; padding-left: 18px; font-size: 0.85rem; }
+.verify-refs li { padding: 2px 0; }
+.verify-foot { font-size: 0.78rem; margin: 8px 0 0; }
+.summary-details { margin: 0 0 10px; }
+.summary-details > summary { cursor: pointer; color: var(--muted); font-size: 0.88rem; }
+.summary-details .summary { margin: 8px 0 0; }

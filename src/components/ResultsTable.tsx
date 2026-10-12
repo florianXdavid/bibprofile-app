@@ -4,6 +4,7 @@ import type { CrossrefRunState } from '../lib/crossref'
 import { computeRetractions } from '../lib/stats/retractions'
 import { normalizeDoi } from '../lib/doi'
 import { cleanVenue } from '../lib/stats/venues'
+import { scholarUrl, STATUS_LABEL } from '../lib/stats/verification'
 
 type SortDir = 'asc' | 'desc'
 type Primitive = string | number | null
@@ -77,7 +78,7 @@ const columns: Column[] = [
     get: r => r.status,
     cell: r => (
       <>
-        <span className={`badge ${r.status}`}>{r.status}</span>
+        <span className={`badge ${r.status}`}>{STATUS_LABEL[r.status]}</span>
         {r.matchScore != null && (
           <span
             className={r.status === 'suspicious' || r.status === 'uncertain' ? 'flag' : 'muted'}
@@ -86,6 +87,11 @@ const columns: Column[] = [
         )}
         {r.preprintVersion && <span className="dup" title="Cited as a journal / proceedings paper; matched to its preprint record (the only one indexed)"> preprint version</span>}
         {(r.notes?.length ?? 0) > 0 && <span className="note-mark" title={r.notes!.join('\n')}> ⓘ</span>}
+        {(r.status === 'not-found' || r.status === 'uncertain') && !r.duplicateOf && (
+          <> <a className="check-link" href={scholarUrl(r)} target="_blank" rel="noreferrer"
+            title={r.status === 'not-found' ? 'Could not verify — check this reference exists (Google Scholar)' : 'Unsure match — check it’s the right work (Google Scholar)'}>
+            {r.status === 'not-found' ? '— check it exists ↗' : '— check it ↗'}</a></>
+        )}
       </>
     ),
   },
@@ -227,7 +233,7 @@ export default function ResultsTable({ rows, crossref }: { rows: ResultRow[]; cr
         </button>
         {STATUS_ORDER.filter(s => counts[s]).map(s => (
           <button key={s} className={filter === s ? 'active' : ''} onClick={() => setFilter(s)}>
-            {s} ({counts[s]})
+            {STATUS_LABEL[s]} ({counts[s]})
           </button>
         ))}
         {dupCount > 0 && (
@@ -246,12 +252,12 @@ export default function ResultsTable({ rows, crossref }: { rows: ResultRow[]; cr
       <details className="oa-help" style={{ margin: '0 0 12px' }}>
         <summary>What do the statuses mean?</summary>
         <ul>
-          <li><strong>matched-by-doi</strong> — matched via its DOI, or another identifier the entry carries (an arXiv ID, a PMID, a DOI in <code>url</code> or <code>note</code> — see “Identified by” in the CSV).</li>
-          <li><strong>matched-by-title</strong> — no usable DOI; matched by a title search that cleared the similarity bar.</li>
-          <li><strong>suspicious</strong> — matched by DOI, but the OpenAlex record disagrees with your entry (title, or several details at once) — shown for you to judge (often a wrong <code>.bib</code> DOI, sometimes a real work with truncated metadata).</li>
-          <li><strong>uncertain</strong> — no usable DOI; a title search found a likely candidate, but not confidently (weak overall score, or two different works scored almost the same) — shown for you to judge, never written to the cleaned <code>.bib</code>.</li>
-          <li><strong>not-found</strong> — looked up, but OpenAlex has no acceptable record. Not proof that the work doesn't exist: OpenAlex misses some works (recent conference papers, translations, old editions), and some of its records are corrupt.</li>
-          <li><strong>not-indexable</strong> — not the kind of record OpenAlex indexes (a dataset, a software library, a URL used as a title).</li>
+          <li><strong>matched by identifier</strong> — matched via its DOI, or another identifier the entry carries (an arXiv ID, a PMID, a DOI in <code>url</code> or <code>note</code> — see “Identified by” in the CSV).</li>
+          <li><strong>matched by title</strong> — no usable DOI; matched by a title search that cleared the similarity bar.</li>
+          <li><strong>DOI points to another work</strong> — matched by DOI, but the OpenAlex record disagrees with your entry (title, or several details at once) — shown for you to judge (often a wrong <code>.bib</code> DOI, sometimes a real work with truncated metadata).</li>
+          <li><strong>unsure match</strong> — no usable DOI; a title search found a likely candidate, but not confidently (weak overall score, or two different works scored almost the same) — shown for you to judge, never written to the cleaned <code>.bib</code>.</li>
+          <li><strong>could not verify</strong> — check this reference exists (the link opens a Google Scholar search). OpenAlex has no acceptable record. Not proof that the work doesn't exist: OpenAlex misses some works (recent conference papers, translations, old editions), and some of its records are corrupt.</li>
+          <li><strong>not checkable</strong> — not the kind of record OpenAlex indexes (a dataset, a software library, a URL used as a title).</li>
           <li><strong>error</strong> — a network or server failure after one retry.</li>
           <li><strong>unparseable</strong> — the <code>.bib</code> block couldn't be turned into a usable record.</li>
           <li><strong>duplicates</strong> — the same work cited more than once (same DOI, or the same OpenAlex record); collapsed to one before analysis (tagged “dup of …”).</li>

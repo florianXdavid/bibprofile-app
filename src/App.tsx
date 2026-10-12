@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import FileDrop from './components/FileDrop'
 import Progress from './components/Progress'
 import Summary from './components/Summary'
+import VerificationCard from './components/VerificationCard'
 import ResultsTable from './components/ResultsTable'
 import ReportView from './components/report/ReportView'
 import CleanedExport from './components/report/CleanedExport'
@@ -304,7 +305,8 @@ export default function App() {
         <h1>BibProfile</h1>
       </div>
       <p className="tagline">
-        Profile a BibTeX reference list against OpenAlex — check matches, spot issues, get a cleaned copy.
+        <strong>Check your references before the reviewers do.</strong> Find unmatched references,
+        retracted papers and outdated preprints, and get a cleaned .bib. In your browser, no account.
       </p>
 
       {uploadOpen ? (
@@ -349,7 +351,12 @@ export default function App() {
 
       {phase === 'done' && summary && (
         <>
-          <Summary summary={summary} fileName={fileName} />
+          {/* v1.5.1 — the headline question first; the match details one click away. */}
+          <VerificationCard rows={rows} crossref={crossref} />
+          <details className="summary-details">
+            <summary>Matching details</summary>
+            <Summary summary={summary} />
+          </details>
           <div className="summary toolbar" style={{ display: 'flex', gap: 12, alignItems: 'center', background: 'none', border: 'none', padding: 0, margin: '-8px 0 4px' }}>
             <button className="primary" onClick={copySummary}>{copied ? 'Copied ✓' : 'Copy summary'}</button>
             {summary.errored > 0 && (

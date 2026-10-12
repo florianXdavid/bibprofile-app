@@ -921,6 +921,33 @@ Source: an audit of 6 real `.bib` files (587 entries) plus a probe of the cleane
   to the version history; privacy copy mentions arXiv / PubMed IDs.
 - Tests: 216 → 252 (+1 skipped).
 
+## v1.5.1 — lead with "Is every reference real?" (Oct 2026; part of v1.5)
+
+v1.5 = "timely, instant and shareable". v1.5.1 matches the question researchers now
+worry about (AI-made, fabricated references) and keeps the profile, missing citations
+and cleaning as the reasons to choose BibProfile over a plain checker.
+
+- **Verification card** above the tabs (`VerificationCard.tsx`, pure counts in
+  `stats/verification.ts`): "X of Y references verified to exist"; could not be
+  verified (`not-found` + `uncertain`, with Google Scholar links); DOI points to
+  another work (`suspicious`); retracted (from the existing check; "checking
+  retractions…" until Crossref answers); not checkable / errors / pending /
+  unreadable as grey notes. Duplicates count once; the buckets add up to Y. The
+  old match summary moved under a "Matching details" disclosure.
+- **Labels** (display only, `STATUS_LABEL`): matched by identifier, matched by title,
+  DOI points to another work, unsure match, could not verify (+ "check it exists ↗"
+  link to Google Scholar), not checkable. Statuses, CSV and tests keep the codes.
+- **Headline** (chosen by the user from 6 variants): "Check your references before
+  the reviewers do. Find unmatched references, retracted papers and outdated
+  preprints, and get a cleaned .bib. In your browser, no account." — app tagline,
+  static H1 (index.html), `<title>`, meta / Open Graph / Twitter descriptions,
+  JSON-LD, llms.txt, About.
+- **Wording rule:** "could not verify", never "fabricated" — BibProfile can only say
+  OpenAlex / Crossref have no acceptable record.
+- **Privacy copy:** the Scholar link sends the title to Google only when clicked.
+- Tests: 263 → 267 (+1 skipped). Checked visually in a headless browser with
+  mocked OpenAlex / Crossref responses.
+
 ## v1.4.6 — second real-world audit (Oct 2026; part of v1.4)
 
 A re-audit on 8 files (823 entries) confirmed the v1.4.5 fixes and found 18 issues.
