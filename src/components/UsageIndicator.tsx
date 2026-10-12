@@ -18,7 +18,7 @@ function PoolHelp({ total }: { total?: number }) {
       <span className="pool-help-text">
         BibProfile is free — you never pay anything. Lookups by DOI or another identifier are free, and
         so are title searches through Crossref; a title search on OpenAlex uses 1 credit. Everyone shares{' '}
-        {total ? `a free pool of ${credits(total)} a day` : 'a free daily pool of credits provided by OpenAlex'}. If it runs
+        {total ? `a free pool of ${credits(total)} a day provided by OpenAlex` : 'a free daily pool of credits'}. If it runs
         out, use your own free OpenAlex key (just below) or wait for the reset.
       </span>
     </details>
