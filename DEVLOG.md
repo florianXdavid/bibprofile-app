@@ -921,6 +921,27 @@ Source: an audit of 6 real `.bib` files (587 entries) plus a probe of the cleane
   to the version history; privacy copy mentions arXiv / PubMed IDs.
 - Tests: 216 → 252 (+1 skipped).
 
+## v1.6.2 — an honest comparison page + answers for AI assistants (Oct 2026; part of v1.6)
+
+- **Comparison page** `/compare-reference-checkers/` (static, no script): BibProfile,
+  AccuraCite, Acurio, citegate, bibaudit, ghostcite, CiteScan and betterbib (added:
+  the nearest tool to the cleaned .bib). Every fact checked on the tool's own page on
+  2026-10-12, which corrected the brief's table: AccuraCite reads BibTeX and checks
+  OpenAlex, Crossref, Semantic Scholar, PubMed, DBLP, arXiv; Acurio lists Crossref,
+  OpenAlex, DataCite, arXiv, DOAJ (no K10plus / German National Library found).
+  Transient remarks (Product Hunt upvotes, a demo's runtime error) left out. Says
+  plainly where others are stronger (CI, DBLP, books/datasets, claim support, open
+  source, > 300 entries) and what BibProfile doesn't do.
+- **Placement (user's choice):** not linked from the app; linked from every guide's
+  footer, the sitemap, `llms.txt`, the AI catalog and index.html's static fallback
+  (which crawlers read; React replaces it on load). The test fails if the app links it.
+- **llms.txt** rewritten around the v1.5 positioning: the questions BibProfile
+  answers, when another tool fits better, privacy/cost/limits, all pages.
+- **ai-catalog.json** at `/.well-known/` (draft AI Catalog spec 1.0): llms.txt, the
+  app, 4 guides and the comparison; `<link rel="ai-catalog">` in index.html. Honest
+  note: no AI assistant is documented to read it yet; it's cheap and harmless.
+- Tests: 304 → 312 (+2 skipped).
+
 ## v1.6.1 — one page per problem researchers search for (Oct 2026; part of v1.6)
 
 v1.6 = "be findable when someone searches for the problem". People search for their

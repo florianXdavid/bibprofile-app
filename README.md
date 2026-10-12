@@ -508,6 +508,22 @@ shows a reload fallback instead of a blank page.
   `llms.txt` and the static fallback in `index.html`. `test/guides.test.ts` keeps all
   of this consistent. To add a guide: write the page, add it to `GUIDES`, the sitemap,
   `llms.txt` and `index.html`; the test says what's missing.
+- **Comparison page (v1.6.2)** — `/compare-reference-checkers/`, static like the guides:
+  BibProfile vs AccuraCite, Acurio, citegate, bibaudit, ghostcite, CiteScan, betterbib
+  (form, input, sources, retractions, output, where your file goes, price), "which one
+  fits", and what BibProfile doesn't do. Facts come from each tool's own page and carry
+  a "Checked on …" date — **re-check them when you touch the page**. Deliberately **not
+  linked from the app** (users aren't sent away); reachable from the guides' footers,
+  the sitemap, `llms.txt` and the AI catalog (the test enforces this).
+- **`llms.txt`** (v1.6.2) — written for AI assistants: what BibProfile does, the
+  questions it answers ("how do I check my bibliography for fake references?"), when
+  another tool fits better, privacy, cost and limits, and every page.
+- **`/.well-known/ai-catalog.json`** (v1.6.2) — an AI Catalog (draft spec from the
+  Linux Foundation's Agent-Card working group, for agent discovery): `specVersion`
+  1.0, `host`, and entries for `llms.txt`, the app, the guides and the comparison
+  (`text/plain` / `text/html`; the spec has no type for web pages yet). Advertised
+  with `<link rel="ai-catalog">` in `index.html`. No assistant is known to read it
+  yet; revisit when the spec is final.
 
 Production builds strip `console.*` and `debugger` (`vite.config.ts`).
 

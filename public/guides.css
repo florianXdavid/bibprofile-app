@@ -27,3 +27,14 @@ code { font: 0.9em ui-monospace, Menlo, Consolas, monospace; background: var(--b
 .muted { color: var(--muted); }
 footer { border-top: 1px solid var(--line); padding-top: 14px; padding-bottom: 40px; font-size: 0.9rem; color: var(--muted); }
 footer ul { padding-left: 1.1em; }
+
+/* v1.6.2 — comparison page: a wider column and a table that scrolls sideways on its own
+   (never the page) on a phone. */
+.wide-page .site-in, .wide-page main, .wide-page footer { max-width: 1120px; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+table.compare { border-collapse: collapse; min-width: 960px; font-size: 0.86rem; line-height: 1.4; }
+table.compare th, table.compare td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+table.compare thead th { background: var(--bg-alt); position: sticky; top: 0; }
+table.compare tbody th { white-space: nowrap; }
+table.compare tr.us { background: #eef4fb; }
+table.compare tbody tr:last-child th, table.compare tbody tr:last-child td { border-bottom: none; }

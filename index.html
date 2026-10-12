@@ -11,6 +11,9 @@
     <title>BibProfile — Check your references before the reviewers do</title>
     <meta name="description" content="Find unmatched references, retracted papers and outdated preprints in your BibTeX (.bib) file, and get a cleaned .bib. Checked against OpenAlex and Crossref, in your browser, no account." />
     <link rel="canonical" href="https://bibprofile.com/" />
+    <!-- v1.6.2 — machine-readable pointers for AI assistants (llms.txt) and agent
+         discovery (AI Catalog, a draft spec: /.well-known/ai-catalog.json). -->
+    <link rel="ai-catalog" href="/.well-known/ai-catalog.json" type="application/json" />
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
 
     <!-- Open Graph -->
@@ -113,6 +116,7 @@
           <li><a href="/add-missing-dois-bibtex/">Add missing DOIs to a BibTeX file</a></li>
           <li><a href="/preprint-published-version/">Replace preprints with their published versions</a></li>
         </ul>
+        <p><a href="/compare-reference-checkers/">How BibProfile compares with other reference checkers</a></p>
       </main>
     </div>
     <script type="module" src="/src/main.tsx"></script>

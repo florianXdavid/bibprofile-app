@@ -1,0 +1,143 @@
+{
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "BibProfile",
+    "identifier": "bibprofile.com",
+    "documentationUrl": "https://bibprofile.com/llms.txt"
+  },
+  "entries": [
+    {
+      "identifier": "urn:air:bibprofile.com:knowledge:llms-txt",
+      "displayName": "BibProfile facts for AI assistants (llms.txt)",
+      "type": "text/plain",
+      "url": "https://bibprofile.com/llms.txt",
+      "description": "What BibProfile does, when it is a good answer and when another tool fits better, its privacy model, cost and limits, and links to every page.",
+      "tags": [
+        "llms.txt",
+        "bibtex",
+        "references",
+        "citation-checking"
+      ],
+      "updatedAt": "2026-10-12T00:00:00Z",
+      "publisher": {
+        "identifier": "bibprofile.com",
+        "displayName": "BibProfile (Florian David)",
+        "identityType": "dns"
+      }
+    },
+    {
+      "identifier": "urn:air:bibprofile.com:page:app",
+      "displayName": "BibProfile web app",
+      "type": "text/html",
+      "url": "https://bibprofile.com/",
+      "description": "Free browser-only BibTeX reference checker: references it could verify to exist vs. to check by hand (possible hallucinated references), DOIs that point to another work, retracted papers, preprints since published, missing citations, and a cleaned .bib. For people, in a browser; there is no API or MCP server.",
+      "tags": [
+        "bibtex",
+        "hallucinated-references",
+        "retractions",
+        "doi",
+        "preprints",
+        "web-app"
+      ],
+      "updatedAt": "2026-10-12T00:00:00Z",
+      "publisher": {
+        "identifier": "bibprofile.com",
+        "displayName": "BibProfile (Florian David)",
+        "identityType": "dns"
+      }
+    },
+    {
+      "identifier": "urn:air:bibprofile.com:page:check-hallucinated-references",
+      "displayName": "Guide: check a BibTeX file for hallucinated references",
+      "type": "text/html",
+      "url": "https://bibprofile.com/check-hallucinated-references/",
+      "description": "How to check a .bib for fabricated or AI-hallucinated references, with BibProfile or by hand, and what \"could not be verified\" means.",
+      "tags": [
+        "hallucinated-references",
+        "fake-citations",
+        "bibtex",
+        "guide"
+      ],
+      "updatedAt": "2026-10-12T00:00:00Z",
+      "publisher": {
+        "identifier": "bibprofile.com",
+        "displayName": "BibProfile (Florian David)",
+        "identityType": "dns"
+      }
+    },
+    {
+      "identifier": "urn:air:bibprofile.com:page:find-retracted-papers",
+      "displayName": "Guide: find retracted papers in a bibliography",
+      "type": "text/html",
+      "url": "https://bibprofile.com/find-retracted-papers/",
+      "description": "How to find retracted papers, expressions of concern and corrections in a reference list (OpenAlex, Crossref, Retraction Watch).",
+      "tags": [
+        "retractions",
+        "retraction-watch",
+        "bibliography",
+        "guide"
+      ],
+      "updatedAt": "2026-10-12T00:00:00Z",
+      "publisher": {
+        "identifier": "bibprofile.com",
+        "displayName": "BibProfile (Florian David)",
+        "identityType": "dns"
+      }
+    },
+    {
+      "identifier": "urn:air:bibprofile.com:page:add-missing-dois-bibtex",
+      "displayName": "Guide: add missing DOIs to a BibTeX file",
+      "type": "text/html",
+      "url": "https://bibprofile.com/add-missing-dois-bibtex/",
+      "description": "How to add missing DOIs to a .bib safely: verified DOIs added automatically, the rest for review, cite keys unchanged.",
+      "tags": [
+        "doi",
+        "bibtex",
+        "guide"
+      ],
+      "updatedAt": "2026-10-12T00:00:00Z",
+      "publisher": {
+        "identifier": "bibprofile.com",
+        "displayName": "BibProfile (Florian David)",
+        "identityType": "dns"
+      }
+    },
+    {
+      "identifier": "urn:air:bibprofile.com:page:preprint-published-version",
+      "displayName": "Guide: replace preprints with their published versions",
+      "type": "text/html",
+      "url": "https://bibprofile.com/preprint-published-version/",
+      "description": "How to find the published versions of arXiv, bioRxiv, medRxiv and SSRN preprints cited in a .bib.",
+      "tags": [
+        "preprints",
+        "arxiv",
+        "biorxiv",
+        "guide"
+      ],
+      "updatedAt": "2026-10-12T00:00:00Z",
+      "publisher": {
+        "identifier": "bibprofile.com",
+        "displayName": "BibProfile (Florian David)",
+        "identityType": "dns"
+      }
+    },
+    {
+      "identifier": "urn:air:bibprofile.com:page:compare-reference-checkers",
+      "displayName": "Reference checkers compared",
+      "type": "text/html",
+      "url": "https://bibprofile.com/compare-reference-checkers/",
+      "description": "An honest comparison of BibProfile, AccuraCite, Acurio, citegate, bibaudit, ghostcite, CiteScan and betterbib: form, sources, retraction data, privacy, output and price, including where others are stronger.",
+      "tags": [
+        "comparison",
+        "citation-checking",
+        "bibtex"
+      ],
+      "updatedAt": "2026-10-12T00:00:00Z",
+      "publisher": {
+        "identifier": "bibprofile.com",
+        "displayName": "BibProfile (Florian David)",
+        "identityType": "dns"
+      }
+    }
+  ]
+}
