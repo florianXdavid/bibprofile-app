@@ -11,5 +11,9 @@ file's contents, or a user's own OpenAlex key, to anyone other than OpenAlex —
 write to **contact@bibprofile.com** rather than opening a public issue. You'll get an
 answer, and credit if you'd like it.
 
+The same contact is published in
+[`/.well-known/security.txt`](https://bibprofile.com/.well-known/security.txt)
+(RFC 9116; renew its `Expires:` date every year — next: 13 October 2027).
+
 This repository never contains secrets: the shared OpenAlex key lives only in the
 proxy (a separate, private project), and `.env` is gitignored.

@@ -514,6 +514,9 @@ shows a reload fallback instead of a blank page.
 - **Footer links** — "Privacy · Legal notice" sit on the app's bottom line (next to the
   Guides and source links) and in every static page's footer; `test/legalPages.test.ts`
   checks the links, the pages' content and that neither page is in the sitemap.
+- `public/.well-known/security.txt` (F-14, RFC 9116) — security contact, policy link
+  (`SECURITY.md` on GitHub); **`Expires:` 2027-10-13 — renew it yearly**
+  (`test/securityTxt.test.ts` fails once it has expired).
 - `public/maintenance.html` — self-contained maintenance page. Maintenance mode is
   switched on/off by a Cloudflare **Redirect Rule** in the dashboard (not in this repo).
 - **Guide pages (v1.6.1)** — one page per task people search for, as plain static HTML
