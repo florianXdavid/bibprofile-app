@@ -7,5 +7,9 @@ export default defineConfig(({ mode }) => ({
   plugins: [react()],
   // Strip console.* and debugger from PRODUCTION builds so .bib/result contents are
   // never printed to devtools in prod. The dev server keeps them for local debugging.
-  esbuild: mode === 'production' ? { drop: ['console', 'debugger'] } : {},
+  // (F-07: Vite 8 bundles and minifies with Rolldown/Oxc, so this moved from the old
+  // `esbuild: { drop }` option to the minifier's compress options.)
+  build: mode === 'production'
+    ? { rolldownOptions: { output: { minify: { compress: { dropConsole: true, dropDebugger: true } } } } }
+    : {},
 }))

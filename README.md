@@ -96,13 +96,15 @@ These are load-bearing — the whole design depends on them.
 
 ## Stack
 
-Vite + React + TypeScript · [`@retorquere/bibtex-parser`](https://www.npmjs.com/package/@retorquere/bibtex-parser)
-for parsing · [Vitest](https://vitest.dev) for unit tests · plain CSS. No UI,
+Vite 8 (Rolldown) + React + TypeScript · [`@retorquere/bibtex-parser`](https://www.npmjs.com/package/@retorquere/bibtex-parser)
+for parsing · [Vitest](https://vitest.dev) 5 for unit tests · plain CSS. No UI,
 state, or chart library.
 
 ## Running it
 
-Requires Node 18+.
+Requires **Node 22.12+** (`.nvmrc` says 22; Cloudflare Pages reads it). Vitest 5 needs
+22.12+, Vite 8 20.19+ (F-07, audit 2026-10-13: dev tooling upgraded so `npm audit`
+reports 0 vulnerabilities; production dependencies unchanged).
 
 ```bash
 npm install
@@ -525,7 +527,8 @@ shows a reload fallback instead of a blank page.
   with `<link rel="ai-catalog">` in `index.html`. No assistant is known to read it
   yet; revisit when the spec is final.
 
-Production builds strip `console.*` and `debugger` (`vite.config.ts`).
+Production builds strip `console.*` and `debugger` (`vite.config.ts`, via the Rolldown
+minifier's `compress.dropConsole` / `dropDebugger` since Vite 8).
 
 ## Project layout
 
