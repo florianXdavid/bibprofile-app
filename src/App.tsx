@@ -553,6 +553,7 @@ export default function App() {
         {/* v1.6.2 — AGPL §13: offer the source to the site's users. */}
         <br /><span className="muted">Open source (AGPL-3.0):</span>{' '}
         <a href={SOURCE_CODE_URL} target="_blank" rel="noreferrer">source code</a>
+        {' · '}<a href="/privacy/">Privacy</a>{' · '}<a href="/mentions-legales/">Legal notice</a>
       </nav>
     </div>
   )

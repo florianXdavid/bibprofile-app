@@ -32,7 +32,8 @@ describe('open source (v1.6.2)', () => {
     expect(SOURCE_CODE_URL).toMatch(/^https:\/\/github\.com\/[\w-]+\/[\w.-]+$/)
     expect(read('src/components/About.tsx')).toContain('SOURCE_CODE_URL')
     expect(read('src/App.tsx')).toContain('SOURCE_CODE_URL')
-    const pages = [...GUIDES.map(g => `public/${g.slug}/index.html`), 'public/compare-reference-checkers/index.html']
+    const pages = [...GUIDES.map(g => `public/${g.slug}/index.html`), 'public/compare-reference-checkers/index.html',
+      'public/privacy/index.html', 'public/mentions-legales/index.html']
     for (const f of ['index.html', 'public/llms.txt', ...pages]) expect(read(f), f).toContain(SOURCE_CODE_URL)
   })
 

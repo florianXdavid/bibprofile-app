@@ -12,6 +12,7 @@ const root = (p: string) => fileURLToPath(new URL(`../${p}`, import.meta.url))
 const read = (p: string) => readFileSync(root(p), 'utf8')
 const COMPARE = 'compare-reference-checkers'
 const internalPages = [...GUIDES.map(g => `/${g.slug}/`), `/${COMPARE}/`]
+const legalPages = ['/privacy/', '/mentions-legales/'] // audit 2026-10-13 — linked from every footer, not guides
 const decode = (s: string) => s.replace(/&#x27;|&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
 
 describe('guide pages (v1.6.1)', () => {
@@ -51,7 +52,7 @@ describe('guide pages (v1.6.1)', () => {
       it('links only to pages that exist', () => {
         for (const [, href] of html.matchAll(/href="(\/[^"?#]*)"/g)) {
           if (href === '/' || href === '/guides.css') continue
-          expect(internalPages).toContain(href)
+          expect([...internalPages, ...legalPages]).toContain(href)
         }
       })
       it('is listed in the sitemap, llms.txt and the home page’s static HTML', () => {
@@ -86,7 +87,7 @@ describe('guide pages (v1.6.1)', () => {
     it('internal links exist; every guide links to it', () => {
       for (const [, href] of html.matchAll(/href="(\/[^"?#]*)"/g)) {
         if (href === '/' || href === '/guides.css') continue
-        expect(internalPages).toContain(href)
+        expect([...internalPages, ...legalPages]).toContain(href)
       }
       for (const g of GUIDES) expect(read(`public/${g.slug}/index.html`)).toContain(`href="/${COMPARE}/"`)
     })

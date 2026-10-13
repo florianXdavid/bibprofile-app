@@ -64,7 +64,7 @@ and OpenAlex. Built by Florian David.
   through BibProfile's own proxy (https://api.bibprofile.com), which keeps no record of them.
 - No account, no cookies, no tracking, no analytics: BibProfile stores nothing about the user or
   their file. Its host, Cloudflare, processes technical data such as IP addresses to deliver
-  and protect the site. Privacy notice: https://bibprofile.com/privacy/
+  and protect the site. Privacy notice: https://bibprofile.com/privacy/ · legal notice: https://bibprofile.com/mentions-legales/
 - Free. DOI lookups are free; an OpenAlex title search uses one credit from a free
   daily pool provided by OpenAlex and shared by all users. If it runs out, a user can
   add their own free OpenAlex key, which stays in memory and goes only to OpenAlex.

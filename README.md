@@ -511,6 +511,9 @@ shows a reload fallback instead of a blank page.
   *mentions légales*): publisher and publication director Florian David (private,
   non-professional publisher), contact, host Cloudflare, Inc. (address; **phone still
   `TODO-CHECK`**), AGPL-3.0 licence with the source link.
+- **Footer links** — "Privacy · Legal notice" sit on the app's bottom line (next to the
+  Guides and source links) and in every static page's footer; `test/legalPages.test.ts`
+  checks the links, the pages' content and that neither page is in the sitemap.
 - `public/maintenance.html` — self-contained maintenance page. Maintenance mode is
   switched on/off by a Cloudflare **Redirect Rule** in the dashboard (not in this repo).
 - **Guide pages (v1.6.1)** — one page per task people search for, as plain static HTML
