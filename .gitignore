@@ -13,3 +13,6 @@ PREDEPLOY-READINESS.md
 DEPLOY-INSTRUCTIONS.md
 DEPLOY-STATUS.md
 SECURITY-AUDIT.md
+
+# GDPR compliance notes (records of processing, breach plan) — kept on disk, never on GitHub (F-12).
+compliance/

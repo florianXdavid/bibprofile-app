@@ -12,9 +12,13 @@ import { GUIDES } from '../src/guides'
 const repo = fileURLToPath(new URL('..', import.meta.url))
 const read = (p: string) => readFileSync(join(repo, p), 'utf8')
 
+// Files git never tracks (.gitignore's plain names: local notes, compliance/, .env…) are
+// skipped, so private notes on the author's disk can't fail the test.
+const ignored = new Set(['.git', ...readFileSync(join(repo, '.gitignore'), 'utf8').split('\n')
+  .map(l => l.trim().replace(/\/$/, '')).filter(l => l && !l.startsWith('#') && !l.includes('*'))])
 function* files(dir: string): Generator<string> {
   for (const name of readdirSync(join(repo, dir))) {
-    if (['node_modules', 'dist', '.git', '.env', '.env.local'].includes(name)) continue
+    if (ignored.has(name) || name.endsWith('.local') || name.startsWith('vite.config.ts.timestamp-')) continue
     const rel = dir ? `${dir}/${name}` : name
     if (statSync(join(repo, rel)).isDirectory()) yield* files(rel)
     else if (/\.(ts|tsx|js|mjs|json|md|html|css|txt|xml|bib)$/.test(name) || name === 'LICENSE') yield rel
