@@ -490,8 +490,11 @@ shows a reload fallback instead of a blank page.
 - `index.html` — SEO meta, Open Graph/Twitter tags, JSON-LD (`@graph`:
   SoftwareApplication + Organization), and a static no-JS fallback inside `#root`
   that crawlers index (keep it accurate when features change).
-- `public/_headers` — Cloudflare Pages security headers (CSP **report-only**,
-  X-Frame-Options, COOP/CORP, Permissions-Policy).
+- `public/_headers` — Cloudflare Pages security headers: an **enforced** CSP (F-02,
+  audit 2026-10-13: `script-src 'self'`, connections only to our proxy, OpenAlex and
+  Crossref, `form-action 'none'`, `upgrade-insecure-requests`), X-Frame-Options,
+  COOP/CORP, Permissions-Policy. `test/csp.test.ts` keeps it enforced and checks that no
+  page gains an inline script, an inline event handler or a `javascript:` URL.
 - `public/robots.txt` (allows indexing), `sitemap.xml`, `llms.txt` (facts for AI
   crawlers), `og-image.jpg`.
 - `public/maintenance.html` — self-contained maintenance page. Maintenance mode is

@@ -1,14 +1,18 @@
 # Cloudflare Pages security headers for bibprofile.com.
 # Vite copies public/ into dist/, and Pages serves dist/_headers automatically.
 #
-# CSP is REPORT-ONLY for now: it does NOT block anything, it only logs violations to
-# the browser console. Watch for violations, then switch the header name to
-# `Content-Security-Policy` (enforcing) in a follow-up once it's clean.
+# CSP is ENFORCED (F-02, audit 2026-10-13; it was report-only before). Checked first:
+# no inline <script> other than JSON-LD data blocks (not executed, so not blocked), no
+# inline event handlers, no javascript: URLs, no eval, and no resource from a host
+# outside the policy — in dist/ and in every public/**/*.html.
 #   - script-src 'self'      : the app loads only its own hashed bundle (no inline <script>).
 #   - style-src needs 'unsafe-inline' : the app uses React inline style={{…}} attributes
 #                                        (and inline-SVG chart styles); dropping it would break layout.
 #   - connect-src            : the API hosts the app calls (our proxy, OpenAlex direct for own-key,
 #                              and Crossref for retraction/correction notices — v1.4.2).
+#   - form-action 'none'     : the app's two forms (own key, self-citation) never submit;
+#                              their handlers call preventDefault().
+#   - upgrade-insecure-requests : any stray http:// subresource is fetched over https.
 /*
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
@@ -16,4 +20,4 @@
   Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=()
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Resource-Policy: same-origin
-  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self'; connect-src 'self' https://api.bibprofile.com https://api.openalex.org https://api.crossref.org; img-src 'self' data:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; connect-src 'self' https://api.bibprofile.com https://api.openalex.org https://api.crossref.org; img-src 'self' data:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; upgrade-insecure-requests
