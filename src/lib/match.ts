@@ -253,7 +253,7 @@ export function finishRows(rows: ResultRow[]): void {
   // already pointing to them — point to it. An uncertain row on that work gets a hint.
   const groups = new Map<string, ResultRow[]>()
   for (const r of rows) {
-    if (r.duplicateOf || !r.openalex || !isConfident(r)) continue
+    if (r.duplicateOf || !r.openalex || !isConfident(r) || !bare(r.openalex.id)) continue // (F-08: an id dropped as invalid is '' — never a shared key)
     groups.set(bare(r.openalex.id), [...(groups.get(bare(r.openalex.id)) ?? []), r])
   }
   const firstById = new Map<string, ResultRow>()

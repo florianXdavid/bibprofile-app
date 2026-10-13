@@ -15,6 +15,7 @@ import {
 } from '../../lib/gaps'
 import CardShell from './CardShell'
 import { plural } from './format'
+import { isOpenAlexUrl } from '../../lib/openalex'
 
 interface Props {
   rows: ResultRow[]
@@ -38,7 +39,7 @@ function CandidateList({ candidates, denom, unit, verb }: { candidates: GapCandi
           </span>
           <div className="gap-meta">
             {verb} <strong>{c.count}</strong> of your {denom} {plural(denom, unit)}
-            {c.work?.id && <> · <a href={c.work.id} target="_blank" rel="noreferrer">OpenAlex ↗</a></>}
+            {isOpenAlexUrl(c.work?.id) && <> · <a href={c.work.id} target="_blank" rel="noreferrer">OpenAlex ↗</a></>}
             <div className="gap-keys">{c.citedByKeys.map(k => <span key={k} className="mono chip">{k}</span>)}</div>
           </div>
         </li>

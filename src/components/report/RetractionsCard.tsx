@@ -8,6 +8,7 @@ import type { CrossrefRunState, CrossrefUpdate } from '../../lib/crossref'
 import { computeRetractions, type RetractionSignal, type UpdateFinding } from '../../lib/stats/retractions'
 import CardShell from './CardShell'
 import { plural } from './format'
+import { isOpenAlexUrl } from '../../lib/openalex'
 
 const SIGNAL_LABEL: Record<RetractionSignal, string> = {
   'openalex': 'OpenAlex',
@@ -43,7 +44,7 @@ function FindingList({ items, showSignals }: { items: UpdateFinding[]; showSigna
           <div className="dup-keys">
             <span className="mono chip">{f.citeKey}</span>
             {showSignals && f.signals.map(s => <span key={s} className="chip">{SIGNAL_LABEL[s]}</span>)}
-            {f.openalexId && <a href={f.openalexId} target="_blank" rel="noreferrer" className="chip">OpenAlex ↗</a>}
+            {isOpenAlexUrl(f.openalexId) && <a href={f.openalexId} target="_blank" rel="noreferrer" className="chip">OpenAlex ↗</a>}
           </div>
           <Notices updates={f.updates} />
         </li>

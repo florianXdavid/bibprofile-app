@@ -64,6 +64,18 @@ function budgetResetFromBody(body: string): string | null {
 
 // Strip the URL prefix from an OpenAlex id -> bare short id (W123…). Accepts an
 // already-short id unchanged. Used for /works/{id} paths and OR-filter values.
+// F-08 (audit 2026-10-13) — an OpenAlex work/author/source/institution/publisher/
+// funder id as the API returns it. Anything else (a `javascript:` URL, a relative
+// path…) is dropped, because ids are rendered as links: only ids that pass this test
+// ever become an href.
+const OPENALEX_ID_RE = /^https:\/\/openalex\.org\/[WASIPF]\d+$/i
+export function isOpenAlexUrl(v: unknown): v is string {
+  return typeof v === 'string' && OPENALEX_ID_RE.test(v)
+}
+export function safeOpenAlexId(v: unknown): string {
+  return isOpenAlexUrl(v) ? v : ''
+}
+
 export function shortOpenAlexId(id: string): string {
   return (id || '').replace(/^https?:\/\/openalex\.org\//i, '').trim()
 }
@@ -213,7 +225,7 @@ function toBiblio(raw: any): OpenAlexWork['biblio'] {
 export function toOpenAlexWork(raw: any): OpenAlexWork {
   const source = raw?.primary_location?.source
   return {
-    id: typeof raw?.id === 'string' ? raw.id : '',
+    id: safeOpenAlexId(raw?.id), // F-08: only a real OpenAlex URL, else ''
     doi: typeof raw?.doi === 'string' ? raw.doi : null,
     displayName: raw?.display_name ?? raw?.title ?? '',
     publicationYear: typeof raw?.publication_year === 'number' ? raw.publication_year : null,

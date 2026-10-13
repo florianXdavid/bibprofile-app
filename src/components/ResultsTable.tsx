@@ -5,6 +5,7 @@ import { computeRetractions } from '../lib/stats/retractions'
 import { normalizeDoi } from '../lib/doi'
 import { cleanVenue } from '../lib/stats/venues'
 import { scholarUrl, STATUS_LABEL } from '../lib/stats/verification'
+import { isOpenAlexUrl } from '../lib/openalex'
 
 type SortDir = 'asc' | 'desc'
 type Primitive = string | number | null
@@ -98,7 +99,7 @@ const columns: Column[] = [
   {
     key: 'openalexId', label: 'OpenAlex ID',
     get: r => shortId(r.openalex?.id ?? null),
-    cell: r => r.openalex?.id
+    cell: r => isOpenAlexUrl(r.openalex?.id)
       ? <a href={r.openalex.id} target="_blank" rel="noreferrer">{shortId(r.openalex.id)}</a>
       : <span className="muted">—</span>,
   },
