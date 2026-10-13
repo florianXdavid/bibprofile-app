@@ -11,12 +11,14 @@ may have missed, and a cleaned copy back. Run it right before you submit a paper
 
 Everything runs in your browser. On the shared pool, queries pass through
 BibProfile's own proxy (`api.bibprofile.com`), which forwards them to OpenAlex and
-stores nothing; with your own key they go straight to OpenAlex. To find each
+keeps no record of them; with your own key they go straight to OpenAlex. To find each
 reference, its title, first author and year are sent to Crossref
 (`api.crossref.org`); matched records are then fetched from OpenAlex. DOIs are also
 checked against Crossref for retractions (Crossref includes the Retraction Watch
 database). A "search Google Scholar" link sends a reference's title to Google only
-when clicked. Nothing is stored, no account, no tracking.
+when clicked. BibProfile stores nothing about you or your file — no account, no
+cookies, no tracking; its host, Cloudflare, processes technical data such as your IP
+address. The privacy notice is `public/privacy/index.html` (https://bibprofile.com/privacy/).
 
 > Building this project was a **week-by-week** effort. The full history — every
 > feature, fix and scope decision in order — lives in **[DEVLOG.md](./DEVLOG.md)**.
@@ -79,12 +81,14 @@ when clicked. Nothing is stored, no account, no tracking.
 These are load-bearing — the whole design depends on them.
 
 - **No backend, no database, no auth, no persistence** — no `localStorage`,
-  `sessionStorage`, IndexedDB, or cookies. Nothing is stored or sent anywhere
-  except OpenAlex and Crossref. (A static test, `test/noPersistence.test.ts`, fails if any
+  `sessionStorage`, IndexedDB, or cookies. Nothing about the user or their file is
+  stored, or sent anywhere except OpenAlex and Crossref (and the host, Cloudflare, sees
+  technical data such as the IP address). (A static test, `test/noPersistence.test.ts`, fails if any
   source file references a storage API.)
 - **Two fetch modules, a fixed set of hosts.** `src/lib/openalex.ts` reaches the
   shared proxy (`api.bibprofile.com`, which just forwards to OpenAlex) or, for a
-  user key, OpenAlex directly (`api.openalex.org`); the proxy stores nothing.
+  user key, OpenAlex directly (`api.openalex.org`); the proxy keeps no record of the
+  lookups.
   `src/lib/crossref.ts` reaches `api.crossref.org` — free, key-less, public pool —
   for the first title search (v1.4.4) and for retraction / correction notices
   (v1.4.2). No component calls `fetch`
@@ -497,6 +501,12 @@ shows a reload fallback instead of a blank page.
   page gains an inline script, an inline event handler or a `javascript:` URL.
 - `public/robots.txt` (allows indexing), `sitemap.xml`, `llms.txt` (facts for AI
   crawlers), `og-image.jpg`.
+- **Privacy notice (F-10, audit 2026-10-13)** — `public/privacy/index.html`, static like
+  the guides: who publishes BibProfile, that it stores nothing about you or your file,
+  what leaves the browser and to whom (Crossref, OpenAlex via the proxy or directly,
+  Google only on a Scholar click), Cloudflare as host and processor (DPF + SCCs), the
+  own-key rule, contact e-mails, legal basis and rights. Linked from About and the
+  home page's static HTML; not in the sitemap.
 - `public/maintenance.html` — self-contained maintenance page. Maintenance mode is
   switched on/off by a Cloudflare **Redirect Rule** in the dashboard (not in this repo).
 - **Guide pages (v1.6.1)** — one page per task people search for, as plain static HTML

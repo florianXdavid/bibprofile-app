@@ -59,13 +59,15 @@ export default function About() {
       <p>
         Everything runs in your browser. To match your references, their titles and identifiers (DOI, arXiv or PubMed ID) are sent to
         OpenAlex. On the shared pool (the default), they pass through BibProfile's own proxy at{' '}
-        <code>api.bibprofile.com</code>, which forwards them to OpenAlex and stores nothing; if you use
+        <code>api.bibprofile.com</code>, which forwards them to OpenAlex and keeps no record of them; if you use
         your own key, queries go straight to OpenAlex and your key never touches our proxy. To find each
         reference, its title, first author and year are sent to Crossref (<code>api.crossref.org</code>);
         matched records are then fetched from OpenAlex. DOIs are also checked against Crossref for
         retractions (Crossref includes the Retraction Watch database). A “search Google Scholar” link
-        sends that reference's title to Google only when you click it. Nothing is stored, there's no
-        account, and there's no tracking.
+        sends that reference's title to Google only when you click it. BibProfile stores nothing about
+        you or your file: no account, no cookies, no tracking. Our host, Cloudflare, processes technical
+        data such as your IP address to deliver and protect the site.{' '}
+        <a href="/privacy/">Privacy</a>
       </p>
 
       <h3>The shared pool &amp; your own key</h3>

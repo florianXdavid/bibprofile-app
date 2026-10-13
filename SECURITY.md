@@ -2,7 +2,9 @@
 
 BibProfile runs in the browser: your `.bib` file is never uploaded, and nothing is
 stored. The only network calls are lookups to Crossref and OpenAlex (on the shared
-pool through BibProfile's own proxy, `api.bibprofile.com`, which stores nothing).
+pool through BibProfile's own proxy, `api.bibprofile.com`, which keeps no record of them).
+BibProfile stores nothing about you or your file; its host, Cloudflare, processes technical
+data such as your IP address. See https://bibprofile.com/privacy/.
 
 If you find a security or privacy problem — for example a way the app could leak a
 file's contents, or a user's own OpenAlex key, to anyone other than OpenAlex — please

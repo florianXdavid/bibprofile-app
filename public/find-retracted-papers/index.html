@@ -44,7 +44,7 @@
       "name": "Is my .bib file uploaded anywhere?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "No. The file is read in your browser and is never uploaded. To look a reference up, only its DOI, or its title, first author and year, is sent to Crossref and OpenAlex (through BibProfile’s own proxy, which stores nothing). There’s no account, no cookie and no tracking."
+        "text": "No. The file is read in your browser and is never uploaded. To look a reference up, only its DOI, or its title, first author and year, is sent to Crossref and OpenAlex (through BibProfile’s own proxy, which keeps no record of them). There’s no account, no cookie and no tracking: BibProfile stores nothing about you or your file. Our host, Cloudflare, processes technical data such as your IP address to deliver the site (see the privacy page)."
       }
     },
     {
@@ -97,7 +97,7 @@
     <h3>Does it check papers without a DOI?</h3>
     <p>Partly. A reference matched by its title is checked through its matched record and that record’s DOI. A reference that has no DOI and can’t be matched has no retraction data, and BibProfile says so instead of calling it clean.</p>
     <h3>Is my .bib file uploaded anywhere?</h3>
-    <p>No. The file is read in your browser and is never uploaded. To look a reference up, only its DOI, or its title, first author and year, is sent to Crossref and OpenAlex (through BibProfile’s own proxy, which stores nothing). There’s no account, no cookie and no tracking.</p>
+    <p>No. The file is read in your browser and is never uploaded. To look a reference up, only its DOI, or its title, first author and year, is sent to Crossref and OpenAlex (through BibProfile’s own proxy, which keeps no record of them). There’s no account, no cookie and no tracking: BibProfile stores nothing about you or your file. Our host, Cloudflare, processes technical data such as your IP address to deliver the site (see the privacy page).</p>
     <h3>Is it free?</h3>
     <p>Yes, and there’s no account. Lookups by DOI are free; a title search on OpenAlex uses one credit from a free daily pool provided by OpenAlex and shared by everyone using BibProfile, so you never pay anything. If the pool runs out on a busy day, you can add your own free OpenAlex key or come back after the reset.</p>
 
@@ -111,7 +111,7 @@
         <li><a href="/preprint-published-version/">Replace preprints with their published versions</a></li>
       </ul>
       <p><a href="/compare-reference-checkers/">How BibProfile compares with other reference checkers</a></p>
-      <p>BibProfile is free and runs in your browser: no account, nothing stored, no tracking. Open source (AGPL-3.0): <a href="https://github.com/florianXdavid/bibprofile-app">source code</a>. <a href="/">bibprofile.com</a></p>
+      <p>BibProfile is free and runs in your browser: no account, no tracking, and nothing about you or your file is stored. Open source (AGPL-3.0): <a href="https://github.com/florianXdavid/bibprofile-app">source code</a>. <a href="/">bibprofile.com</a></p>
     </footer>
   </body>
 </html>

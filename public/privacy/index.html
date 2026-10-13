@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Audit 2026-10-13: static page, no script, styled like the guides. Not in the sitemap. -->
+    <title>Privacy | BibProfile</title>
+    <meta name="description" content="What BibProfile does with your data: nothing is stored about you or your file; what leaves your browser, to whom, and your rights." />
+    <link rel="canonical" href="https://bibprofile.com/privacy/" />
+    <link rel="stylesheet" href="/guides.css" />
+  </head>
+  <body>
+    <header class="site"><div class="site-in"><a class="brand" href="/">BibProfile</a><span class="tagline">Check your references before the reviewers do</span></div></header>
+    <main>
+    <h1>Privacy</h1>
+    <p class="lead">BibProfile stores nothing about you or your file. This page says what does leave your browser, and to whom.</p>
+
+    <h2>Who we are</h2>
+    <p>BibProfile is published by Florian David, a private individual. Contact: <a href="mailto:contact@bibprofile.com">contact@bibprofile.com</a>.</p>
+
+    <h2>What BibProfile stores</h2>
+    <p>Nothing about you or your file: no account, no cookies, no local storage, no analytics. Your <code>.bib</code> file is read and processed in your browser and is never uploaded.</p>
+
+    <h2>What leaves your browser, and to whom</h2>
+    <p>To check your references, some of their details are sent to independent services, each with its own privacy policy:</p>
+    <ul>
+      <li><strong>Crossref</strong> (<code>api.crossref.org</code>): reference titles, first authors, years and identifiers such as DOIs, to find each reference and check for retractions. <a href="https://www.crossref.org/operations-and-sustainability/privacy/">Crossref’s privacy policy</a>.</li>
+      <li><strong>OpenAlex</strong>: the same details, to fetch the matching records — through our proxy <code>api.bibprofile.com</code> on the free shared pool, or directly to <code>api.openalex.org</code> when you use your own OpenAlex key. <a href="https://openalex.org/OpenAlex_privacy_policy.pdf">OpenAlex’s privacy policy</a>.</li>
+      <li><strong>Google</strong>: a reference’s title, only when you click “search Google Scholar”. <a href="https://policies.google.com/privacy">Google’s privacy policy</a>.</li>
+    </ul>
+    <p>These services also see your IP address, as any website you connect to does.</p>
+
+    <h2>Our host: Cloudflare</h2>
+    <p>Cloudflare, Inc. (USA) serves this site and runs our proxy. As our processor, it handles technical data such as your IP address to deliver and protect the service, including per-IP rate limiting of the shared pool. Transfers to the United States are covered by the EU-US Data Privacy Framework and by the standard contractual clauses in <a href="https://www.cloudflare.com/cloudflare-customer-dpa/">Cloudflare’s data processing addendum</a>. We keep no logs of our own beyond Cloudflare’s standard, short-lived operational data. <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare’s privacy policy</a>.</p>
+    <p>To share the free pool fairly, our proxy counts title searches per connection and per day. It keeps only a one-way hash of your IP address mixed with a secret that changes every day — never the address itself — and deletes it after about a day.</p>
+
+    <h2>Your own OpenAlex key</h2>
+    <p>If you add one, it is kept in memory for this session only, sent only to OpenAlex and never to our proxy. Reloading the page clears it.</p>
+
+    <h2>E-mails you send us</h2>
+    <p>Messages to <a href="mailto:contact@bibprofile.com">contact@bibprofile.com</a> are used only to answer you, and deleted after two years at most.</p>
+
+    <h2>Legal basis</h2>
+    <p>Our legitimate interest in providing and securing a free tool (GDPR, Article 6(1)(f)).</p>
+
+    <h2>Your rights</h2>
+    <p>You can ask for access to, rectification or erasure of your data, or object to its processing, by writing to <a href="mailto:contact@bibprofile.com">contact@bibprofile.com</a>. You can also complain to the CNIL, the French data protection authority (<a href="https://www.cnil.fr/">cnil.fr</a>).</p>
+
+    <p class="muted">Last updated: 13 October 2026.</p>
+    </main>
+    <footer>
+      <p>BibProfile is free and runs in your browser: no account, no tracking, and nothing about you or your file is stored. Open source (AGPL-3.0): <a href="https://github.com/florianXdavid/bibprofile-app">source code</a>. <a href="/">bibprofile.com</a></p>
+    </footer>
+  </body>
+</html>
