@@ -507,6 +507,10 @@ shows a reload fallback instead of a blank page.
   Google only on a Scholar click), Cloudflare as host and processor (DPF + SCCs), the
   own-key rule, contact e-mails, legal basis and rights. Linked from About and the
   home page's static HTML; not in the sitemap.
+- **Legal notice (F-11)** — `public/mentions-legales/index.html`, bilingual (French law's
+  *mentions légales*): publisher and publication director Florian David (private,
+  non-professional publisher), contact, host Cloudflare, Inc. (address; **phone still
+  `TODO-CHECK`**), AGPL-3.0 licence with the source link.
 - `public/maintenance.html` — self-contained maintenance page. Maintenance mode is
   switched on/off by a Cloudflare **Redirect Rule** in the dashboard (not in this repo).
 - **Guide pages (v1.6.1)** — one page per task people search for, as plain static HTML
