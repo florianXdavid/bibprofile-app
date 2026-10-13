@@ -38,3 +38,5 @@ table.compare thead th { background: var(--bg-alt); position: sticky; top: 0; }
 table.compare tbody th { white-space: nowrap; }
 table.compare tr.us { background: #eef4fb; }
 table.compare tbody tr:last-child th, table.compare tbody tr:last-child td { border-bottom: none; }
+/* F-13 — each competitor's source page, under its name in the comparison table */
+table.compare .src { font-weight: 400; font-size: 0.78rem; color: var(--muted); white-space: normal; margin-top: 2px; }

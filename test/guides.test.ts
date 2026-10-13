@@ -80,6 +80,14 @@ describe('guide pages (v1.6.1)', () => {
       const visible = [...faq.matchAll(/<h3>(.*?)<\/h3>\s*<p>(.*?)<\/p>/g)].map(m => [decode(m[1]), decode(m[2])])
       expect(ld.mainEntity.map((q: { name: string; acceptedAnswer: { text: string } }) => [q.name, q.acceptedAnswer.text])).toEqual(visible)
     })
+    it('links every competitor to the page its facts came from (F-13)', () => {
+      const rows = html.match(/<tr[^>]*><th scope="row">[\s\S]*?<\/tr>/g) ?? []
+      expect(rows.length).toBeGreaterThanOrEqual(8)
+      for (const r of rows) {
+        if (r.includes('>BibProfile</a>')) continue
+        expect(r).toMatch(/<div class="src">source: <a href="https:\/\/[^"]+">/)
+      }
+    })
     it('says when it was checked and how to report a mistake', () => {
       expect(html).toMatch(/Checked on \d{1,2} \w+ 20\d\d/)
       expect(html).toContain('contact@bibprofile.com')
