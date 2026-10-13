@@ -921,6 +921,35 @@ Source: an audit of 6 real `.bib` files (587 entries) plus a probe of the cleane
   to the version history; privacy copy mentions arXiv / PubMed IDs.
 - Tests: 216 → 252 (+1 skipped).
 
+## v1.6.3 — security & privacy audit fixes (13 Oct 2026; part of v1.6)
+
+From the 13 Oct 2026 security & compliance audit. One commit per item (applied from a
+patch series; nothing pushed or deployed).
+
+- **F-08** — OpenAlex ids must match `^https://openalex\.org/[WASIPF]\d+$` before they
+  become links (`safeOpenAlexId` in `toOpenAlexWork`; every `href` built from API data
+  checks `isOpenAlexUrl`; an id dropped as invalid never groups duplicates).
+- **F-07** — Vite 8 (Rolldown), plugin-react 6, Vitest 5: `npm audit` 0. Node 22 in
+  `.nvmrc` (Vitest 5 needs 22.12+). Console stripping moved to the Rolldown minifier.
+  Production dependencies unchanged; `allowScripts` lists `fsevents` (macOS-only, not run).
+- **F-02** — CSP enforced (+ `form-action 'none'`, `upgrade-insecure-requests`); checked
+  first that nothing would break, and in a browser with the policy applied: no violation.
+- **F-10 / F-11** — `/privacy/` and `/mentions-legales/` (static, no script). "Stores
+  nothing" claims now say BibProfile stores nothing about you or your file and that the
+  host, Cloudflare, processes technical data such as the IP address. The privacy page
+  also discloses the proxy's per-connection counter (hashed IP, ≤ 1 day).
+- **Footer** — Privacy · Legal notice on the app's bottom line and every static page.
+- **F-13** — comparison page: each competitor links the page its facts came from.
+- **F-14** — `/.well-known/security.txt` (expires 2027-10-13; renew yearly).
+- **F-05** — workers.dev URL gone from `.env.example`; `workers_dev = false` in the Worker.
+- **F-12** — `compliance/` (records of processing, breach plan) on disk, gitignored.
+- **F-03** — Worker: per-IP daily quota on billable calls (150), counted in a Durable
+  Object (not KV: 1 write/s per key and 1,000 writes/day on Free would block runs), keyed
+  by day + SHA-256(IP + daily salt from `QUOTA_SALT`), deleted after 26 h, fail closed.
+  App: the `ip_daily_quota` 429 halts like exhaustion with its own message.
+- About: a v1.6 line in the version history.
+- Tests: app 316 → 331 (+2 skipped); Worker 8 (new, `node --test`).
+
 ## v1.6.2 (follow-up) — open source: AGPL-3.0, public mirror (Oct 2026)
 
 - **Audit before publishing** (full history, 35 commits): no secret ever committed —

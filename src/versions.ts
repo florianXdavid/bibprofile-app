@@ -9,6 +9,11 @@ export interface VersionEntry {
 
 export const VERSIONS: VersionEntry[] = [
   {
+    version: 'v1.6',
+    date: '2026-10-13',
+    note: 'Guide pages for common reference problems, an honest comparison with other checkers, open source (AGPL-3.0), and security and privacy fixes: a stricter content security policy, a privacy notice and legal notice, and a fair per-connection share of the free pool.',
+  },
+  {
     version: 'v1.5',
     date: '2026-10-12',
     note: 'Unverified references get a Google Scholar link, a “Try with an example” button, a report to download or print as PDF for co-authors, and pasting BibTeX instead of uploading a file.',
