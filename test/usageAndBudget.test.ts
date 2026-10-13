@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
   fetchRateLimit,
+  ipQuotaResetFromBody,
   looksLikeBudgetExhaustion,
   OpenAlexAuthError,
 } from '../src/lib/openalex'
@@ -114,6 +115,29 @@ describe('W4.1 graceful shared-pool exhaustion + Resume', () => {
     const status = Object.fromEntries(merged.map(r => [r.citeKey, r.status]))
     expect(status).toEqual({ a: 'matched-by-doi', b: 'matched-by-doi', c: 'matched-by-doi' })
     expect(resumed.exhausted).toBeNull()
+  })
+
+  // F-03 (audit 2026-10-13) — the proxy's per-IP daily quota halts like exhaustion,
+  // with its own reason (the UI shows its own message), and is never retried.
+  it('halts on the proxy\'s ip_daily_quota reply with reason "ip-quota", no retry', async () => {
+    const ipQuota429 = () => new Response('{"error":"ip_daily_quota","retry_after_seconds":3600}', { status: 429, headers: { 'Retry-After': '3600' } })
+    const spy = mockFetch([() => work('https://openalex.org/W1', 'Alpha'), ipQuota429])
+    const before = Date.now()
+    const { rows, exhausted } = await runMatching(parsed(three()), () => {}, sharedCredential())
+    expect(exhausted?.reason).toBe('ip-quota')
+    const reset = Date.parse(exhausted!.resetsAt!)
+    expect(reset).toBeGreaterThanOrEqual(before + 3600_000 - 1000)
+    expect(reset).toBeLessThanOrEqual(Date.now() + 3600_000 + 1000)
+    expect(Object.fromEntries(rows.map(r => [r.citeKey, r.status]))).toEqual({ a: 'matched-by-doi', b: 'pending', c: 'pending' })
+    expect(spy).toHaveBeenCalledTimes(2) // the 429 was not retried
+  })
+
+  it('the pool running dry keeps reason "pool"; the proxy\'s counter outage is not exhaustion', async () => {
+    mockFetch([() => work('https://openalex.org/W1', 'Alpha'), budget429])
+    expect((await runMatching(parsed(three()), () => {}, sharedCredential())).exhausted?.reason).toBe('pool')
+    expect(looksLikeBudgetExhaustion('{"error":"counter_unavailable","retry_after_seconds":60}')).toBe(false)
+    expect(ipQuotaResetFromBody('{"error":"rate_limited","retry_after_seconds":10}')).toBeUndefined()
+    expect(ipQuotaResetFromBody('not json')).toBeUndefined()
   })
 
   it('an AUTH failure on a user key is NOT the exhaustion path — it propagates', async () => {

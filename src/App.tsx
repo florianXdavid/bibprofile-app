@@ -22,7 +22,7 @@ import {
   type GapsRunState,
 } from './lib/gaps'
 import { runPreprintResolution, type PreprintRunState } from './lib/preprintResolve'
-import { fetchRateLimit, OpenAlexAuthError, OpenAlexBudgetError } from './lib/openalex'
+import { fetchRateLimit, OpenAlexAuthError, OpenAlexBudgetError, type BudgetReason } from './lib/openalex'
 import { OPENALEX_DIRECT_URL, resolveCredential, type UserCredential } from './lib/credential'
 import { formatResetClockUtc } from './lib/rateLimit'
 import { fetchCrossrefUpdates, type CrossrefRunState } from './lib/crossref'
@@ -85,7 +85,7 @@ export default function App() {
   const [keyError, setKeyError] = useState<string>('')
   // W4.1 — user-key usage readout, and the shared-pool exhaustion state.
   const [usage, setUsage] = useState<UsageState>({ status: 'shared' })
-  const [exhausted, setExhausted] = useState<{ resetsAt: string | null; kind: 'shared' | 'user' } | null>(null)
+  const [exhausted, setExhausted] = useState<{ resetsAt: string | null; kind: 'shared' | 'user'; reason: BudgetReason } | null>(null)
 
   // Read a credential's usage. USER KEY → OpenAlex directly (its own budget).
   // SHARED → only when it's routed through the Worker (which serves key-stripped
@@ -234,7 +234,7 @@ export default function App() {
       setView('report')     // v1.3 — jump to the report when analysis finishes
       setUploadOpen(false)  // v1.3 — collapse the drop zone to give results room
       // W4.1 — a budget halt keeps partial results; the rest stay pending.
-      setExhausted(ex ? { resetsAt: ex.resetsAt, kind: cred.kind } : null)
+      setExhausted(ex ? { resetsAt: ex.resetsAt, kind: cred.kind, reason: ex.reason } : null)
       void refreshUsageFor(userKey)
       void checkCrossref(resultRows) // v1.4.2 — free, automatic
     } catch (e) {
@@ -274,7 +274,7 @@ export default function App() {
       const merged = mergeRows(rows, resumedRows)
       setRows(merged)
       setSummary(summarize(merged, (summary?.searchCalls ?? 0) + subSummary.searchCalls))
-      setExhausted(ex ? { resetsAt: ex.resetsAt, kind: cred.kind } : null)
+      setExhausted(ex ? { resetsAt: ex.resetsAt, kind: cred.kind, reason: ex.reason } : null)
       setPhase('done')
       void refreshUsageFor(userKey)
       void checkCrossref(merged) // v1.4.2 — re-check with the resumed matches
@@ -354,7 +354,7 @@ export default function App() {
   // W4.1 — a budget halt mid-gaps/forward/preprint shows the same exhaustion
   // banner and stops cleanly (these spend too), rather than erroring out.
   function onBudget(e: OpenAlexBudgetError) {
-    setExhausted({ resetsAt: e.resetsAt, kind: resolveCredential(userKey).kind })
+    setExhausted({ resetsAt: e.resetsAt, kind: resolveCredential(userKey).kind, reason: e.reason })
   }
   async function handleCoCitation() {
     setGapsCo({ status: 'running', progress: { phase: 'refs', done: 0, total: 0, billableCalls: 0, label: 'Starting…' } })
@@ -426,8 +426,13 @@ export default function App() {
         <div className="card-note warn exhausted-banner">
           {exhausted.kind === 'shared' ? (
             <>
-              Today’s free shared credits are used up (they reset {formatResetClockUtc(exhausted.resetsAt) ? `at ${formatResetClockUtc(exhausted.resetsAt)}` : 'tomorrow'}).
-              Enter your own free OpenAlex key here to finish now — your already-matched references are kept.
+              {exhausted.reason === 'ip-quota' ? (
+                // F-03 — this connection's daily share of the free pool (the proxy's per-IP quota).
+                <>You’ve used today’s share of the free pool on this connection. Add your own free OpenAlex key to continue, or come back tomorrow. Your already-matched references are kept.</>
+              ) : (
+                <>Today’s free shared credits are used up (they reset {formatResetClockUtc(exhausted.resetsAt) ? `at ${formatResetClockUtc(exhausted.resetsAt)}` : 'tomorrow'}).
+                Enter your own free OpenAlex key here to finish now — your already-matched references are kept.</>
+              )}
               {!userKey && <KeyControl active={false} error={keyError} onSet={applyUserKey} onClear={clearUserKey} />}
               {userKey && rows.some(r => r.status === 'pending') && (
                 <>

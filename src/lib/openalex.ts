@@ -35,13 +35,30 @@ export class OpenAlexAuthError extends Error {
 // auth: on the shared pool this drives the graceful-halt + user-key + Resume
 // flow; App decides what to do based on which credential was active. Never
 // retried (retrying an empty budget is pointless).
+// F-03 (audit 2026-10-13): `reason` tells the whole pool running dry ('pool') apart from
+// THIS connection reaching its daily share of the shared pool ('ip-quota', the proxy's
+// 429 `ip_daily_quota`). Both halt the same way; the UI words them differently.
+export type BudgetReason = 'pool' | 'ip-quota'
 export class OpenAlexBudgetError extends Error {
   resetsAt: string | null
-  constructor(resetsAt: string | null = null) {
-    super('OpenAlex daily credits used up')
+  reason: BudgetReason
+  constructor(resetsAt: string | null = null, reason: BudgetReason = 'pool') {
+    super(reason === 'ip-quota' ? 'Daily share of the free pool used on this connection' : 'OpenAlex daily credits used up')
     this.name = 'OpenAlexBudgetError'
     this.resetsAt = resetsAt
+    this.reason = reason
   }
+}
+
+// F-03 — the proxy's per-IP daily quota reply: {"error":"ip_daily_quota",
+// "retry_after_seconds":N}. Returns the reset time (ISO), or null if it isn't one.
+export function ipQuotaResetFromBody(body: string, now: number = Date.now()): string | null | undefined {
+  try {
+    const j = JSON.parse(body) as Record<string, unknown>
+    if (j?.error !== 'ip_daily_quota') return undefined
+    const s = Number(j.retry_after_seconds)
+    return Number.isFinite(s) && s > 0 ? new Date(now + s * 1000).toISOString() : null
+  } catch { return undefined }
 }
 
 // Does a 429 body read like budget/quota exhaustion (vs. plain "too fast")?
@@ -173,6 +190,8 @@ async function request(url: string): Promise<Response> {
         // once to tell them apart (a normal caller treats a 429 as a plain error
         // and never reads its body, so consuming a clone here is safe).
         const body = await res.clone().text().catch(() => '')
+        const ipReset = ipQuotaResetFromBody(body)
+        if (ipReset !== undefined) throw new OpenAlexBudgetError(ipReset, 'ip-quota') // F-03: this connection's share
         if (looksLikeBudgetExhaustion(body)) throw new OpenAlexBudgetError(budgetResetFromBody(body))
         if (attempt === 0) { await sleep(retryDelayMs(res.headers.get('Retry-After'), body)); continue } // transient — retry once, after the server's hint
         return res

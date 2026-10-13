@@ -472,6 +472,16 @@ inline banner offers the user-key path plus **Resume**, which re-queries only th
 pending entries on the new credential. (Auth failure on a *user* key is a
 separate signal: no fallback to the shared pool.)
 
+**Per-connection share (F-03, audit 2026-10-13).** The proxy also caps billable calls
+per client IP per UTC day (150 by default; the count is kept as a salted hash of the IP,
+never the IP — see `bibprofile-worker`). Its `429 {"error":"ip_daily_quota",
+"retry_after_seconds":N}` is recognised in `openalex.ts` (`ipQuotaResetFromBody`) and
+halts exactly like exhaustion (`OpenAlexBudgetError` with `reason: 'ip-quota'`), with
+its own banner: *"You've used today's share of the free pool on this connection. Add
+your own free OpenAlex key to continue, or come back tomorrow."* The proxy's
+`503 counter_unavailable` (its counter is down; billable calls fail closed) is a
+plain transient error, not exhaustion.
+
 ## Input guards
 
 Two coarse gates (`src/lib/validateBib.ts`) reject a pathological upload before

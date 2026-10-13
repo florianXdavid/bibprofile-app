@@ -35,7 +35,7 @@ import {
   SEARCH_CALL_COST_USD,
   TITLE_MATCH_THRESHOLD,
 } from '../config'
-import { lookupByDoi, lookupWork, OpenAlexBudgetError, searchByTitle, type DoiLookup, type TitleSearch } from './openalex'
+import { lookupByDoi, lookupWork, OpenAlexBudgetError, searchByTitle, type BudgetReason, type DoiLookup, type TitleSearch } from './openalex'
 import { searchCrossref } from './crossref'
 import { normalizeDoi } from './doi'
 import { sharedCredential, type Credential } from './credential'
@@ -292,7 +292,7 @@ export function finishRows(rows: ResultRow[]): void {
 export interface MatchRunResult {
   rows: ResultRow[]
   summary: MatchSummary
-  exhausted: { resetsAt: string | null } | null
+  exhausted: { resetsAt: string | null; reason: BudgetReason } | null
 }
 
 export async function runMatching(
@@ -345,7 +345,7 @@ export async function runMatching(
     }
   }
 
-  let exhausted: { resetsAt: string | null } | null = null
+  let exhausted: { resetsAt: string | null; reason: BudgetReason } | null = null
 
   for (const entry of canonicalEntries) {
     const row = byRowId.get(entry.rowId)!
@@ -399,7 +399,7 @@ export async function runMatching(
       // Shared-pool budget exhaustion: halt cleanly. This entry and every one
       // after it stay `pending` (the run paused, it didn't fail). Auth and other
       // errors still propagate to App unchanged.
-      if (e instanceof OpenAlexBudgetError) { exhausted = { resetsAt: e.resetsAt }; break }
+      if (e instanceof OpenAlexBudgetError) { exhausted = { resetsAt: e.resetsAt, reason: e.reason }; break }
       throw e
     }
 
